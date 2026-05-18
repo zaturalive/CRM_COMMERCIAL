@@ -1,0 +1,22 @@
+bmb_creations_output_folder: '{project-root}/_byan-output/bmb-creations'
+user_name: dimitry
+communication_language: Francais
+document_output_language: Francais
+output_folder: '{project-root}/_byan-output'
+platform: claude
+install_mode: manual
+byan_version: 2.10.0
+installed_agents:
+  - hermes
+  - claude
+  - bmad-master
+  - expert-merise-agile
+  - byan
+  - agent-builder
+  - module-builder
+  - drawio
+  - pm
+  - dev
+  - quinn
+  - ux-designer
+  - patnote

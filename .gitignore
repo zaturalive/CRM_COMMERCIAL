@@ -1,0 +1,89 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Testing
+coverage/
+*.lcov
+.nyc_output/
+playwright-report/
+test-results/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+*.tsbuildinfo
+next-env.d.ts
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+pino.log
+
+# Local env files (never commit secrets)
+.env
+.env*.local
+.env.production
+.env.development
+.env.prod
+
+# MCP config contient le BYAN_API_KEY en dur — ne pas committer
+.mcp.json
+
+# Prisma
+apps/backend/prisma/migrations/dev.db
+apps/backend/prisma/migrations/dev.db-journal
+.prisma/
+
+# seed.local.ts : variante locale avec vraies donnees client (jamais commit).
+# seed.ts est desormais committable et ne contient que tenants + catalogues.
+apps/backend/prisma/seed.local.ts
+
+# Extraits clients bruts (RGPD : contient noms patients dans certaines feuilles)
+docs/extrait_delobaux/*.xlsx
+docs/extrait_delobaux/*.xls
+docs/extrait_delobaux/*.csv
+
+# Uploads (documents pre-op, jamais commit)
+uploads/
+apps/backend/uploads/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json.example
+!.vscode/extensions.json
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.pid
+
+# BYAN output
+_byan-output/
+_bmad-output/
+
+# Temp files
+.tmp-*/
+*.tmp
+*.bak
+
+# Zip prototype (garde-le en local mais pas en git)
+crm_chirurgien_design.zip
+"files(2)"/uploads/
+
+# Logs
+logs/
+*.log

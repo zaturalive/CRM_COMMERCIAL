@@ -1,0 +1,18 @@
+# ============================================================================
+# Dockerfile Playwright — container dedie pour les tests E2E
+# L'image officielle embarque Chromium + navigateurs + deps systeme.
+# ============================================================================
+
+FROM mcr.microsoft.com/playwright:v1.44.0-jammy
+
+WORKDIR /app/apps/frontend
+
+# On copie juste ce qu'il faut pour installer les deps de test.
+COPY apps/frontend/package.json ./
+COPY apps/frontend/tests ./tests
+COPY apps/frontend/playwright.config.ts ./
+
+# Install Playwright + chromium (browser deja dans l'image)
+RUN npm install --no-save @playwright/test@1.44.0
+
+# Pas de CMD — on lance avec `run` dans docker-compose.e2e.yml

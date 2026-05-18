@@ -1,0 +1,684 @@
+// ============================================================================
+// Prisma schema — CRM Chirurgien
+// Source : docs/architecture/data-model.md
+// 19 tables, 7 enums, multi-tenant par `tenantId` FK sur chaque table.
+// Prix en Int centimes. timeIntervention en Time HH:MM.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  COMMERCIAL
+  CHIRURGIEN
+}
+
+enum ProcessStage {
+  CONTACT
+  CONSULTATION
+  POST_CONSULT
+  CONFIRMEE
+  OP_PROGRAMMEE
+  EFFECTUEE
+  NON_QUALIFIE
+  FOLLOWUP
+  ANNULEE
+}
+
+enum FollowupReason {
+  TEMPS
+  ARGENT
+  HESITATION
+  AUTRE
+}
+
+enum DocumentStatus {
+  EN_ATTENTE
+  RECU
+  VALIDE
+}
+
+enum DevisStatus {
+  BROUILLON
+  TECHNIQUE_REMPLI
+  COMMERCIAL_REMPLI
+  ENVOYE
+  SIGNE
+  REFUSE
+}
+
+enum HospitalisationMode {
+  AMBULATOIRE
+  NUIT
+}
+
+enum SourceAcquisition {
+  BOUCHE_A_OREILLE
+  INSTAGRAM
+  TIKTOK
+  SITE_WEB
+  DOCTOLIB
+  RECOMMANDATION
+  AUTRE
+}
+
+// ─── ENUMS POST-MVP (EP09-EP11, 2026-04-28) ──────────────────────────────────
+
+enum FollowupSubStage {
+  J0
+  J1
+  J3
+  J7
+  J14
+  J30
+  ABANDON
+}
+
+enum FollowupProgress {
+  AVANCE
+  STAGNE
+  RECULE
+  PAS_DE_REPONSE
+}
+
+enum MessageKind {
+  MAIL
+  SMS_WHATSAPP
+  VIDEO
+}
+
+enum DocumentTemplateKind {
+  PDF_UPLOADED
+  HTML_RENDERED
+}
+
+enum TrackingEventType {
+  CLICK_LINK
+  VIEW_VIDEO
+  OPEN_EMAIL
+  REPLY_MESSAGE
+  OTHER
+}
+
+enum TrackingTargetKind {
+  MESSAGE_TEMPLATE
+  DOCUMENT_TEMPLATE
+  EXTERNAL_URL
+  CUSTOM
+}
+
+enum TrackingSource {
+  MANUAL_DEMO
+  INFERRED
+  REAL
+}
+
+// ─── TENANT + USER ───────────────────────────────────────────────────────────
+
+model Tenant {
+  id                 String   @id @default(uuid())
+  name               String
+  slug               String   @unique
+  settings             Json?
+  acompteDefaultAmount Int      @default(150000)  // EP07 : montant fixe d'acompte par defaut, en centimes (150000 = 1500€)
+  // F8 : si true, les process avancent automatiquement au stage suivant
+  // des qu'ils satisfont canTransitionTo (apres mutation devis/document/process).
+  // Si false, transition manuelle uniquement (drag-drop ou stepper).
+  autoAdvanceProcesses Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  users             User[]
+  clients           Client[]
+  processes         Process[]
+  cliniques         Clinique[]
+  interventions     Intervention[]
+  documentLabels    DocumentLabel[]
+  devis             Devis[]
+  messageTemplates  MessageTemplate[]
+  documentTemplates DocumentTemplate[]
+  trackingEvents    TrackingEvent[]
+  blockingPointTags BlockingPointTag[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String
+  passwordHash String
+  role         UserRole
+  firstName    String
+  lastName     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  followupStepLogs FollowupStepLog[]
+  messageSendLogs  MessageSendLog[]
+  trackingEvents   TrackingEvent[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+// ─── CLIENT + PROCESS ────────────────────────────────────────────────────────
+
+model Client {
+  id          String             @id @default(uuid())
+  tenantId    String
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  firstName   String
+  lastName    String
+  phone       String
+  email       String?
+  city        String?
+  address     String?
+  source      SourceAcquisition?
+  doctolibUrl String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  processes      Process[]
+  trackingEvents TrackingEvent[]
+
+  @@index([tenantId, phone])
+  @@index([tenantId, email])
+}
+
+model Process {
+  id                         String            @id @default(uuid())
+  tenantId                   String
+  tenant                     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId                   String
+  client                     Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  stage                      ProcessStage      @default(CONTACT)
+  isQualified                Boolean?
+  qualificationReason        String?
+  qualificationIntensity     Int?
+  nonQualifieReason          String?
+  followupReason             FollowupReason?
+  followupReasonDetail       String?
+  followupSubStage           FollowupSubStage? // EP09-S01 : sub-pipeline J0..ABANDON, null si stage != FOLLOWUP
+  followupSubStageEnteredAt  DateTime?         // EP09-S01 : timestamp entree sub-stage actuel
+  consultationDate           DateTime?
+  budget                     Int?              // centimes
+  noteCommerciale            String?
+  noteMedecin                String?
+  isArchived                 Boolean           @default(false)
+  archivedAt                 DateTime?
+  createdAt                  DateTime          @default(now())
+  updatedAt                  DateTime          @updatedAt
+
+  processInterventions ProcessIntervention[]
+  devis                Devis[]
+  documents            ProcessDocument[]
+  followupStepLogs     FollowupStepLog[]
+  messageSendLogs      MessageSendLog[]
+  trackingEvents       TrackingEvent[]
+  blockingPoints       ProcessBlockingPoint[]
+
+  @@index([tenantId, stage, isArchived])
+  @@index([clientId])
+  @@index([tenantId, stage, followupSubStage]) // EP09-S01 : query rapide par sub-stage
+}
+
+model ProcessIntervention {
+  id             String       @id @default(uuid())
+  processId      String
+  process        Process      @relation(fields: [processId], references: [id], onDelete: Cascade)
+  interventionId String
+  intervention   Intervention @relation(fields: [interventionId], references: [id], onDelete: Restrict)
+  createdAt      DateTime     @default(now())
+
+  @@unique([processId, interventionId])
+  @@index([processId])
+}
+
+// ─── CATALOGUE : INTERVENTION + FEES + DOCLABELS ─────────────────────────────
+
+model Intervention {
+  id               String  @id @default(uuid())
+  tenantId         String
+  tenant           Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  category         String  // CHIRURGIE | MED_ESTH | SOIN
+  duration         Int     // minutes
+  priceHonoraires  Int     // centimes
+  marginCoeff      Decimal? @db.Decimal(5, 2)
+  isActive         Boolean @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  processInterventions          ProcessIntervention[]
+  devisInterventions            DevisIntervention[]
+  fees                          InterventionFee[]
+  interventionDocumentLabels    InterventionDocumentLabel[]
+  interventionMessageTemplates  InterventionMessageTemplate[]
+  interventionDocumentTemplates InterventionDocumentTemplate[]
+
+  @@index([tenantId, isActive])
+}
+
+model InterventionFee {
+  id              String  @id @default(uuid())
+  interventionId  String
+  intervention    Intervention @relation(fields: [interventionId], references: [id], onDelete: Cascade)
+  label           String
+  defaultPrice    Int     // centimes
+  defaultQuantity Int     @default(1)
+  order           Int     @default(0)
+  isActive        Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([interventionId, order])
+}
+
+model DocumentLabel {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                String
+  description         String?
+  isRequiredByDefault Boolean  @default(true)
+  documentTemplateId  String?  // EP10 : template PDF pour generer le doc rempli
+  documentTemplate    DocumentTemplate? @relation(fields: [documentTemplateId], references: [id], onDelete: SetNull)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  interventions    InterventionDocumentLabel[]
+  processDocuments ProcessDocument[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+}
+
+model InterventionDocumentLabel {
+  id              String        @id @default(uuid())
+  interventionId  String
+  intervention    Intervention  @relation(fields: [interventionId], references: [id], onDelete: Cascade)
+  documentLabelId String
+  documentLabel   DocumentLabel @relation(fields: [documentLabelId], references: [id], onDelete: Cascade)
+  isRequired      Boolean       @default(true)
+  order           Int           @default(0)
+  createdAt       DateTime      @default(now())
+
+  @@unique([interventionId, documentLabelId])
+  @@index([interventionId, order])
+}
+
+// ─── CLINIQUE + TARIFS + OPTIONS ─────────────────────────────────────────────
+
+model Clinique {
+  id                          String @id @default(uuid())
+  tenantId                    String
+  tenant                      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name                        String
+  city                        String
+  phone                       String?
+  fraisAmbulatoire            Int    // centimes
+  fraisHospitalisationParNuit Int?   // centimes, null si clinique sans hospit
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  tarifs              CliniqueTarif[]
+  options             CliniqueOption[]
+  devisInterventions  DevisIntervention[]
+  devisStays          DevisStay[]
+
+  @@index([tenantId])
+}
+
+model CliniqueTarif {
+  id              String   @id @default(uuid())
+  cliniqueId      String
+  clinique        Clinique @relation(fields: [cliniqueId], references: [id], onDelete: Cascade)
+  dureeMin        Int      // minutes
+  dureeMax        Int      // minutes
+  fraisBloc       Int      // centimes
+  fraisAnesthesie Int      // centimes
+  createdAt       DateTime @default(now())
+
+  @@index([cliniqueId])
+}
+
+model CliniqueOption {
+  id              String  @id @default(uuid())
+  cliniqueId      String
+  clinique        Clinique @relation(fields: [cliniqueId], references: [id], onDelete: Cascade)
+  label           String
+  defaultPrice    Int     // centimes
+  defaultQuantity Int     @default(1)
+  order           Int     @default(0)
+  isActive        Boolean @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  devisOptions DevisOption[]
+
+  @@index([cliniqueId, order])
+}
+
+// ─── DEVIS + SNAPSHOTS ───────────────────────────────────────────────────────
+
+model Devis {
+  id               String      @id @default(uuid())
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  processId        String
+  process          Process     @relation(fields: [processId], references: [id], onDelete: Cascade)
+  reference        String
+  status           DevisStatus @default(BROUILLON)
+  firstSignedAt    DateTime?   // V1 pret : firstSignedAt (pas signedAt) pour signature differee J+15
+  sentAt           DateTime?
+  acomptePaidAt    DateTime?
+  soldePaidAmount  Int         @default(0)  // centimes
+  totalCached      Int?        // centimes, snapshot du total pour perf
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  devisInterventions  DevisIntervention[]
+  devisOptions        DevisOption[]
+  devisCustomOptions  DevisCustomOption[]
+  devisStays          DevisStay[]
+
+  @@unique([tenantId, reference])
+  @@index([processId])
+  @@index([tenantId, status])
+}
+
+model DevisIntervention {
+  id               String    @id @default(uuid())
+  devisId          String
+  devis            Devis     @relation(fields: [devisId], references: [id], onDelete: Cascade)
+  interventionId   String
+  intervention     Intervention @relation(fields: [interventionId], references: [id], onDelete: Restrict)
+  priceHonoraires  Int       // centimes — snapshot a la creation
+  duration         Int       // minutes — snapshot
+  cliniqueId       String?
+  clinique         Clinique? @relation(fields: [cliniqueId], references: [id], onDelete: Restrict)
+  dateIntervention DateTime?
+  timeIntervention DateTime? @db.Time()  // HH:MM — v1.5 (CDCT §4.3)
+  isDone           Boolean   @default(false)
+  doneAt           DateTime?
+  order            Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  fees DevisInterventionFee[]
+
+  @@index([devisId])
+  @@index([cliniqueId, dateIntervention])
+}
+
+model DevisInterventionFee {
+  id                  String  @id @default(uuid())
+  devisInterventionId String
+  devisIntervention   DevisIntervention @relation(fields: [devisInterventionId], references: [id], onDelete: Cascade)
+  label               String  // snapshot
+  price               Int     // centimes — snapshot, override possible
+  quantity            Int     @default(1)
+  isIncluded          Boolean @default(true)
+  order               Int     @default(0)
+  createdAt           DateTime @default(now())
+
+  @@index([devisInterventionId, order])
+}
+
+model DevisOption {
+  id               String         @id @default(uuid())
+  devisId          String
+  devis            Devis          @relation(fields: [devisId], references: [id], onDelete: Cascade)
+  cliniqueOptionId String
+  cliniqueOption   CliniqueOption @relation(fields: [cliniqueOptionId], references: [id], onDelete: Restrict)
+  label            String         // snapshot
+  price            Int            // centimes — snapshot
+  quantity         Int            @default(1)
+  stayKey          String?        // cliniqueId-YYYY-MM-DD pour mutualisation anti-doublon (CDCT §6.5)
+  createdAt        DateTime       @default(now())
+
+  @@index([devisId])
+  @@index([stayKey])
+}
+
+model DevisCustomOption {
+  id        String   @id @default(uuid())
+  devisId   String
+  devis     Devis    @relation(fields: [devisId], references: [id], onDelete: Cascade)
+  label     String   // saisie libre
+  price     Int      // centimes, >= 0
+  quantity  Int      @default(1)  // >= 1
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([devisId])
+}
+
+model DevisStay {
+  id         String              @id @default(uuid())
+  devisId    String
+  devis      Devis               @relation(fields: [devisId], references: [id], onDelete: Cascade)
+  cliniqueId String
+  clinique   Clinique            @relation(fields: [cliniqueId], references: [id], onDelete: Restrict)
+  date       DateTime            @db.Date
+  mode       HospitalisationMode @default(AMBULATOIRE)
+  nightCount Int                 @default(1)  // 1 a 30 si NUIT
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@unique([devisId, cliniqueId, date])
+  @@index([cliniqueId, date])
+}
+
+// ─── PROCESS DOCUMENT ─────────────────────────────────────────────────────────
+
+model ProcessDocument {
+  id              String         @id @default(uuid())
+  processId       String
+  process         Process        @relation(fields: [processId], references: [id], onDelete: Cascade)
+  documentLabelId String?
+  documentLabel   DocumentLabel? @relation(fields: [documentLabelId], references: [id], onDelete: SetNull)
+  name            String         // snapshot a la creation
+  status          DocumentStatus @default(EN_ATTENTE)
+  fileUrl         String?        // {tenantId}/{processId}/{uuid}.{ext}
+  receivedAt      DateTime?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([processId])
+}
+
+// ─── EP09 : FOLLOW-UP DEDIE + SEQUENCES UI (2026-04-28) ──────────────────────
+
+/// Trace chronologique des transitions de sub-stage follow-up + observations.
+/// Cf data-model.md §2.20.
+model FollowupStepLog {
+  id            String            @id @default(uuid())
+  processId     String
+  process       Process           @relation(fields: [processId], references: [id], onDelete: Cascade)
+  fromSubStage  FollowupSubStage? // null pour entree initiale
+  toSubStage    FollowupSubStage
+  note          String?
+  progressLabel FollowupProgress?
+  userId        String?
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  occurredAt    DateTime          @default(now())
+
+  @@index([processId, occurredAt])
+}
+
+/// Catalogue tenant-scope de templates de messages reutilisables.
+/// Cf data-model.md §2.21.
+model MessageTemplate {
+  id              String      @id @default(uuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  kind            MessageKind
+  subject         String?     // requis si kind=MAIL
+  body            String      @db.Text
+  mediaUrl        String?     // URL externe video si kind=VIDEO
+  previewImageUrl String?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  interventionMessageTemplates InterventionMessageTemplate[]
+  messageSendLogs              MessageSendLog[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+/// Jointure M:N intervention <-> messageTemplate avec sub-stage cible.
+/// Cf data-model.md §2.22.
+model InterventionMessageTemplate {
+  id                String            @id @default(uuid())
+  interventionId    String
+  intervention      Intervention      @relation(fields: [interventionId], references: [id], onDelete: Cascade)
+  messageTemplateId String
+  messageTemplate   MessageTemplate   @relation(fields: [messageTemplateId], references: [id], onDelete: Cascade)
+  targetSubStage    FollowupSubStage? // NULL = applicable a tous les sub-stages
+  order             Int               @default(0)
+  createdAt         DateTime          @default(now())
+
+  @@unique([interventionId, messageTemplateId, targetSubStage])
+  @@index([interventionId])
+  @@index([messageTemplateId])
+}
+
+/// Snapshot de chaque envoi manuel de message en mode demo (pas d'envoi reel).
+/// Cf data-model.md §2.23.
+model MessageSendLog {
+  id                String           @id @default(uuid())
+  processId         String
+  process           Process          @relation(fields: [processId], references: [id], onDelete: Cascade)
+  messageTemplateId String?
+  messageTemplate   MessageTemplate? @relation(fields: [messageTemplateId], references: [id], onDelete: SetNull)
+  kind              MessageKind      // snapshot a l'envoi
+  subject           String?          // snapshot rendu (post-substitution)
+  body              String           @db.Text // snapshot rendu
+  mediaUrl          String?          // snapshot
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sentAt            DateTime         @default(now())
+
+  @@index([processId, sentAt])
+}
+
+// ─── EP10 : DOCUMENT TEMPLATES PDF (2026-04-28) ──────────────────────────────
+
+/// Catalogue tenant-scope de templates PDF (uploades ou rendus depuis HTML).
+/// Cf data-model.md §2.24.
+model DocumentTemplate {
+  id             String               @id @default(uuid())
+  tenantId       String
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  kind           DocumentTemplateKind
+  fileUrl        String?              // requis si kind=PDF_UPLOADED
+  bodyHtml       String?              @db.Text // requis si kind=HTML_RENDERED
+  variableSchema Json?                // array de variable paths attendues
+  isActive       Boolean              @default(true)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  documentLabels                DocumentLabel[]
+  interventionDocumentTemplates InterventionDocumentTemplate[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+}
+
+/// Jointure M:N intervention <-> documentTemplate.
+/// Cf data-model.md §2.25.
+model InterventionDocumentTemplate {
+  id                 String           @id @default(uuid())
+  interventionId     String
+  intervention       Intervention     @relation(fields: [interventionId], references: [id], onDelete: Cascade)
+  documentTemplateId String
+  documentTemplate   DocumentTemplate @relation(fields: [documentTemplateId], references: [id], onDelete: Cascade)
+  order              Int              @default(0)
+  createdAt          DateTime         @default(now())
+
+  @@unique([interventionId, documentTemplateId])
+  @@index([interventionId])
+}
+
+// ─── EP11 : CLICK TRACKING DEMO (2026-04-28) ─────────────────────────────────
+
+/// Events d'engagement client (clics, vues, ouvertures).
+/// Au MVP : source = MANUAL_DEMO uniquement (pas de vrai tracking redirect).
+/// Cf data-model.md §2.26.
+model TrackingEvent {
+  id          String             @id @default(uuid())
+  tenantId    String
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId    String
+  client      Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  processId   String?
+  process     Process?           @relation(fields: [processId], references: [id], onDelete: Cascade)
+  eventType   TrackingEventType
+  targetKind  TrackingTargetKind
+  targetId    String?            // softlink (pas FK dur) vers MessageTemplate / DocumentTemplate
+  targetLabel String             // descriptif lisible
+  targetUrl   String?
+  source      TrackingSource     @default(MANUAL_DEMO)
+  note        String?
+  userId      String?
+  user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  occurredAt  DateTime           @default(now())
+
+  @@index([tenantId, clientId, occurredAt])
+  @@index([processId, occurredAt])
+}
+
+// ─── F2 : POINTS DE BLOCAGE (2026-04-29) ─────────────────────────────────────
+
+/// Template de tag "point de blocage" defini au niveau cabinet.
+/// Les tags sont reutilisables sur tous les processes du tenant. La couleur
+/// (#hex) est purement cosmetique pour l'affichage, et label sert de cle
+/// metier visible.
+model BlockingPointTag {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  label     String
+  color     String   @default("#F59E0B") // amber-500 par defaut
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  blockingPoints ProcessBlockingPoint[]
+
+  @@unique([tenantId, label])
+  @@index([tenantId, isActive])
+}
+
+/// Instance de point de blocage attache a un process. Resolu = `resolvedAt`
+/// non null. Permet de tracker dans la page Suivi quels points bloquent
+/// le client et lesquels se sont leves au fil du temps.
+model ProcessBlockingPoint {
+  id         String           @id @default(uuid())
+  processId  String
+  process    Process          @relation(fields: [processId], references: [id], onDelete: Cascade)
+  tagId      String
+  tag        BlockingPointTag @relation(fields: [tagId], references: [id], onDelete: Restrict)
+  note       String?
+  createdAt  DateTime         @default(now())
+  resolvedAt DateTime?
+
+  @@index([processId, resolvedAt])
+  @@index([tagId])
+}

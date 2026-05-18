@@ -1,0 +1,82 @@
+# ============================================================================
+# .dockerignore racine — valable pour les 3 builds (landing, frontend, backend)
+# Le build context est la racine du projet (docker-compose.prod.yml context: ..),
+# donc seul ce fichier-ci est lu par Docker. Les .dockerignore dans
+# apps/frontend/ et apps/backend/ sont ignores avec ce context.
+# ============================================================================
+
+# Dependencies (reinstalles dans le stage deps)
+node_modules
+**/node_modules
+
+# Build outputs
+.next
+**/.next
+dist
+**/dist
+out
+**/out
+build
+**/build
+coverage
+**/coverage
+**/*.tsbuildinfo
+next-env.d.ts
+
+# Git / IDE / OS
+.git
+.gitignore
+.github
+.gitattributes
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Env (secrets ne vont jamais dans l'image)
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Tests E2E reports (volumineux — pas dans le context)
+apps/frontend/playwright-report
+apps/frontend/test-results
+# Note : apps/frontend/tests + playwright.config.ts NE sont PAS exclus, sinon
+# le build de Dockerfile.playwright (qui les COPYe) echoue. Les Dockerfiles
+# frontend/backend prod ne les COPYent pas, donc pas d'impact taille image prod.
+
+# Tests backend (vitest : pas besoin en prod)
+apps/backend/tests
+
+# Prisma local / seed local
+apps/backend/prisma/seed.local.ts
+apps/backend/prisma/dev.db
+apps/backend/prisma/dev.db-journal
+.prisma
+
+# Uploads / logs (volumes gerent ca en prod)
+uploads
+apps/backend/uploads
+logs
+*.log
+
+# BYAN / agents / docs de projet (pas besoin dans l'image)
+_byan
+_byan-output
+_bmad
+_bmad-output
+.claude
+.mcp.json
+.tmp-*
+
+# Docs (pas dans l'image, deja en ligne / readme)
+docs
+files(2)
+"files(2)"
+
+# Autres
+crm_chirurgien_design.zip
+README.md

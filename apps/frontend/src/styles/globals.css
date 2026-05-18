@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — source spec-design-figma-v1_3.md §1.7 */
+:root {
+  --accent: #6c63ff;
+  --accent-light: #ede9fe;
+  --accent-lighter: #f5f3ff;
+  --sidebar-bg: #1a1a2e;
+  --sidebar-hover: #252540;
+  --surface: #ffffff;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --surface-glass-border: rgba(255, 255, 255, 0.8);
+  --page-bg: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 50%, #f9fafb 100%);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --border: #e5e7eb;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
+  --blur: blur(20px);
+}
+
+html,
+body {
+  color: var(--text-primary);
+  background: var(--page-bg);
+  font-family: Inter, system-ui, sans-serif;
+  min-height: 100vh;
+}

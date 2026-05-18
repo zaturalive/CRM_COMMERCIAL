@@ -1,0 +1,101 @@
+# ============================================================================
+# docker-compose.yml — LOCAL DEV UNIQUEMENT
+# Pas de Traefik. Ports exposes directement (3300, 4100, 5432 interne).
+# Ports decales du repo CRM_chirurgien (3200 / 4000) pour permettre aux 2
+# projets de tourner en parallele sur la meme machine.
+# Pour prod : voir docker-compose.prod.yml
+# ============================================================================
+
+name: crm-commercial
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: apps/frontend/Dockerfile
+      target: dev
+    container_name: crm-commercial-frontend
+    # Port 3300 cote hote (3200 = crm-chirurgien, 3100 = Loki, 3000 = Grafana).
+    # Cote container : Next.js ecoute 3000, pas de changement interne.
+    ports:
+      - "3300:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:4100}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3300}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - BACKEND_URL=http://backend:4000
+      - NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-true}
+      - NEXT_PUBLIC_TENANT_SLUG=${NEXT_PUBLIC_TENANT_SLUG:-cabinet-test}
+    volumes:
+      - ../apps/frontend:/app/apps/frontend
+      # Volume anonyme pour .next (evite pollution hot-reload de l'hote)
+      - /app/apps/frontend/.next
+    networks:
+      - crm-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ..
+      dockerfile: apps/backend/Dockerfile
+      target: dev
+    container_name: crm-commercial-backend
+    ports:
+      - "4100:4000"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dev}@postgres:5432/${POSTGRES_DB:-crm_commercial}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - PORT=4000
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3300}
+      - UPLOADS_DIR=/app/uploads
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ../apps/backend:/app/apps/backend
+      - backend_uploads:/app/uploads
+    networks:
+      - crm-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm-commercial-postgres
+    # Pas de port host expose : les containers parlent via le reseau crm-network
+    # (DATABASE_URL=postgresql://...@postgres:5432/...). Si besoin d'un client
+    # externe (dbeaver/psql sur l'hote), `docker exec crm-commercial-postgres
+    # psql -U postgres crm_commercial` ou ouvrir un mapping ad-hoc.
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crm_commercial}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - crm-network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-postgres}", "-d", "${POSTGRES_DB:-crm_commercial}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+networks:
+  # Network nomme (pas le default de compose) pour permettre a des outils
+  # externes (webdb, pgAdmin, etc.) de s'y connecter depuis un autre compose.
+  # Usage : docker network connect crm-commercial-network <container>
+  crm-network:
+    name: crm-commercial-network
+    driver: bridge
+
+volumes:
+  postgres_data:
+  backend_uploads:

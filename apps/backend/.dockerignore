@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.env
+.env*.local
+.env.production
+npm-debug.log
+coverage
+tests
+.vscode
+.idea
+README.md
+Dockerfile
+.dockerignore
+prisma/migrations/dev.db
+uploads

@@ -1,0 +1,30 @@
+# ============================================================================
+# docker-compose.e2e.yml — lance Playwright contre le stack dev deja up.
+#
+# Usage :
+#   # 1. S'assurer que le stack dev tourne (postgres + backend + frontend)
+#   docker compose -f docker/docker-compose.yml --env-file .env up -d
+#
+#   # 2. Lancer les tests E2E (exit code = code Playwright)
+#   docker compose -f docker/docker-compose.e2e.yml --env-file .env run --rm e2e
+# ============================================================================
+
+name: crm-commercial-e2e
+
+services:
+  e2e:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.playwright
+    container_name: crm-commercial-e2e
+    # network_mode: host permet au container E2E de voir `localhost:3200`
+    # comme l'hote — meme URL que NEXTAUTH_URL cote frontend container.
+    # Pas de conflit de coherence, les cookies NextAuth voyagent correctement.
+    network_mode: host
+    environment:
+      - BASE_URL=http://localhost:3300
+      - CI=true
+    volumes:
+      - ../apps/frontend/playwright-report:/app/apps/frontend/playwright-report
+      - ../apps/frontend/test-results:/app/apps/frontend/test-results
+    command: ["npx", "playwright", "test", "--reporter=list"]

@@ -1,0 +1,35 @@
+{
+  "name": "crm-commercial",
+  "version": "0.0.1",
+  "private": true,
+  "description": "CRM commercial pour cabinets de prestations esthetiques (projet jumeau non-HDS de crm-chirurgien). Multi-tenant, Next.js 15 + Express + Prisma + Postgres.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "docker compose -f docker/docker-compose.yml up",
+    "dev:build": "docker compose -f docker/docker-compose.yml up --build",
+    "dev:down": "docker compose -f docker/docker-compose.yml down",
+    "dev:reset": "docker compose -f docker/docker-compose.yml down -v",
+    "dev:logs": "docker compose -f docker/docker-compose.yml logs -f",
+    "dev:front": "npm -w apps/frontend run dev",
+    "dev:back": "npm -w apps/backend run dev",
+    "db:migrate": "docker compose -f docker/docker-compose.yml exec backend npx prisma migrate dev",
+    "db:seed": "docker compose -f docker/docker-compose.yml exec backend npx prisma db seed",
+    "db:reset": "docker compose -f docker/docker-compose.yml exec backend npx prisma migrate reset",
+    "db:studio": "docker compose -f docker/docker-compose.yml exec backend npx prisma studio",
+    "test": "npm -w apps/backend test && npm -w apps/frontend test",
+    "test:security": "npm -w apps/backend run test:security",
+    "test:e2e": "docker compose -f docker/docker-compose.e2e.yml up --abort-on-container-exit",
+    "lint": "npm -w apps/frontend run lint && npm -w apps/backend run lint",
+    "build": "npm -w apps/frontend run build && npm -w apps/backend run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

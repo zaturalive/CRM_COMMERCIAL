@@ -1,0 +1,145 @@
+# ============================================================================
+# docker-compose.prod.yml — PROD Scaleway + Traefik (single-domain MVP)
+#
+# Prerequis sur le serveur :
+#   - Traefik tourne avec un entrypoint `websecure` (443) + certresolver
+#     Let's Encrypt (`letsencrypt`). Voir docker/traefik/ de ton infra.
+#   - Reseau Docker externe `admin_proxy` existe :
+#       docker network create admin_proxy
+#
+# DNS attendu (1 seul record) :
+#   - crm-commercial.example.com → IP Scaleway (CNAME stark.a3n.fr suffit)
+#
+# Le tenant courant est determine par la session NextAuth (slug saisi au
+# login), pas par le hostname. Multi-tenant physique (sous-domaines par
+# cabinet) est dans le backlog v1+.
+#
+# Lancement :
+#   docker compose -f docker/docker-compose.prod.yml --env-file .env.prod up -d
+# ============================================================================
+
+name: crm-commercial
+
+services:
+  frontend:
+    build:
+      context: ..
+      dockerfile: apps/frontend/Dockerfile
+      target: prod
+      # NEXT_PUBLIC_* sont inlinees dans le bundle au build (pas runtime).
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
+    container_name: crm-commercial-frontend
+    hostname: crm-commercial-frontend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - BACKEND_URL=http://backend:4000
+      - NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-false}
+    networks:
+      - internal
+      - admin_proxy
+    depends_on:
+      - backend
+    # Pattern Acqua : Host exact + cert resolveur global de l'entrypoint
+    # websecure du Traefik (pas de tls.certresolver dans les labels).
+    labels:
+      - "traefik.docker.network=admin_proxy"
+      - "traefik.enable=true"
+      # HTTP (port 80) -> redirige vers HTTPS via la conf statique Traefik.
+      - "traefik.http.routers.crm-frontend.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.crm-frontend.entrypoints=web"
+      - "traefik.http.services.crm-frontend.loadbalancer.server.port=3000"
+      # HTTPS (port 443)
+      - "traefik.http.routers.crm-frontend-secure.rule=Host(`${DOMAIN}`)"
+      - "traefik.http.routers.crm-frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.crm-frontend-secure.service=crm-frontend"
+      - "traefik.http.routers.crm-frontend-secure.middlewares=crm-frontend-headers"
+      - "traefik.http.middlewares.crm-frontend-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
+      # /api/auth/* doit etre servi par Next (NextAuth), pas par Express.
+      # PathPrefix(/api/auth) plus long que PathPrefix(/api) -> priorite auto.
+      - "traefik.http.routers.crm-frontend-auth-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.crm-frontend-auth-secure.entrypoints=websecure"
+      - "traefik.http.routers.crm-frontend-auth-secure.service=crm-frontend"
+
+  backend:
+    build:
+      context: ..
+      dockerfile: apps/backend/Dockerfile
+      target: prod
+    container_name: crm-commercial-backend
+    hostname: crm-commercial-backend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=7d
+      - PORT=4000
+      - FRONTEND_URL=${FRONTEND_URL}
+      - DOMAIN=${DOMAIN}
+      # DEMO_MODE : active /api/demo (role switcher, reset seed) en prod
+      # tant que l'instance reste en phase vitrine.
+      - DEMO_MODE=${DEMO_MODE:-false}
+      - UPLOADS_DIR=/app/uploads
+      - LOG_LEVEL=warn
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - internal
+      - admin_proxy
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Backend expose sous /api/*. PathPrefix(/api) plus long que rien -> match
+    # avant le frontend pour ces routes. /api/auth/* est exclu par le router
+    # frontend-auth-secure plus haut (PathPrefix plus specifique).
+    labels:
+      - "traefik.docker.network=admin_proxy"
+      - "traefik.enable=true"
+      - "traefik.http.routers.crm-backend-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.crm-backend-secure.entrypoints=websecure"
+      - "traefik.http.routers.crm-backend-secure.service=crm-backend"
+      - "traefik.http.services.crm-backend.loadbalancer.server.port=4000"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm-commercial-postgres
+    hostname: crm-commercial-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - internal
+    # Pas de port expose — accessible uniquement depuis le network internal.
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Tuning leger pour petit serveur (ajuster selon la RAM Scaleway)
+    command: >
+      postgres
+        -c shared_buffers=256MB
+        -c effective_cache_size=1GB
+        -c work_mem=16MB
+        -c maintenance_work_mem=128MB
+        -c max_connections=50
+
+networks:
+  internal:
+    driver: bridge
+  admin_proxy:
+    external: true
+
+volumes:
+  postgres_data:
+  backend_uploads:
