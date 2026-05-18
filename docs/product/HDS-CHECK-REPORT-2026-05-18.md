@@ -2,16 +2,28 @@
 
 > Audit produit par le skill byan-hds-check (cf .claude/skills/byan-hds-check/SKILL.md)
 > Periode actuelle : NON-HDS (cf. ADR-0008 du repo source crm-chirurgien)
+>
+> **MAJ 2026-05-18 apres ADR-0002** : suppression du role CHIRURGIEN + suppression du
+> concept noteMedecin/notePraticien. Les annotations "rename chirurgien -> praticien"
+> dans la version initiale du rapport sont **obsoletes** — il faut lire desormais
+> "retirer la reference au role CHIRURGIEN, le COMMERCIAL fait l'action". Voir
+> [ADR-0002](../architecture/decisions/0002-suppression-role-chirurgien-et-notes.md)
+> pour le detail.
 
-## Synthese globale
+## Synthese globale (mise a jour ADR-0002)
 
-| Verdict | Compte |
-|---------|--------|
-| OK | 10 |
-| OK avec rename | 28 |
-| SUSPECT | 8 |
-| BLOCKED | 4 |
-| Total | 50 |
+| Verdict | Compte initial | Compte apres ADR-0002 |
+|---------|----------------|----------------------|
+| OK | 10 | 10 (inchange) |
+| OK avec rename | 28 | 27 — la mention "chirurgien -> praticien" devient "retrait reference role CHIRURGIEN" |
+| SUSPECT | 8 | 8 (inchange) |
+| BLOCKED | 4 | 5 — EP04-S05 reste BLOCKED mais voit sa partie noteMedecin retiree de la story (au lieu d'une simple reformulation contractuelle) |
+| Total | 50 | 50 |
+
+NB : les annotations HDS-CHECK individuelles inserees dans chaque story restent celles
+de la passe initiale. Une seconde passe de l'agent byan-hds-check sera lancee par la
+prochaine instance Claude pour repasser sur chaque story avec les nouvelles regles
+ADR-0002. Voir `docs/ACTIONS-IMMEDIATES-2026-05-18.md` §3.
 
 ## Stories OK
 
@@ -72,7 +84,7 @@
 
 - EP02-S05 : Document Labels + picker d'association — donnees Art. 9 detectees : Bilan sanguin, ECG, Consentement eclaire, "documents pre-operatoires" (seed §11). Action recommandee : remplacer le seed medical par des labels commerciaux uniquement (carte vitale, mutuelle, RIB, justificatif d'identite), ou reporter le seed medical en bascule HDS (ADR-0003 a venir).
 
-- EP04-S05 : Notes commerciale + medicale avec droits role-based — donnees Art. 9 detectees : note medicale, noteMedecin, confidentiel medical. Cas canonique du skill §7.4 + exemple §9. Action recommandee : (a) retirer le champ noteMedecin du repo non-HDS, ou (b) le renommer notePraticien avec clause contractuelle d'interdiction stricte du contenu medical + formation user + check periodique.
+- EP04-S05 : Notes commerciale + medicale avec droits role-based — donnees Art. 9 detectees : note medicale, noteMedecin, confidentiel medical. Cas canonique du skill §7.4 + exemple §9. **Decision ADR-0002 (2026-05-18)** : la partie medicale de la story est retiree purement et simplement (pas de notePraticien avec contractualisation). Le scope residuel de la story est reduit a la note commerciale (champ noteCommerciale) + retrait de la reference au role CHIRURGIEN puisque ce role est retire de la plateforme. Story implementable apres reformulation.
 
 - EP05-S02 : Devis technique (UI chirurgien) — donnees Art. 9 detectees : la formulation "focusser sur l'acte medical" requalifie la prestation en acte medical. Action recommandee : reformuler "focusser sur la partie technique de la prestation" + renommer chirurgien -> praticien. Apres reformulation, story implementable.
 
@@ -88,6 +100,8 @@
 
 3. Stories OK + OK avec rename : 38 stories implementables apres rename systematique du vocabulaire (patient -> client, chirurgien -> praticien, intervention -> prestation, consultation -> rendez-vous).
 
-4. **Pre-requis avant Sprint 1** : (a) decision user sur EP04-S05 (noteMedecin), (b) reformulation des seeds EP02-S05 et messages mock EP06-S04, (c) reformulation user story EP05-S02, (d) decision user sur la portee des stories SUSPECT.
+4. **Pre-requis avant Sprint 1** : (a) decision user sur EP04-S05 (noteMedecin) — **tranche par ADR-0002 le 2026-05-18 : retire**, (b) reformulation des seeds EP02-S05 et messages mock EP06-S04, (c) reformulation user story EP05-S02, (d) decision user sur la portee des stories SUSPECT.
+
+6. **Impact transverse ADR-0002 (role CHIRURGIEN retire)** : toutes les stories qui mentionnaient un role-gating CHIRURGIEN doivent passer en COMMERCIAL. Liste minimale a re-auditer : EP01-S03 (sidebar switcher), EP05-S02 (devis technique), EP05-S03 (PATCH devis-interventions role-gated), EP05-S04 (PATCH stays date CHIR+ADMIN), EP05-S07 (signature), EP06-S04 (mocks WhatsApp), EP07-S02 (cocher done), EP04-S05 (notes role-based). Seconde passe HDS recommandee.
 
 5. Le skill byan-hds-check est un garde-fou pragmatique (mention §8 du skill) et ne remplace pas une analyse juridique. Audit a relancer apres reformulations + a chaque modification de schema Prisma.

@@ -44,29 +44,31 @@ URLs locales (ports decales vs repo source pour cohabitation) :
 Tenant `cabinet-test`, password `demo` :
 - `admin-test@cabinet-test.local` (ADMIN)
 - `commercial-test@cabinet-test.local` (COMMERCIAL)
-- `praticien-test@cabinet-test.local` (CHIRURGIEN — sera renomme PRATICIEN ulterieurement)
+
+Pas de user CHIRURGIEN dans le CRM Commercial (decision 2026-05-18, cf. ADR-0002). Le COMMERCIAL a acces a toutes les fonctionnalites qui etaient reservees CHIRURGIEN dans le repo source.
 
 ## Vocabulaire (projet commercial)
 
-Le vocabulaire interne du repo source est conserve **dans le code** au moment du fork (Patient/Intervention/Consultation/Chirurgien). L'adaptation au vocabulaire commercial (Client/Prestation/Rendez-vous/Praticien) est planifiee dans les stories EP01-S00 et suivantes (voir `docs/product/stories/`).
+Le vocabulaire interne du repo source est conserve **dans le code** au moment du fork (Patient/Intervention/Consultation/Chirurgien). L'adaptation au vocabulaire commercial (Client/Prestation/Rendez-vous) est planifiee dans les stories EP01-S00 et suivantes (voir `docs/product/stories/`).
 
 | Vocabulaire repo source | Vocabulaire cible commercial |
 |--------------------------|------------------------------|
 | Patient | **Client** |
 | Intervention chirurgicale | **Prestation** |
 | Consultation medicale | **Rendez-vous** |
-| Chirurgien | **Praticien** |
 | Dossier patient | **Fiche client** |
-| Note medecin | **Note praticien** |
+| Note medecin / Note medicale | **Retire** (decision 2026-05-18, cf. ADR-0002 — pas de stockage de notes praticien dans CRM Commercial) |
+| Role CHIRURGIEN | **Retire** (le COMMERCIAL fait tout) |
 
 ## Donnees exclues du perimetre actuel (periode non-HDS)
 
 Pour conserver le statut non-HDS :
-- Pas de notes medicales
+- Pas de notes medicales NI notes praticien (decision 2026-05-18 — risque considere trop eleve meme avec contractualisation)
 - Pas de photos avant/apres
 - Pas d'antecedents medicaux
 - Pas de prescriptions / ordonnances
 - Pas de comptes-rendus operatoires
+- Pas de role CHIRURGIEN sur la plateforme
 
 L'agent `byan-hds-check` (skill BYAN) verifie chaque story pour detecter les mots-cles santé et alerter avant implementation. Voir `.claude/skills/byan-hds-check/`.
 

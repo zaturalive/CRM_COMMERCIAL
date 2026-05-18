@@ -43,11 +43,20 @@ Les categories ci-dessous sont stockees uniquement dans un environnement HDS :
 
 ### 3.2 SUSPECT — depend du contexte
 
-`patient` (preferer `client` en CRM commercial), `consultation` (preferer `rendez-vous`), `intervention` (preferer `prestation` quand designe l'acte commercial), `chirurgical`, `chirurgien` (preferer `praticien`), `medical`, `medecin`, `infirmier`, `infirmiere`, `aide-soignant`, `anesthesiste` (peut etre OK si juste tarif logistique), `anesthesie` (idem), `clinique` (OK si juste lieu de prestation, pas si liste de pathologies traitees), `hospitalisation` (OK si juste planning sejour), `ambulatoire` (OK si juste mode logistique), `dossier patient` (preferer `fiche client`)
+`patient` (preferer `client` en CRM commercial), `consultation` (preferer `rendez-vous`), `intervention` (preferer `prestation` quand designe l'acte commercial), `chirurgical`, `medecin`, `medical`, `infirmier`, `infirmiere`, `aide-soignant`, `anesthesiste` (peut etre OK si juste tarif logistique), `anesthesie` (idem), `clinique` (OK si juste lieu de prestation, pas si liste de pathologies traitees), `hospitalisation` (OK si juste planning sejour), `ambulatoire` (OK si juste mode logistique), `dossier patient` (preferer `fiche client`)
+
+NB : `chirurgien` et `praticien` sont BLOCKED dans le CRM Commercial — voir §3.4.
 
 ### 3.3 OK — vocabulaire commercial
 
-`client`, `prospect`, `prestation`, `service`, `rendez-vous`, `RDV`, `praticien`, `devis`, `facture`, `cabinet`, `etablissement`, `catalogue`, `prix`, `honoraires`, `option`, `sejour` (logistique), `tarif`, `acompte`, `solde`, `pipeline`, `kanban`, `process`, `qualification`, `relance`, `follow-up`, `agenda`, `planning`, `dashboard`, `KPI`, `CA`, `chiffre d'affaires`
+`client`, `prospect`, `prestation`, `service`, `rendez-vous`, `RDV`, `devis`, `facture`, `cabinet`, `etablissement`, `catalogue`, `prix`, `honoraires`, `option`, `sejour` (logistique), `tarif`, `acompte`, `solde`, `pipeline`, `kanban`, `process`, `qualification`, `relance`, `follow-up`, `agenda`, `planning`, `dashboard`, `KPI`, `CA`, `chiffre d'affaires`
+
+### 3.4 BLOCKED par decision produit (additionnels — cf. ADR-0002)
+
+Au-dela de la donnee Art. 9, les elements suivants sont BLOCKED par decision produit du 2026-05-18 :
+
+- Role `CHIRURGIEN` (et son rename `PRATICIEN`) : retire de la plateforme. Le COMMERCIAL a acces a tout. Stories qui reservent une action a CHIRURGIEN -> reformuler pour donner l'acces a COMMERCIAL.
+- Champ `noteMedecin`, `notePraticien`, `noteChirurgien` ou tout autre champ de note libre destine au praticien : retire. Risque juge trop eleve meme avec contractualisation.
 
 ## 4. Niveaux de verdict
 
@@ -118,7 +127,7 @@ Documents administratifs, pas medicaux. Verdict : **OK**. Attention : si la stor
 
 ### 7.4 Notes commerciale vs notes medicale
 
-Le repo source distingue `noteCommerciale` (OK commerciale) et `noteMedecin` (BLOCKED en non-HDS). Verdict : retirer le champ `noteMedecin` du projet jumeau OU le renommer `notePraticien` + restriction stricte (texte libre interdit de contenir des informations medicales — formation user + check + clause contractuelle).
+Le repo source distingue `noteCommerciale` (OK commerciale) et `noteMedecin` (BLOCKED en non-HDS). **Decision 2026-05-18 (ADR-0002)** : dans le CRM Commercial, le champ `noteMedecin` est **retire** purement et simplement. Le rename `notePraticien` avec contractualisation a ete ecarte (risque juge trop eleve). Pas de stockage de note praticien quelle que soit la forme.
 
 ### 7.5 Champ `qualificationReason` (raison de qualification)
 
@@ -145,10 +154,9 @@ Story        : EP04-S05 Notes commerciale + medicale
 Date check   : 2026-05-18
 Periode      : NON-HDS (cf. ADR-0008)
 Verdict      : BLOCKED
-Mots-cles BLOCKED detectes  : "note medecin", "note medicale"
-Mots-cles SUSPECT detectes  : "chirurgien" (preferer "praticien"), "consultation" (preferer "rendez-vous")
-Action       : report HDS
-Justification : La story prevoit un champ texte libre destine a recueillir des observations medicales du praticien. Donnee Art. 9 RGPD. Solutions : (a) retirer ce champ du projet jumeau, (b) le renommer notePraticien avec interdiction contractuelle d'y stocker des informations medicales.
+Mots-cles BLOCKED detectes  : "note medecin", "note medicale", "chirurgien" (role retire — cf. ADR-0002)
+Action       : retrait de la story
+Justification : La story prevoit un champ texte libre destine a recueillir des observations medicales du praticien. Donnee Art. 9 RGPD. Decision 2026-05-18 (ADR-0002) : retrait du champ. La story est reduite a la note commerciale (noteCommerciale) — pas de versant medical.
 ```
 
 Story `EP05-S01` (Devis + DevisIntervention + snapshot) :
@@ -161,7 +169,7 @@ Date check   : 2026-05-18
 Periode      : NON-HDS (cf. ADR-0008)
 Verdict      : OK avec rename
 Mots-cles BLOCKED detectes  : (aucun)
-Mots-cles SUSPECT detectes  : "patient" (preferer "client"), "intervention" (preferer "prestation")
-Action       : rename requis
-Justification : Story purement commerciale (catalogue + devis). Rename vocabulaire suffit pour aligner avec le projet commercial.
+Mots-cles SUSPECT detectes  : "patient" (preferer "client"), "intervention" (preferer "prestation"), "chirurgien" (retirer la reference au role — le COMMERCIAL fait l'action)
+Action       : rename requis + retrait des references au role CHIRURGIEN
+Justification : Story purement commerciale (catalogue + devis). Rename vocabulaire + retrait des references au role chirurgien suffisent pour aligner avec le projet commercial.
 ```

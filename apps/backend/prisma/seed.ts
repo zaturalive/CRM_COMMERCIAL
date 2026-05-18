@@ -1,11 +1,17 @@
 /**
  * Seed public committable — base pour dev + prod demo.
  *
+ * CRM Commercial (decision 2026-05-18) :
+ *   - Pas de role CHIRURGIEN sur la plateforme commerciale. Le COMMERCIAL
+ *     a acces a tout ce qui etait gere par CHIRURGIEN dans le repo source.
+ *   - Cf. docs/architecture/decisions/0002-suppression-role-chirurgien-et-notes.md
+ *
  * Cree :
- *   - 2 tenants : `demo` (vitrine accessible a tous) + `cabinet-delobaux`
- *     (premier client reel, noms anonymises ici)
- *   - 3 users par tenant (ADMIN / COMMERCIAL / CHIRURGIEN) avec mot de
- *     passe "demo"
+ *   - 2 tenants : `demo` (vitrine) + `cabinet-test` (tenant generique)
+ *   - 2 users par tenant (ADMIN / COMMERCIAL) avec mot de passe "demo".
+ *     Le user CHIRURGIEN du repo source est retire ici. NB : tant que
+ *     l'enum UserRole.CHIRURGIEN existe encore dans schema.prisma, la
+ *     valeur reste declarable cote backend mais aucun seed ne l'utilise.
  *   - Catalogues par tenant : 2 cliniques avec tarifs, 20 interventions
  *     avec fees, 11 document labels avec associations
  *
@@ -45,20 +51,21 @@ const TENANTS: TenantSpec[] = [
     users: [
       { role: "ADMIN", firstName: "Admin", lastName: "Demo", emailLocal: "admin" },
       { role: "COMMERCIAL", firstName: "Commercial", lastName: "Demo", emailLocal: "commercial" },
-      { role: "CHIRURGIEN", firstName: "Chirurgien", lastName: "Demo", emailLocal: "chirurgien" },
+      // Pas de user CHIRURGIEN dans le CRM Commercial (decision 2026-05-18).
+      // Le COMMERCIAL a acces a tout ce qui etait reserve CHIRURGIEN dans le repo source.
     ],
     cliniques: CLINIQUES_BASE(),
   },
   {
     // Tenant generic pour le projet jumeau commercial. Le tenant pilote
     // "cabinet-delobaux" appartient au repo CRM_chirurgien et n'est pas
-    // present ici (voir ADR-0008).
+    // present ici (voir ADR-0008 du repo source).
     slug: "cabinet-test",
     name: "Cabinet Test Commercial",
     users: [
       { role: "ADMIN", firstName: "Admin", lastName: "Test", emailLocal: "admin-test" },
       { role: "COMMERCIAL", firstName: "Commercial", lastName: "Test", emailLocal: "commercial-test" },
-      { role: "CHIRURGIEN", firstName: "Praticien", lastName: "Test", emailLocal: "praticien-test" },
+      // Pas de user CHIRURGIEN dans le CRM Commercial (decision 2026-05-18).
     ],
     cliniques: CLINIQUES_BASE(),
   },
@@ -300,7 +307,7 @@ async function main() {
   }
 
   console.log("\n─── Seed complete ───");
-  console.log("Connect : {admin|commercial|chirurgien}@cabinet-{demo|cabinet-delobaux}.fr");
+  console.log("Connect : {admin|commercial}@cabinet-{demo|cabinet-test}.fr (pas de chirurgien dans CRM Commercial)");
   console.log("Password : demo");
   console.log("Pour du volume fake : npx tsx prisma/load-fake-data.ts");
 }
