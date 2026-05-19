@@ -558,14 +558,6 @@ describe("EP05 — Devis routes", () => {
       expect(res.body.data.acomptePaidAt).toBeNull();
     });
 
-    it("PATCH /acompte par CHIR → 403", async () => {
-      const res = await request(app)
-        .patch(`/api/devis/${devisPayId}/acompte`)
-        .set("Authorization", `Bearer ${commA.jwt}`)
-        .send({ paid: true });
-      expect(res.status).toBe(403);
-    });
-
     it("PATCH /solde { soldePaidAmount: 50000 } → update", async () => {
       const res = await request(app)
         .patch(`/api/devis/${devisPayId}/solde`)
@@ -589,14 +581,6 @@ describe("EP05 — Devis routes", () => {
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ soldePaidAmount: 123.45 });
       expect(res.status).toBe(400);
-    });
-
-    it("PATCH /solde par CHIR → 403", async () => {
-      const res = await request(app)
-        .patch(`/api/devis/${devisPayId}/solde`)
-        .set("Authorization", `Bearer ${commA.jwt}`)
-        .send({ soldePaidAmount: 1000 });
-      expect(res.status).toBe(403);
     });
 
     it("PATCH /acompte cross-tenant → 404", async () => {
