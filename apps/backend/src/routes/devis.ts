@@ -474,26 +474,10 @@ router.patch(
       req.params.diId
     );
     const body = updateDevisInterventionSchema.parse(req.body);
-    const role = req.user!.role;
 
-    // Permissions : COMMERCIAL_ONLY_FIELDS reserves a COMMERCIAL + ADMIN
-    const wantsCommercialField = COMMERCIAL_ONLY_FIELDS.some(
-      (f) => body[f as keyof typeof body] !== undefined
-    );
-    if (wantsCommercialField && role === "CHIRURGIEN") {
-      return res.status(403).json({
-        success: false,
-        error: "Champs cliniqueId / dateIntervention / timeIntervention reserves au COMMERCIAL",
-      });
-    }
-
-    // EP07-S02 AC5 : cocher isDone = reserve CHIR + ADMIN
-    if (body.isDone !== undefined && role === "COMMERCIAL") {
-      return res.status(403).json({
-        success: false,
-        error: "Champ isDone reserve au CHIRURGIEN",
-      });
-    }
+    // ADR-0002 : plus de role-gating CHIRURGIEN. Le COMMERCIAL et l'ADMIN
+    // pilotent toutes les colonnes (logistique + isDone). COMMERCIAL_ONLY_FIELDS
+    // reste documente pour le frontend (UI gating) mais n'est plus enforce ici.
 
     // Si on change l'interventionId → re-snapshot priceHonoraires/duration
     const dataUpdate: Record<string, unknown> = {};
@@ -663,15 +647,6 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { stay, devis } = await loadOwnedDevisStay(req, req.params.stayId);
     const body = updateDevisStaySchema.parse(req.body);
-    const role = req.user!.role;
-
-    // mode/nightCount : reserves COMM/ADMIN
-    if (role === "CHIRURGIEN") {
-      return res.status(403).json({
-        success: false,
-        error: "Modification du sejour reservee au COMMERCIAL",
-      });
-    }
 
     const nextMode = body.mode ?? stay.mode;
     const nextCount = body.nightCount ?? stay.nightCount;
@@ -697,19 +672,12 @@ router.patch(
 // ─── EP07-S02 : Reprogrammation d'un sejour ─────────────────────────────────
 // PATCH /api/devis/stays/:id/date { date: "YYYY-MM-DD" }
 // Met a jour DevisStay.date + cascade sur toutes les DevisIntervention du
-// meme sejour (cliniqueId + ancienne date → nouvelle date). Chirurgien +
-// Admin uniquement (le commercial garde la main via update intervention).
+// meme sejour (cliniqueId + ancienne date → nouvelle date).
+// ADR-0002 : plus de role-gating CHIRURGIEN, accessible COMMERCIAL + ADMIN.
 
 router.patch(
   "/stays/:stayId/date",
   asyncHandler(async (req, res) => {
-    const role = req.user!.role;
-    if (role === "COMMERCIAL") {
-      return res.status(403).json({
-        success: false,
-        error: "Reprogrammation reservee au chirurgien",
-      });
-    }
     const { stay, devis } = await loadOwnedDevisStay(req, req.params.stayId);
     const body = rescheduleStaySchema.parse(req.body);
     const newDate = new Date(`${body.date}T00:00:00.000Z`);
@@ -924,13 +892,6 @@ router.post(
 router.patch(
   "/:id/acompte",
   asyncHandler(async (req, res) => {
-    const role = req.user!.role;
-    if (role === "CHIRURGIEN") {
-      return res.status(403).json({
-        success: false,
-        error: "Seul le commercial peut enregistrer un paiement",
-      });
-    }
     const devis = await loadOwnedDevis(req, req.params.id);
     const paid = Boolean(req.body?.paid);
     const updated = await basePrisma.devis.update({
@@ -946,13 +907,6 @@ router.patch(
 router.patch(
   "/:id/solde",
   asyncHandler(async (req, res) => {
-    const role = req.user!.role;
-    if (role === "CHIRURGIEN") {
-      return res.status(403).json({
-        success: false,
-        error: "Seul le commercial peut enregistrer un paiement",
-      });
-    }
     const devis = await loadOwnedDevis(req, req.params.id);
     const amount = req.body?.soldePaidAmount;
     if (typeof amount !== "number" || !Number.isInteger(amount) || amount < 0) {

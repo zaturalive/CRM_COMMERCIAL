@@ -28,16 +28,16 @@ async function main() {
   console.log("  Tenant :", tenant.name);
 
   // ─── 2. USERS (1 par role, password = demo) ───────────────────────────────
+  // ADR-0002 : retrait du role CHIRURGIEN.
   const pw = hashSync("demo", 10);
   await prisma.user.createMany({
     data: [
       { tenantId: tenant.id, email: "admin@demo.fr", passwordHash: pw, role: "ADMIN", firstName: "Admin", lastName: "Demo" },
       { tenantId: tenant.id, email: "commercial@demo.fr", passwordHash: pw, role: "COMMERCIAL", firstName: "Commercial", lastName: "Demo" },
-      { tenantId: tenant.id, email: "chirurgien@demo.fr", passwordHash: pw, role: "CHIRURGIEN", firstName: "Chirurgien", lastName: "Demo" },
     ],
     skipDuplicates: true,
   });
-  console.log("  Users : 3 (admin + commercial + chirurgien, password='demo')");
+  console.log("  Users : 2 (admin + commercial, password='demo')");
 
   // ─── 3. CLINIQUES + tarifs + options ──────────────────────────────────────
   // TODO : completer avec les grilles tarifaires reelles du cabinet

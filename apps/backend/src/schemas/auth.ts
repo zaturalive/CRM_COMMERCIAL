@@ -9,5 +9,5 @@ export const loginSchema = z.object({
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const switchRoleSchema = z.object({
-  role: z.enum(["ADMIN", "COMMERCIAL", "CHIRURGIEN"]),
+  role: z.enum(["ADMIN", "COMMERCIAL"]),
 });

@@ -10,7 +10,7 @@ const router = Router();
  * Change le role dans le JWT pour la demo (scenario multi-roles).
  * DISPONIBLE UNIQUEMENT EN NODE_ENV != production (route non montee autrement).
  *
- * body : { role: "ADMIN" | "COMMERCIAL" | "CHIRURGIEN" }
+ * body : { role: "ADMIN" | "COMMERCIAL" }
  * retour : { success, data: { jwt } } — nouveau JWT a remplacer cote client
  */
 router.post(

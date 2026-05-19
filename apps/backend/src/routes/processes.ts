@@ -18,7 +18,6 @@ import {
 import { sendMessageSchema } from "../schemas/messageTemplates";
 import { canTransitionTo, computeNextStageReady } from "../lib/processTransitions";
 import { tryAutoAdvance } from "../lib/autoAdvance";
-import { stripHiddenNotes } from "../lib/processSerializer";
 import { renderText, buildContext } from "../lib/templateRenderer";
 import { createDevisFromProcess } from "./devis";
 import { syncProcessDocuments } from "../services/syncProcessDocuments";
@@ -142,8 +141,7 @@ router.get(
 
     if (!process) return res.status(404).json({ success: false, error: "Not found" });
 
-    const role = req.user!.role;
-    const filtered = stripHiddenNotes(process, role);
+    const filtered = process;
 
     // EP07-S03 : payment summary pour OP_PROGRAMMEE (barre progression).
     // Prend le premier devis signe du process (MVP : 1 devis signe par process).
@@ -296,7 +294,7 @@ router.patch(
 
     res.json({
       success: true,
-      data: stripHiddenNotes(updated, req.user!.role),
+      data: updated,
     });
   })
 );
@@ -316,7 +314,7 @@ router.patch(
       },
     });
 
-    res.json({ success: true, data: stripHiddenNotes(updated, req.user!.role) });
+    res.json({ success: true, data: updated });
   })
 );
 
@@ -358,7 +356,7 @@ router.patch(
       });
     }
 
-    res.json({ success: true, data: stripHiddenNotes(updated, req.user!.role) });
+    res.json({ success: true, data: updated });
   })
 );
 
@@ -386,7 +384,7 @@ router.patch(
 
     if (current.followupSubStage === body.subStage) {
       // No-op : meme sub-stage. On accepte mais on ne loggue pas.
-      return res.json({ success: true, data: stripHiddenNotes(current, req.user!.role) });
+      return res.json({ success: true, data: current });
     }
 
     const result = await req.prisma!.$transaction(async (tx) => {
@@ -412,7 +410,7 @@ router.patch(
       return updated;
     });
 
-    res.json({ success: true, data: stripHiddenNotes(result, req.user!.role) });
+    res.json({ success: true, data: result });
   })
 );
 
@@ -525,7 +523,7 @@ router.patch(
       },
     });
 
-    res.json({ success: true, data: stripHiddenNotes(updated, req.user!.role) });
+    res.json({ success: true, data: updated });
   })
 );
 
@@ -542,7 +540,7 @@ router.patch(
       },
     });
 
-    res.json({ success: true, data: stripHiddenNotes(updated, req.user!.role) });
+    res.json({ success: true, data: updated });
   })
 );
 
@@ -567,7 +565,7 @@ router.patch(
     const newStage = await tryAutoAdvance(req.params.id);
     if (newStage) (updated as { stage: string }).stage = newStage;
 
-    res.json({ success: true, data: stripHiddenNotes(updated, req.user!.role) });
+    res.json({ success: true, data: updated });
   })
 );
 
@@ -590,50 +588,26 @@ router.patch(
     const newStage = await tryAutoAdvance(req.params.id);
     if (newStage) (updated as { stage: string }).stage = newStage;
 
-    res.json({ success: true, data: stripHiddenNotes(updated, req.user!.role) });
+    res.json({ success: true, data: updated });
   })
 );
 
 /**
- * PATCH /:id/notes — ecriture differenciee par role (EP04-S05).
- *
- * - COMMERCIAL : peut envoyer { noteCommerciale }. Tout envoi de noteMedecin → 403.
- * - CHIRURGIEN : peut envoyer { noteMedecin }. Tout envoi de noteCommerciale → 403.
- * - ADMIN : peut envoyer les deux.
+ * PATCH /:id/notes — mise a jour de la note commerciale.
+ * ADR-0002 : noteMedecin retiree, plus de role-gating.
  */
 router.patch(
   "/:id/notes",
   asyncHandler(async (req, res) => {
     await loadOwnedProcess(req, req.params.id);
     const body = notesSchema.parse(req.body);
-    const role = req.user!.role;
-
-    const wantsNoteCommerciale = body.noteCommerciale !== undefined;
-    const wantsNoteMedecin = body.noteMedecin !== undefined;
-
-    if (wantsNoteMedecin && role === "COMMERCIAL") {
-      return res.status(403).json({
-        success: false,
-        error: "Ecriture de noteMedecin reservee au CHIRURGIEN",
-      });
-    }
-    if (wantsNoteCommerciale && role === "CHIRURGIEN") {
-      return res.status(403).json({
-        success: false,
-        error: "Ecriture de noteCommerciale reservee au COMMERCIAL",
-      });
-    }
-
-    const data: { noteCommerciale?: string | null; noteMedecin?: string | null } = {};
-    if (wantsNoteCommerciale) data.noteCommerciale = body.noteCommerciale;
-    if (wantsNoteMedecin) data.noteMedecin = body.noteMedecin;
 
     const updated = await req.prisma!.process.update({
       where: { id: req.params.id },
-      data,
+      data: { noteCommerciale: body.noteCommerciale },
     });
 
-    res.json({ success: true, data: stripHiddenNotes(updated, role) });
+    res.json({ success: true, data: updated });
   })
 );
 

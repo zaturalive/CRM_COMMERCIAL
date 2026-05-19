@@ -14,7 +14,6 @@ const TB = "test-cliniques-b";
 describe("Security — /api/cliniques", () => {
   let adminA: { jwt: string; tenantId: string };
   let commA: { jwt: string };
-  let chirA: { jwt: string };
   let adminB: { jwt: string };
   let cliniqueAId: string;
 
@@ -24,7 +23,6 @@ describe("Security — /api/cliniques", () => {
     const B = await setupTestTenant(app, TB);
     adminA = A.admin;
     commA = A.commercial;
-    chirA = A.chirurgien;
     adminB = B.admin;
 
     // Seed une clinique dans tenant A
@@ -67,17 +65,6 @@ describe("Security — /api/cliniques", () => {
         .send({ name: "Test COMM", city: "X", fraisAmbulatoire: 0 });
       expect(res.status).toBe(201);
       // cleanup
-      await request(app)
-        .delete(`/api/cliniques/${res.body.data.id}`)
-        .set("Authorization", `Bearer ${adminA.jwt}`);
-    });
-
-    it("CHIRURGIEN peut POST /api/cliniques → 201", async () => {
-      const res = await request(app)
-        .post("/api/cliniques")
-        .set("Authorization", `Bearer ${chirA.jwt}`)
-        .send({ name: "Test CHIR", city: "X", fraisAmbulatoire: 0 });
-      expect(res.status).toBe(201);
       await request(app)
         .delete(`/api/cliniques/${res.body.data.id}`)
         .set("Authorization", `Bearer ${adminA.jwt}`);
@@ -205,13 +192,6 @@ describe("Security — /api/cliniques", () => {
         .set("Authorization", `Bearer ${commA.jwt}`);
       expect(res.status).toBe(200);
       expect(res.body.data.find((o: { id: string }) => o.id === optionId)).toBeDefined();
-    });
-
-    it("GET options accessible CHIRURGIEN", async () => {
-      const res = await request(app)
-        .get(`/api/cliniques/${cliniqueAId}/options`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
-      expect(res.status).toBe(200);
     });
 
     it("POST option COMMERCIAL → 201 (acces ouvert)", async () => {

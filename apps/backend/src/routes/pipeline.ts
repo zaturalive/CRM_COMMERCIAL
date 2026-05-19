@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/errorHandler";
-import { stripHiddenNotes } from "../lib/processSerializer";
 import { DEFAULT_ACOMPTE_CENTIMES } from "../lib/paymentCalc";
 import { enrichProcess } from "../lib/processEnrichment";
 
@@ -25,9 +24,6 @@ const PIPELINE_STAGES = [
  * process en stage=FOLLOWUP sont desormais visibles uniquement sur la page
  * dediee `/follow-up`. On expose juste un compteur top-level `followupCount`
  * pour afficher le badge "X dossiers en follow-up" en header pipeline.
- *
- * Notes filtrees selon le role (EP04-S05) : CHIRURGIEN ne voit jamais
- * noteCommerciale dans le JSON.
  *
  * Query params :
  *   - qualification : "all" | "qualified" | "non-qualified"
@@ -99,7 +95,6 @@ router.get(
       orderBy: { updatedAt: "desc" },
     });
 
-    const role = req.user!.role;
     const tenant = await req.prisma!.tenant.findUnique({
       where: { id: req.user!.tenantId },
       select: { acompteDefaultAmount: true },
@@ -120,8 +115,7 @@ router.get(
 
     for (const p of processes) {
       const enriched = enrichProcess(p, acompteAmountDefault);
-      const filtered = stripHiddenNotes(enriched, role);
-      if (groups[p.stage]) groups[p.stage].push(filtered);
+      if (groups[p.stage]) groups[p.stage].push(enriched);
     }
 
     // CA agrege par colonne (sans FOLLOWUP — exclu de la response)

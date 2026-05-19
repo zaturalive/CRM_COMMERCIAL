@@ -1,6 +1,7 @@
 // ============================================================================
-// Prisma schema — CRM Chirurgien
+// Prisma schema — CRM Commercial (fork non-HDS de CRM Chirurgien)
 // Source : docs/architecture/data-model.md
+// ADR-0002 : retrait UserRole.CHIRURGIEN et Process.noteMedecin (2026-05-18).
 // 19 tables, 7 enums, multi-tenant par `tenantId` FK sur chaque table.
 // Prix en Int centimes. timeIntervention en Time HH:MM.
 // ============================================================================
@@ -19,7 +20,6 @@ datasource db {
 enum UserRole {
   ADMIN
   COMMERCIAL
-  CHIRURGIEN
 }
 
 enum ProcessStage {
@@ -212,7 +212,6 @@ model Process {
   consultationDate           DateTime?
   budget                     Int?              // centimes
   noteCommerciale            String?
-  noteMedecin                String?
   isArchived                 Boolean           @default(false)
   archivedAt                 DateTime?
   createdAt                  DateTime          @default(now())

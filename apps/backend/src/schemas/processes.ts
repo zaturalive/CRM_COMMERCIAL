@@ -61,22 +61,12 @@ export const qualificationSchema = z.object({
 });
 
 /**
- * Notes : ecriture differenciee par role.
- * Le handler decide quel champ accepter selon req.user.role :
- *   - COMMERCIAL peut envoyer { noteCommerciale }
- *   - CHIRURGIEN peut envoyer { noteMedecin }
- *   - ADMIN peut envoyer les deux
- * Un role qui envoie un champ interdit recoit 403.
+ * Notes : ADR-0002 retire le role CHIRURGIEN et la noteMedecin.
+ * Le COMMERCIAL et l'ADMIN ecrivent noteCommerciale.
  */
-export const notesSchema = z
-  .object({
-    noteCommerciale: z.string().max(20_000).nullable().optional(),
-    noteMedecin: z.string().max(20_000).nullable().optional(),
-  })
-  .refine(
-    (v) => v.noteCommerciale !== undefined || v.noteMedecin !== undefined,
-    { message: "Au moins un des champs noteCommerciale ou noteMedecin requis" }
-  );
+export const notesSchema = z.object({
+  noteCommerciale: z.string().max(20_000).nullable(),
+});
 
 export const addInterventionSchema = z.object({
   interventionId: idSchema,

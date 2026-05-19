@@ -69,8 +69,9 @@ export const updateDevisInterventionSchema = z
   });
 
 /**
- * Champs reserves au COMMERCIAL (+ ADMIN).
- * Un CHIRURGIEN qui envoie l'un de ces champs dans PATCH → 403.
+ * Sous-ensemble de champs deviIntervention historiquement reserves au
+ * COMMERCIAL (planning logistique). Conserve en const pour reuse cote
+ * frontend (UI gating) et test fixtures.
  */
 export const COMMERCIAL_ONLY_FIELDS = [
   "cliniqueId",

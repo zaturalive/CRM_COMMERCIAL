@@ -30,7 +30,6 @@ async function createIntervention(jwt: string, name: string = "Test Intervention
 describe("Security — /api/pipeline & /api/processes", () => {
   let adminA: { jwt: string };
   let commA: { jwt: string };
-  let chirA: { jwt: string };
   let adminB: { jwt: string };
   let clientAId: string;
   let interventionAId: string;
@@ -41,7 +40,6 @@ describe("Security — /api/pipeline & /api/processes", () => {
     const B = await setupTestTenant(app, TB);
     adminA = A.admin;
     commA = A.commercial;
-    chirA = A.chirurgien;
     adminB = B.admin;
 
     clientAId = await createClient(adminA.jwt);
@@ -400,11 +398,11 @@ describe("Security — /api/pipeline & /api/processes", () => {
     });
   });
 
-  describe("Notes role-differenciees (EP04-S05)", () => {
+  describe("Note commerciale (ADR-0002)", () => {
     let notesProcessId: string;
 
     beforeAll(async () => {
-      const clientId = await createClient(adminA.jwt, "NotesPatient");
+      const clientId = await createClient(adminA.jwt, "NotesClient");
       const res = await request(app)
         .post("/api/processes")
         .set("Authorization", `Bearer ${commA.jwt}`)
@@ -416,65 +414,21 @@ describe("Security — /api/pipeline & /api/processes", () => {
       const res = await request(app)
         .patch(`/api/processes/${notesProcessId}/notes`)
         .set("Authorization", `Bearer ${commA.jwt}`)
-        .send({ noteCommerciale: "Patient motivee, relancer dans 7j" });
+        .send({ noteCommerciale: "Client motive, relancer dans 7j" });
       expect(res.status).toBe(200);
-      expect(res.body.data.noteCommerciale).toBe("Patient motivee, relancer dans 7j");
+      expect(res.body.data.noteCommerciale).toBe("Client motive, relancer dans 7j");
     });
 
-    it("COMM tente ecrire noteMedecin → 403", async () => {
-      const res = await request(app)
-        .patch(`/api/processes/${notesProcessId}/notes`)
-        .set("Authorization", `Bearer ${commA.jwt}`)
-        .send({ noteMedecin: "tentative commerciale" });
-      expect(res.status).toBe(403);
-    });
-
-    it("CHIR peut ecrire noteMedecin → 200", async () => {
-      const res = await request(app)
-        .patch(`/api/processes/${notesProcessId}/notes`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
-        .send({ noteMedecin: "Examen clinique OK, aucun antecedent" });
-      expect(res.status).toBe(200);
-      expect(res.body.data.noteMedecin).toBe("Examen clinique OK, aucun antecedent");
-    });
-
-    it("CHIR tente ecrire noteCommerciale → 403", async () => {
-      const res = await request(app)
-        .patch(`/api/processes/${notesProcessId}/notes`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
-        .send({ noteCommerciale: "tentative medecin" });
-      expect(res.status).toBe(403);
-    });
-
-    it("CHIR GET process → JSON ne contient PAS noteCommerciale (omission totale)", async () => {
-      const res = await request(app)
-        .get(`/api/processes/${notesProcessId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
-      expect(res.status).toBe(200);
-      expect("noteCommerciale" in res.body.data).toBe(false);
-      expect(res.body.data.noteMedecin).toBe("Examen clinique OK, aucun antecedent");
-    });
-
-    it("COMM GET process → JSON contient noteCommerciale ET noteMedecin (lecture seule)", async () => {
-      const res = await request(app)
-        .get(`/api/processes/${notesProcessId}`)
-        .set("Authorization", `Bearer ${commA.jwt}`);
-      expect(res.status).toBe(200);
-      expect(res.body.data.noteCommerciale).toBe("Patient motivee, relancer dans 7j");
-      expect(res.body.data.noteMedecin).toBe("Examen clinique OK, aucun antecedent");
-    });
-
-    it("ADMIN peut ecrire les deux notes", async () => {
+    it("ADMIN peut ecrire noteCommerciale → 200", async () => {
       const res = await request(app)
         .patch(`/api/processes/${notesProcessId}/notes`)
         .set("Authorization", `Bearer ${adminA.jwt}`)
-        .send({ noteCommerciale: "admin comm", noteMedecin: "admin med" });
+        .send({ noteCommerciale: "note admin" });
       expect(res.status).toBe(200);
-      expect(res.body.data.noteCommerciale).toBe("admin comm");
-      expect(res.body.data.noteMedecin).toBe("admin med");
+      expect(res.body.data.noteCommerciale).toBe("note admin");
     });
 
-    it("PATCH /notes sans aucun champ → 400", async () => {
+    it("PATCH /notes sans noteCommerciale → 400", async () => {
       const res = await request(app)
         .patch(`/api/processes/${notesProcessId}/notes`)
         .set("Authorization", `Bearer ${commA.jwt}`)
@@ -482,18 +436,12 @@ describe("Security — /api/pipeline & /api/processes", () => {
       expect(res.status).toBe(400);
     });
 
-    it("GET /api/pipeline masque noteCommerciale pour CHIR", async () => {
+    it("GET process retourne noteCommerciale", async () => {
       const res = await request(app)
-        .get("/api/pipeline")
-        .set("Authorization", `Bearer ${chirA.jwt}`);
-      const allProcesses = [
-        ...res.body.data.columns.flatMap((c: { processes: Record<string, unknown>[] }) => c.processes),
-        ...res.body.data.sections.NON_QUALIFIE.processes,
-        // EP09-S07 : section FOLLOWUP retiree
-      ];
-      for (const p of allProcesses) {
-        expect("noteCommerciale" in p).toBe(false);
-      }
+        .get(`/api/processes/${notesProcessId}`)
+        .set("Authorization", `Bearer ${commA.jwt}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.noteCommerciale).toBe("note admin");
     });
   });
 

@@ -22,7 +22,8 @@ interface TestUser {
 const PASSWORD = "test-password-123";
 
 /**
- * Cree un tenant + 3 users (ADMIN/COMMERCIAL/CHIRURGIEN) et retourne leurs JWT.
+ * Cree un tenant + 2 users (ADMIN/COMMERCIAL) et retourne leurs JWT.
+ * ADR-0002 : plus de CHIRURGIEN dans le CRM Commercial.
  * Idempotent : on upsert sur slug + email.
  */
 export async function setupTestTenant(
@@ -32,7 +33,6 @@ export async function setupTestTenant(
   tenant: { id: string; slug: string };
   admin: TestUser;
   commercial: TestUser;
-  chirurgien: TestUser;
 }> {
   const tenant = await prisma.tenant.upsert({
     where: { slug },
@@ -41,11 +41,10 @@ export async function setupTestTenant(
   });
 
   const pw = hashSync(PASSWORD, 10);
-  const roles: UserRole[] = ["ADMIN", "COMMERCIAL", "CHIRURGIEN"];
+  const roles: UserRole[] = ["ADMIN", "COMMERCIAL"];
   const emails: Record<UserRole, string> = {
     ADMIN: `admin-${slug}@test.fr`,
     COMMERCIAL: `commercial-${slug}@test.fr`,
-    CHIRURGIEN: `chirurgien-${slug}@test.fr`,
   };
 
   for (const role of roles) {
@@ -64,7 +63,7 @@ export async function setupTestTenant(
   }
 
   // Login chaque role pour obtenir les JWT
-  const [admin, commercial, chirurgien] = await Promise.all(
+  const [admin, commercial] = await Promise.all(
     roles.map(async (role) => {
       const res = await request(app)
         .post("/api/auth/login")
@@ -80,7 +79,7 @@ export async function setupTestTenant(
     })
   );
 
-  return { tenant: { id: tenant.id, slug: tenant.slug }, admin, commercial, chirurgien };
+  return { tenant: { id: tenant.id, slug: tenant.slug }, admin, commercial };
 }
 
 /**

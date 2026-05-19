@@ -33,7 +33,6 @@ interface ProcessForEnrichment {
   consultationDate: Date | null;
   budget: number | null;
   noteCommerciale: string | null;
-  noteMedecin: string | null;
   isArchived: boolean;
   archivedAt: Date | null;
   createdAt: Date;
@@ -101,7 +100,6 @@ export function enrichProcess(
     consultationDate: p.consultationDate,
     budget: p.budget,
     noteCommerciale: p.noteCommerciale,
-    noteMedecin: p.noteMedecin,
     isArchived: p.isArchived,
     archivedAt: p.archivedAt,
     createdAt: p.createdAt,

@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/errorHandler";
-import { stripHiddenNotes } from "../lib/processSerializer";
 import { DEFAULT_ACOMPTE_CENTIMES } from "../lib/paymentCalc";
 import { enrichProcess } from "../lib/processEnrichment";
 import { FOLLOWUP_SUB_STAGES } from "../lib/followup";
@@ -13,8 +12,6 @@ const router = Router();
  *
  * Retourne les process en stage=FOLLOWUP groupes par `followupSubStage`
  * (J0/J1/J3/J7/J14/J30/ABANDON), avec stats par colonne.
- *
- * Notes filtrees selon le role (CHIRURGIEN ne voit jamais noteCommerciale).
  *
  * Query params :
  *   - q : search sur nom patient (firstName + lastName insensitive)
@@ -80,7 +77,6 @@ router.get(
       orderBy: { followupSubStageEnteredAt: "asc" },
     });
 
-    const role = req.user!.role;
     const tenant = await req.prisma!.tenant.findUnique({
       where: { id: req.user!.tenantId },
       select: { acompteDefaultAmount: true },
@@ -100,13 +96,12 @@ router.get(
 
     for (const p of processes) {
       const enriched = enrichProcess(p, acompteAmountDefault);
-      const filtered = stripHiddenNotes(enriched, role);
       // Cas legacy : process passe en FOLLOWUP avant la migration EP09 →
       // pas de followupSubStage. On les met dans J0 par defaut pour
       // qu'ils restent visibles. Le commercial pourra les drag-and-drop
       // vers la bonne etape.
       const subStage = p.followupSubStage ?? "J0";
-      if (groups[subStage]) groups[subStage].push(filtered);
+      if (groups[subStage]) groups[subStage].push(enriched);
     }
 
     const stats: Record<

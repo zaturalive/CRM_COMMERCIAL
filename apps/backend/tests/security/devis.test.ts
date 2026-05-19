@@ -87,7 +87,6 @@ async function createProcess(
 describe("EP05 — Devis routes", () => {
   let adminA: { jwt: string };
   let commA: { jwt: string };
-  let chirA: { jwt: string };
   let adminB: { jwt: string };
   let clientAId: string;
   let interventionAId: string;
@@ -101,7 +100,6 @@ describe("EP05 — Devis routes", () => {
     const B = await setupTestTenant(app, TB);
     adminA = A.admin;
     commA = A.commercial;
-    chirA = A.chirurgien;
     adminB = B.admin;
 
     clientAId = await createClient(adminA.jwt);
@@ -122,7 +120,7 @@ describe("EP05 — Devis routes", () => {
     it("cree un devis avec DevisIntervention + snapshot des fees", async () => {
       const res = await request(app)
         .post(`/api/processes/${processAId}/devis`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({});
       expect(res.status).toBe(201);
       expect(res.body.data.reference).toMatch(/^DEV-\d{4}-\d{4}$/);
@@ -130,7 +128,7 @@ describe("EP05 — Devis routes", () => {
 
       const detail = await request(app)
         .get(`/api/devis/${devisAId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(detail.status).toBe(200);
       expect(detail.body.data.devisInterventions).toHaveLength(1);
       const di = detail.body.data.devisInterventions[0];
@@ -152,7 +150,7 @@ describe("EP05 — Devis routes", () => {
         .send({ priceHonoraires: 999_999 });
       const detail = await request(app)
         .get(`/api/devis/${devisAId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(detail.body.data.devisInterventions[0].priceHonoraires).toBe(500_000);
       // Revert
       await request(app)
@@ -180,7 +178,7 @@ describe("EP05 — Devis routes", () => {
     it("POST /api/devis/:id/interventions ajoute une intervention + ses fees", async () => {
       const res = await request(app)
         .post(`/api/devis/${devisAId}/interventions`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ interventionId: intervention2Id });
       expect(res.status).toBe(201);
       addedDiId = res.body.data.id;
@@ -188,30 +186,14 @@ describe("EP05 — Devis routes", () => {
       expect(res.body.data.duration).toBe(90);
     });
 
-    it("PATCH DevisIntervention : CHIR peut modifier priceHonoraires/duration", async () => {
+    it("PATCH DevisIntervention : COMM peut modifier priceHonoraires/duration", async () => {
       const res = await request(app)
         .patch(`/api/devis/interventions/${addedDiId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ priceHonoraires: 280_000, duration: 100 });
       expect(res.status).toBe(200);
       expect(res.body.data.priceHonoraires).toBe(280_000);
       expect(res.body.data.duration).toBe(100);
-    });
-
-    it("PATCH DevisIntervention : CHIR envoi cliniqueId → 403", async () => {
-      const res = await request(app)
-        .patch(`/api/devis/interventions/${addedDiId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
-        .send({ cliniqueId: cliniqueAId });
-      expect(res.status).toBe(403);
-    });
-
-    it("PATCH DevisIntervention : CHIR envoi timeIntervention → 403", async () => {
-      const res = await request(app)
-        .patch(`/api/devis/interventions/${addedDiId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
-        .send({ timeIntervention: "09:30" });
-      expect(res.status).toBe(403);
     });
 
     it("PATCH DevisIntervention : COMM peut set cliniqueId + dateIntervention + timeIntervention", async () => {
@@ -230,7 +212,7 @@ describe("EP05 — Devis routes", () => {
     it("Apres set clinique/date, DevisStay auto-cree via reconcileStays", async () => {
       const res = await request(app)
         .get(`/api/devis/${devisAId}/stays`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(res.status).toBe(200);
       expect(res.body.data.length).toBeGreaterThanOrEqual(1);
       expect(res.body.data[0].mode).toBe("AMBULATOIRE");
@@ -239,7 +221,7 @@ describe("EP05 — Devis routes", () => {
     it("PATCH DevisIntervention avec interventionId different → re-snapshot priceHonoraires/duration", async () => {
       const res = await request(app)
         .patch(`/api/devis/interventions/${addedDiId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ interventionId: interventionAId });
       expect(res.status).toBe(200);
       expect(res.body.data.priceHonoraires).toBe(500_000);
@@ -257,12 +239,12 @@ describe("EP05 — Devis routes", () => {
     it("DELETE DevisIntervention supprime + reconcileStays", async () => {
       const res = await request(app)
         .delete(`/api/devis/interventions/${addedDiId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(res.status).toBe(204);
       // Le stay orphelin doit etre supprime
       const stays = await request(app)
         .get(`/api/devis/${devisAId}/stays`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(stays.body.data).toHaveLength(0);
     });
   });
@@ -275,14 +257,14 @@ describe("EP05 — Devis routes", () => {
       // On recupere la 1re DevisIntervention du devis
       const detail = await request(app)
         .get(`/api/devis/${devisAId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       targetDiId = detail.body.data.devisInterventions[0].id;
     });
 
     it("POST fee : cree une fee", async () => {
       const res = await request(app)
         .post(`/api/devis/interventions/${targetDiId}/fees`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ label: "Bas compression", price: 12_000, quantity: 2 });
       expect(res.status).toBe(201);
       feeId = res.body.data.id;
@@ -293,7 +275,7 @@ describe("EP05 — Devis routes", () => {
     it("PATCH fee : toggle isIncluded → total recalc", async () => {
       const res = await request(app)
         .patch(`/api/devis/fees/${feeId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ isIncluded: false });
       expect(res.status).toBe(200);
       expect(res.body.data.isIncluded).toBe(false);
@@ -302,7 +284,7 @@ describe("EP05 — Devis routes", () => {
     it("DELETE fee", async () => {
       const res = await request(app)
         .delete(`/api/devis/fees/${feeId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(res.status).toBe(204);
     });
 
@@ -310,7 +292,7 @@ describe("EP05 — Devis routes", () => {
       // Recreer une fee
       const created = await request(app)
         .post(`/api/devis/interventions/${targetDiId}/fees`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ label: "Tmp", price: 1000 });
       const res = await request(app)
         .patch(`/api/devis/fees/${created.body.data.id}`)
@@ -327,7 +309,7 @@ describe("EP05 — Devis routes", () => {
       // Set clinique + date sur la 1re DevisIntervention pour declencher reconcileStays
       const detail = await request(app)
         .get(`/api/devis/${devisAId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       const diId = detail.body.data.devisInterventions[0].id;
       await request(app)
         .patch(`/api/devis/interventions/${diId}`)
@@ -338,7 +320,7 @@ describe("EP05 — Devis routes", () => {
         });
       const stays = await request(app)
         .get(`/api/devis/${devisAId}/stays`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       stayId = stays.body.data[0].id;
     });
 
@@ -352,14 +334,6 @@ describe("EP05 — Devis routes", () => {
       expect(res.body.data.nightCount).toBe(3);
     });
 
-    it("CHIR PATCH stay → 403", async () => {
-      const res = await request(app)
-        .patch(`/api/devis/stays/${stayId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
-        .send({ mode: "AMBULATOIRE" });
-      expect(res.status).toBe(403);
-    });
-
     it("PATCH stay avec mode NUIT et nightCount 99 → 400", async () => {
       const res = await request(app)
         .patch(`/api/devis/stays/${stayId}`)
@@ -371,7 +345,7 @@ describe("EP05 — Devis routes", () => {
     it("reconcileStays idempotent : 2 PATCH identiques → meme stays", async () => {
       const detail = await request(app)
         .get(`/api/devis/${devisAId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       const diId = detail.body.data.devisInterventions[0].id;
       await request(app)
         .patch(`/api/devis/interventions/${diId}`)
@@ -382,7 +356,7 @@ describe("EP05 — Devis routes", () => {
         });
       const s1 = await request(app)
         .get(`/api/devis/${devisAId}/stays`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       await request(app)
         .patch(`/api/devis/interventions/${diId}`)
         .set("Authorization", `Bearer ${commA.jwt}`)
@@ -392,7 +366,7 @@ describe("EP05 — Devis routes", () => {
         });
       const s2 = await request(app)
         .get(`/api/devis/${devisAId}/stays`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(s1.body.data).toHaveLength(s2.body.data.length);
       expect(s1.body.data[0].id).toBe(s2.body.data[0].id);
     });
@@ -490,7 +464,7 @@ describe("EP05 — Devis routes", () => {
     it("renvoie un total calcule avec breakdown", async () => {
       const res = await request(app)
         .get(`/api/devis/${devisAId}/total`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(res.status).toBe(200);
       expect(typeof res.body.data.total).toBe("number");
       expect(res.body.data.total).toBeGreaterThan(0);
@@ -502,7 +476,7 @@ describe("EP05 — Devis routes", () => {
     it("total cache dans Devis.totalCached apres GET /total", async () => {
       const res = await request(app)
         .get(`/api/devis/${devisAId}`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(typeof res.body.data.totalCached).toBe("number");
       expect(res.body.data.totalCached).toBeGreaterThan(0);
     });
@@ -512,7 +486,7 @@ describe("EP05 — Devis routes", () => {
     it("renvoie text/plain avec reference + TOTAL", async () => {
       const res = await request(app)
         .get(`/api/devis/${devisAId}/as-text`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(res.status).toBe(200);
       expect(res.headers["content-type"]).toMatch(/text\/plain/);
       expect(res.text).toMatch(/^Devis DEV-\d{4}-\d{4}/);
@@ -546,10 +520,10 @@ describe("EP05 — Devis routes", () => {
       const pId = await createProcess(commA.jwt, clientAId, [interventionAId]);
       const dev = await request(app)
         .post(`/api/processes/${pId}/devis`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       const res = await request(app)
         .post(`/api/devis/${dev.body.data.id}/sign`)
-        .set("Authorization", `Bearer ${chirA.jwt}`);
+        .set("Authorization", `Bearer ${commA.jwt}`);
       expect(res.status).toBe(200);
       expect(res.body.data.status).toBe("SIGNE");
     });
@@ -587,7 +561,7 @@ describe("EP05 — Devis routes", () => {
     it("PATCH /acompte par CHIR → 403", async () => {
       const res = await request(app)
         .patch(`/api/devis/${devisPayId}/acompte`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ paid: true });
       expect(res.status).toBe(403);
     });
@@ -620,7 +594,7 @@ describe("EP05 — Devis routes", () => {
     it("PATCH /solde par CHIR → 403", async () => {
       const res = await request(app)
         .patch(`/api/devis/${devisPayId}/solde`)
-        .set("Authorization", `Bearer ${chirA.jwt}`)
+        .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ soldePaidAmount: 1000 });
       expect(res.status).toBe(403);
     });

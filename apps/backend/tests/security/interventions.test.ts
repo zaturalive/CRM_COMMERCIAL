@@ -14,7 +14,6 @@ const TB = "test-interv-b";
 describe("Security — /api/interventions", () => {
   let adminA: { jwt: string };
   let commA: { jwt: string };
-  let chirA: { jwt: string };
   let adminB: { jwt: string };
   let intervAId: string;
 
@@ -23,7 +22,6 @@ describe("Security — /api/interventions", () => {
     const B = await setupTestTenant(app, TB);
     adminA = A.admin;
     commA = A.commercial;
-    chirA = A.chirurgien;
     adminB = B.admin;
 
     const res = await request(app)
@@ -52,29 +50,11 @@ describe("Security — /api/interventions", () => {
       expect(res.status).toBe(200);
     });
 
-    it("CHIRURGIEN GET → 200", async () => {
-      const res = await request(app)
-        .get("/api/interventions")
-        .set("Authorization", `Bearer ${chirA.jwt}`);
-      expect(res.status).toBe(200);
-    });
-
     it("COMMERCIAL peut POST → 201", async () => {
       const res = await request(app)
         .post("/api/interventions")
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ name: "X COMM", category: "CHIRURGIE", duration: 60, priceHonoraires: 100 });
-      expect(res.status).toBe(201);
-      await request(app)
-        .delete(`/api/interventions/${res.body.data.id}`)
-        .set("Authorization", `Bearer ${adminA.jwt}`);
-    });
-
-    it("CHIRURGIEN peut POST → 201", async () => {
-      const res = await request(app)
-        .post("/api/interventions")
-        .set("Authorization", `Bearer ${chirA.jwt}`)
-        .send({ name: "X CHIR", category: "CHIRURGIE", duration: 60, priceHonoraires: 100 });
       expect(res.status).toBe(201);
       await request(app)
         .delete(`/api/interventions/${res.body.data.id}`)

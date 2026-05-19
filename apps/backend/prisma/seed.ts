@@ -1,17 +1,14 @@
 /**
  * Seed public committable — base pour dev + prod demo.
  *
- * CRM Commercial (decision 2026-05-18) :
- *   - Pas de role CHIRURGIEN sur la plateforme commerciale. Le COMMERCIAL
- *     a acces a tout ce qui etait gere par CHIRURGIEN dans le repo source.
+ * ADR-0002 (2026-05-18) :
+ *   - Le role UserRole.CHIRURGIEN et le champ Process.noteMedecin sont retires.
+ *   - Le COMMERCIAL prend tout ce qui etait reserve CHIRURGIEN dans le repo source.
  *   - Cf. docs/architecture/decisions/0002-suppression-role-chirurgien-et-notes.md
  *
  * Cree :
  *   - 2 tenants : `demo` (vitrine) + `cabinet-test` (tenant generique)
  *   - 2 users par tenant (ADMIN / COMMERCIAL) avec mot de passe "demo".
- *     Le user CHIRURGIEN du repo source est retire ici. NB : tant que
- *     l'enum UserRole.CHIRURGIEN existe encore dans schema.prisma, la
- *     valeur reste declarable cote backend mais aucun seed ne l'utilise.
  *   - Catalogues par tenant : 2 cliniques avec tarifs, 20 interventions
  *     avec fees, 11 document labels avec associations
  *
@@ -51,7 +48,7 @@ const TENANTS: TenantSpec[] = [
     users: [
       { role: "ADMIN", firstName: "Admin", lastName: "Demo", emailLocal: "admin" },
       { role: "COMMERCIAL", firstName: "Commercial", lastName: "Demo", emailLocal: "commercial" },
-      // Pas de user CHIRURGIEN dans le CRM Commercial (decision 2026-05-18).
+      // ADR-0002 : pas de user CHIRURGIEN dans le CRM Commercial.
       // Le COMMERCIAL a acces a tout ce qui etait reserve CHIRURGIEN dans le repo source.
     ],
     cliniques: CLINIQUES_BASE(),
@@ -65,7 +62,7 @@ const TENANTS: TenantSpec[] = [
     users: [
       { role: "ADMIN", firstName: "Admin", lastName: "Test", emailLocal: "admin-test" },
       { role: "COMMERCIAL", firstName: "Commercial", lastName: "Test", emailLocal: "commercial-test" },
-      // Pas de user CHIRURGIEN dans le CRM Commercial (decision 2026-05-18).
+      // ADR-0002 : pas de user CHIRURGIEN dans le CRM Commercial.
     ],
     cliniques: CLINIQUES_BASE(),
   },
