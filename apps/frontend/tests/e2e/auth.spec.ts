@@ -48,7 +48,7 @@ test.describe("Auth flow", () => {
 
   test("logout depuis dashboard → /login", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("Email").fill("alexis@cabinet-delobaux.fr");
+    await page.getByLabel("Email").fill("julie@cabinet-delobaux.fr");
     await page.getByLabel("Mot de passe").fill("demo");
     await page.getByRole("button", { name: /se connecter/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });

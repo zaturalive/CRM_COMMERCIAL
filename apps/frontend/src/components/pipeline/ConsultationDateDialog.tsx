@@ -81,7 +81,7 @@ export function ConsultationDateDialog({
         <DialogHeader>
           <DialogTitle>Date de consultation</DialogTitle>
           <DialogDescription>
-            Quand le patient rencontre le chirurgien. Peut etre modifiee
+            Date du rendez-vous avec le client. Peut etre modifiee
             librement (pas de contrainte metier).
           </DialogDescription>
         </DialogHeader>

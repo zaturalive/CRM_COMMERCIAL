@@ -26,7 +26,7 @@ const CONTEXT: Record<
   CONSULTATION: {
     icon: Stethoscope,
     title: "Consultation",
-    message: "Le chirurgien rencontre le patient. Noter le compte-rendu medical.",
+    message: "Rendez-vous client realise. Noter le compte-rendu commercial.",
     bg: "#F0F7FF",
     color: "#1E40AF",
     iconColor: "#3B82F6",

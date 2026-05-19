@@ -20,7 +20,6 @@ function makeProcess(id: string, stage: PipelineProcess["stage"], estimatedAmoun
     consultationDate: null,
     budget: null,
     noteCommerciale: null,
-    noteMedecin: null,
     isArchived: false,
     archivedAt: null,
     createdAt: new Date().toISOString(),

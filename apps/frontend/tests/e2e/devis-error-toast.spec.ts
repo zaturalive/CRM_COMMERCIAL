@@ -118,17 +118,11 @@ test.describe("EP05 — Devis : toast sur erreur backend", () => {
   test("patchIntervention duration = 0 : toast error (donnee rejetee par Zod)", async ({
     page,
   }) => {
-    // Duration n'est editable que par CHIRURGIEN (readOnlyMedical=true pour COMMERCIAL).
-    // On cree le devis en tant que Julie puis on bascule role CHIRURGIEN via
-    // le RoleSwitcher demo (window.location.reload embarque dedans).
+    // ADR-0002 : la duration est editable par tous (plus de role-gating CHIRURGIEN).
     await loginAs(page, "julie@cabinet-delobaux.fr");
     const devisId = await createDevisViaApi(page);
 
     await page.goto(`/devis/${devisId}`);
-    await page.getByTestId("role-switch-chirurgien").click();
-    await expect(page.getByText(/lecture seule pour ce role/i)).toBeVisible({
-      timeout: 10_000,
-    });
 
     const durationInput = page.locator('input[type="number"][min="1"]').first();
     await expect(durationInput).toHaveValue("90");

@@ -35,7 +35,7 @@ type TabKey = "overview" | "notes" | "documents" | "devis" | "followup";
 
 interface ProcessTabsProps {
   process: ProcessDetail;
-  role: "ADMIN" | "COMMERCIAL" | "CHIRURGIEN";
+  role: "ADMIN" | "COMMERCIAL";
   onReload: () => Promise<void>;
   onChanged: () => void;
 }
@@ -43,17 +43,16 @@ interface ProcessTabsProps {
 /**
  * 4 onglets du Process Panel (EP04-S04).
  * Onglet prioritaire selon stage (dot accent) :
- *   CONTACT → Vue, CONSULTATION → Notes (chir) / Vue (comm),
- *   POST_CONSULT → Devis, CONFIRMEE → Documents, OP_PROGRAMMEE → Vue.
+ *   CONTACT → Vue, CONSULTATION → Vue, POST_CONSULT → Devis,
+ *   CONFIRMEE → Documents, OP_PROGRAMMEE → Vue.
  */
 export function ProcessTabs({ process, role, onReload, onChanged }: ProcessTabsProps) {
   const [tab, setTab] = useState<TabKey>(() => {
     switch (process.stage) {
       case "CONTACT":
+      case "CONSULTATION":
       case "OP_PROGRAMMEE":
         return "overview";
-      case "CONSULTATION":
-        return role === "CHIRURGIEN" ? "notes" : "overview";
       case "POST_CONSULT":
         return "devis";
       case "CONFIRMEE":
@@ -66,19 +65,13 @@ export function ProcessTabs({ process, role, onReload, onChanged }: ProcessTabsP
   });
 
   const priorityTab: TabKey =
-    process.stage === "CONTACT"
-      ? "overview"
-      : process.stage === "CONSULTATION"
-        ? role === "CHIRURGIEN"
-          ? "notes"
-          : "overview"
-        : process.stage === "POST_CONSULT"
-          ? "devis"
-          : process.stage === "CONFIRMEE"
-            ? "documents"
-            : process.stage === "FOLLOWUP"
-              ? "followup"
-              : "overview";
+    process.stage === "POST_CONSULT"
+      ? "devis"
+      : process.stage === "CONFIRMEE"
+        ? "documents"
+        : process.stage === "FOLLOWUP"
+          ? "followup"
+          : "overview";
 
   // EP09-S03 : onglet Suivi visible uniquement quand le process est en
   // stage=FOLLOWUP. Permet d'enregistrer notes + qualifications de progression

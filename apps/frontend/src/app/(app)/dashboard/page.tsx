@@ -5,7 +5,7 @@ import { DashboardView } from "@/components/dashboard/DashboardView";
 
 /**
  * EP08-S01 + S02 — Dashboard : 4 KPIs + chart CA + previsionnel + CA attente.
- * Accessible ADMIN / COMMERCIAL / CHIRURGIEN (tous les roles).
+ * Accessible ADMIN / COMMERCIAL (tous les roles — ADR-0002).
  */
 export default function DashboardPage() {
   const { data: session, status } = useSession();

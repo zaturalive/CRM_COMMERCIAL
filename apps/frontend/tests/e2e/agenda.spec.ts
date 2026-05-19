@@ -2,23 +2,24 @@ import { test, expect, type Page } from "@playwright/test";
 
 /**
  * EP07 — Agenda : chargement page + navigation vues + event visible.
+ * ADR-0002 : role CHIRURGIEN retire, tests utilisent le COMMERCIAL (julie).
  *
  * Seed : une consultation en CONSULTATION stage (Emma/seed-p-04,
  * consultationDate = 2026-04-24) + une operation signee (Amelie/seed-p-08,
  * DevisStay 2026-05-08).
  */
 
-async function loginChir(page: Page) {
+async function loginComm(page: Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill("alexis@cabinet-delobaux.fr");
+  await page.getByLabel("Email").fill("julie@cabinet-delobaux.fr");
   await page.getByLabel("Mot de passe").fill("demo");
   await page.getByRole("button", { name: /se connecter/i }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
 }
 
 test.describe("EP07 — Agenda", () => {
-  test("chirurgien accede a /agenda et voit la toolbar", async ({ page }) => {
-    await loginChir(page);
+  test("commercial accede a /agenda et voit la toolbar", async ({ page }) => {
+    await loginComm(page);
     await page.goto("/agenda");
 
     // Toolbar : boutons Aujourd'hui + nav + switcher vues
@@ -31,7 +32,7 @@ test.describe("EP07 — Agenda", () => {
   });
 
   test("navigation mois affiche les events seed (Amelie 2026-05-08)", async ({ page }) => {
-    await loginChir(page);
+    await loginComm(page);
     await page.goto("/agenda");
     await page.getByRole("button", { name: "Mois", exact: true }).click();
 
@@ -50,7 +51,7 @@ test.describe("EP07 — Agenda", () => {
   });
 
   test("clic sur event operation ouvre l'EventSheet", async ({ page }) => {
-    await loginChir(page);
+    await loginComm(page);
     await page.goto("/agenda");
     await page.getByRole("button", { name: "Mois", exact: true }).click();
     await page.getByRole("button", { name: "Suivant" }).click();
@@ -70,7 +71,7 @@ test.describe("EP07 — Agenda", () => {
   });
 
   test("clic 'Ouvrir la fiche process' navigate vers /pipeline ET ouvre le panel", async ({ page }) => {
-    await loginChir(page);
+    await loginComm(page);
     await page.goto("/agenda");
     await page.getByRole("button", { name: "Mois", exact: true }).click();
     await page.getByRole("button", { name: "Suivant" }).click();

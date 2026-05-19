@@ -67,15 +67,15 @@ export default function LoginPage() {
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent font-display text-3xl font-bold text-white shadow-lg">
             C
           </div>
-          <h1 className="font-display text-3xl font-bold text-white">CRM Chirurgien</h1>
+          <h1 className="font-display text-3xl font-bold text-white">CRM Commercial</h1>
           <p className="mt-2 text-sm text-white/60">
-            La plateforme CRM pour cabinets de chirurgie esthetique
+            La plateforme CRM pour cabinets de prestations esthetiques
           </p>
           <ul className="mt-8 space-y-2 text-left text-sm text-white/70">
             <li>Pipeline commerciale 5 etapes</li>
             <li>Devis en deux temps avec calcul auto</li>
-            <li>Agenda chirurgien projete</li>
-            <li>Gestion documentaire pre-op</li>
+            <li>Agenda des prestations</li>
+            <li>Gestion documentaire</li>
           </ul>
         </div>
       </div>
@@ -144,11 +144,11 @@ export default function LoginPage() {
             <p className="font-semibold">Comptes demo (mot de passe <code>demo</code>) :</p>
             <p>
               Cabinet <code>demo</code> :{" "}
-              <code>admin / commercial / chirurgien @cabinet-demo.fr</code>
+              <code>admin / commercial @cabinet-demo.fr</code>
             </p>
             <p>
               Cabinet <code>cabinet-delobaux</code> :{" "}
-              <code>florian / julie / alexis @cabinet-delobaux.fr</code>
+              <code>florian / julie @cabinet-delobaux.fr</code>
             </p>
           </div>
         </div>

@@ -142,10 +142,6 @@ export function EventSheet({ event, onClose, onChanged }: EventSheetProps) {
                       <button
                         type="button"
                         onClick={() => {
-                          if (role !== "CHIRURGIEN" && role !== "ADMIN") {
-                            toast.error("Reserve au chirurgien");
-                            return;
-                          }
                           void toggleDone(i.id, !i.isDone);
                         }}
                         disabled={checking === i.id}

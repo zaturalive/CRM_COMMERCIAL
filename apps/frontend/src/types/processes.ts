@@ -137,7 +137,6 @@ export interface PipelineProcess {
   consultationDate: string | null;
   budget: number | null;
   noteCommerciale?: string | null;
-  noteMedecin: string | null;
   isArchived: boolean;
   archivedAt: string | null;
   createdAt: string;
@@ -236,8 +235,7 @@ export interface ProcessDetail {
   followupSubStageEnteredAt: string | null;
   consultationDate: string | null;
   budget: number | null;
-  noteCommerciale?: string | null; // omis pour CHIR
-  noteMedecin: string | null;
+  noteCommerciale?: string | null;
   isArchived: boolean;
   archivedAt: string | null;
   createdAt: string;

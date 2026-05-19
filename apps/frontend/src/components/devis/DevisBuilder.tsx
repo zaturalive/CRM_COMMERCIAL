@@ -33,10 +33,8 @@ import { formatCurrency, formatDateShort } from "@/lib/utils";
  *  - Section Custom Options
  *  - Sticky total en bas a droite
  *
- * Role-aware : CHIRURGIEN ne voit pas la section commerciale editable (les 3
- * champs restent gris). COMMERCIAL voit tout mais ne peut pas editer les
- * honoraires/duration (les boutons restent visibles mais renvoient 403 si
- * clickes — on les masque cote UI pour une meilleure UX).
+ * ADR-0002 : plus de role-gating CHIRURGIEN. COMMERCIAL + ADMIN ont la main
+ * sur toutes les sections (technique + commerciale).
  */
 
 interface Intervention {
@@ -154,7 +152,6 @@ interface Calculation {
 export function DevisBuilder({ devisId }: { devisId: string }) {
   const { data: session } = useSession();
   const role = session?.role ?? "ADMIN";
-  const isChirurgien = role === "CHIRURGIEN";
   const isCommercial = role === "COMMERCIAL" || role === "ADMIN";
 
   const [devis, setDevis] = useState<Devis | null>(null);
@@ -471,7 +468,7 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
       {/* Section Technique */}
       <GlassCard className="mb-6 border-l-4 border-l-[color:var(--info)] p-5">
         <h2 className="mb-3 text-lg font-semibold text-[color:var(--info)]">
-          Partie technique (chirurgien)
+          Partie technique
         </h2>
         <div className="space-y-3">
           {devis.devisInterventions.length === 0 && (
@@ -515,7 +512,7 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
           Partie commerciale (clinique / date / heure)
         </h2>
         <p className="mb-4 text-xs text-[color:var(--text-secondary)]">
-          Reserve au COMMERCIAL. {isChirurgien && "Lecture seule pour ce role."}
+          Clinique / date / heure de prestation.
         </p>
         <div className="space-y-3">
           {devis.devisInterventions.map((di) => (
@@ -523,7 +520,7 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
               key={di.id}
               di={di}
               cliniques={cliniques}
-              disabled={isChirurgien}
+              disabled={false}
               onPatch={(body) => patchIntervention(di.id, body)}
             />
           ))}
@@ -568,7 +565,6 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
                         <input
                           type="checkbox"
                           checked={!!current}
-                          disabled={isChirurgien}
                           onChange={() =>
                             toggleOption(current?.id, o.id, g.stayKey)
                           }
@@ -596,7 +592,7 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
               <StayCard
                 key={s.id}
                 stay={s}
-                disabled={isChirurgien}
+                disabled={false}
                 onPatch={(body) => patchStay(s.id, body)}
                 calcGroup={calc?.groups.find(
                   (g) =>

@@ -19,7 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { RoleSwitcher } from "./RoleSwitcher";
 
-type UserRole = "ADMIN" | "COMMERCIAL" | "CHIRURGIEN";
+type UserRole = "ADMIN" | "COMMERCIAL";
 
 interface NavItem {
   href: string;
@@ -36,15 +36,13 @@ const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
   },
   {
     href: "/pipeline",
     label: "Pipeline",
     icon: KanbanSquare,
-    // Decision user 24/04 : CHIR a acces full pipeline (utile pour ouvrir
-    // un process depuis l'agenda ou voir le contexte commercial).
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
   },
   {
     href: "/follow-up",
@@ -52,19 +50,19 @@ const NAV_ITEMS: NavItem[] = [
     icon: Activity,
     // EP09-S02 : page dediee aux process en stage=FOLLOWUP avec
     // sub-pipeline J0/J1/J3/J7/J14/J30/Abandon.
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
   },
   {
     href: "/clients",
     label: "Clients",
     icon: Users,
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
   },
   {
     href: "/agenda",
     label: "Agenda",
     icon: Calendar,
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
   },
   {
     href: "/config/cliniques",
@@ -72,15 +70,14 @@ const NAV_ITEMS: NavItem[] = [
     icon: Settings,
     // Decision user 23/04 : ouvert a tous les roles (revert du "ADMIN exclusif"
     // des specs CDCF F28). Tous peuvent ajouter des parametrages.
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
   },
-  // Coming Soon — visibles a tous les roles pour teaser les futures features
-  // (CHIRURGIEN inclus, ils voient en grise mais c'est purement decoratif)
+  // Coming Soon — visibles a tous les roles pour teaser les futures features.
   {
     href: "#",
     label: "Paiements",
     icon: CreditCard,
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
     badge: "V1.1",
     disabled: true,
   },
@@ -88,7 +85,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "#",
     label: "Agent IA",
     icon: Bot,
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
     badge: "V1.2",
     disabled: true,
   },
@@ -96,7 +93,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "#",
     label: "Messages",
     icon: Mail,
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
     badge: "V1",
     disabled: true,
   },
@@ -104,7 +101,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "#",
     label: "Signatures",
     icon: FileSignature,
-    roles: ["ADMIN", "COMMERCIAL", "CHIRURGIEN"],
+    roles: ["ADMIN", "COMMERCIAL"],
     badge: "V1.1",
     disabled: true,
   },
@@ -132,7 +129,7 @@ export function Sidebar() {
           </div>
           <div>
             <div className="font-display text-sm font-semibold text-white">
-              CRM Chirurgien
+              CRM Commercial
             </div>
             <div className="text-[11px] text-white/50">
               {session.tenantName ?? session.tenantSlug}

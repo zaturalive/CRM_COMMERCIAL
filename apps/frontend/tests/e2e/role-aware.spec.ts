@@ -4,8 +4,7 @@ import { test, expect, type Page } from "@playwright/test";
  * Tests E2E EP01-S02 + S03 : design system, sidebar role-aware, role switcher,
  * guards sur les pages role-scoped.
  *
- * Note : depuis le 23 avril 2026, le Parametrage est ouvert a tous les roles
- * (decision user). Seul /pipeline reste limite (CHIR redirige /dashboard).
+ * ADR-0002 (2026-05-18) : role CHIRURGIEN retire. Seuls ADMIN + COMMERCIAL.
  */
 
 async function loginAs(page: Page, email: string) {
@@ -35,14 +34,6 @@ test.describe("Sidebar role-aware", () => {
     await expect(page.getByTestId("nav-parametrage")).toBeVisible();
   });
 
-  test("CHIRURGIEN voit tous les onglets principaux y compris pipeline (decision 24/04)", async ({ page }) => {
-    await loginAs(page, "alexis@cabinet-delobaux.fr");
-    await expect(page.getByTestId("nav-dashboard")).toBeVisible();
-    await expect(page.getByTestId("nav-clients")).toBeVisible();
-    await expect(page.getByTestId("nav-agenda")).toBeVisible();
-    await expect(page.getByTestId("nav-parametrage")).toBeVisible();
-    await expect(page.getByTestId("nav-pipeline")).toBeVisible();
-  });
 });
 
 test.describe("Guards par role (attaque directe par URL)", () => {
@@ -50,19 +41,6 @@ test.describe("Guards par role (attaque directe par URL)", () => {
     await loginAs(page, "julie@cabinet-delobaux.fr");
     await page.goto("/config/cliniques");
     await expect(page).toHaveURL(/\/config\/cliniques$/);
-    await expect(page.getByRole("heading", { name: /^parametrage$/i })).toBeVisible();
-  });
-
-  test("CHIRURGIEN atteint /pipeline (acces full 24/04)", async ({ page }) => {
-    await loginAs(page, "alexis@cabinet-delobaux.fr");
-    await page.goto("/pipeline");
-    await expect(page).toHaveURL(/\/pipeline$/, { timeout: 5000 });
-  });
-
-  test("CHIRURGIEN atteint /config/document-labels (ouvert a tous)", async ({ page }) => {
-    await loginAs(page, "alexis@cabinet-delobaux.fr");
-    await page.goto("/config/document-labels");
-    await expect(page).toHaveURL(/\/config\/document-labels$/);
     await expect(page.getByRole("heading", { name: /^parametrage$/i })).toBeVisible();
   });
 
@@ -86,8 +64,8 @@ test.describe("Role switcher (demo)", () => {
     await expect(page.getByTestId("nav-parametrage")).toBeVisible();
     await expect(page.getByTestId("nav-pipeline")).toBeVisible();
 
-    // Clic sur CHIR — la Pipeline reste visible (acces full)
-    await page.getByTestId("role-switch-chirurgien").click();
+    // Clic sur ADMIN — la Pipeline reste visible
+    await page.getByTestId("role-switch-admin").click();
     await expect(page.getByTestId("nav-pipeline")).toBeVisible({ timeout: 10000 });
   });
 
@@ -95,7 +73,6 @@ test.describe("Role switcher (demo)", () => {
     for (const email of [
       "florian@cabinet-delobaux.fr",
       "julie@cabinet-delobaux.fr",
-      "alexis@cabinet-delobaux.fr",
     ]) {
       await loginAs(page, email);
       await expect(page.getByTestId("role-switcher")).toBeVisible();

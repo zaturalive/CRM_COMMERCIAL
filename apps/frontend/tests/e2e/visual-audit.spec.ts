@@ -32,11 +32,11 @@ test.describe("Visual audit", () => {
     });
   });
 
-  test("03 - dashboard chirurgien", async ({ page }) => {
-    await loginAs(page, "alexis@cabinet-delobaux.fr");
+  test("03 - dashboard admin", async ({ page }) => {
+    await loginAs(page, "florian@cabinet-delobaux.fr");
     await page.waitForTimeout(1500);
     await page.screenshot({
-      path: "test-results/visual/03-dashboard-chirurgien.png",
+      path: "test-results/visual/03-dashboard-admin.png",
       fullPage: true,
     });
   });
@@ -128,7 +128,7 @@ test.describe("Visual audit", () => {
   });
 
   test("08 - agenda semaine", async ({ page }) => {
-    await loginAs(page, "alexis@cabinet-delobaux.fr");
+    await loginAs(page, "julie@cabinet-delobaux.fr");
     await page.goto("/agenda");
     await page.waitForTimeout(1500);
     await page.screenshot({
@@ -138,7 +138,7 @@ test.describe("Visual audit", () => {
   });
 
   test("09 - agenda mois + event sheet", async ({ page }) => {
-    await loginAs(page, "alexis@cabinet-delobaux.fr");
+    await loginAs(page, "julie@cabinet-delobaux.fr");
     await page.goto("/agenda");
     await page.waitForTimeout(1200);
     await page.getByRole("button", { name: "Mois", exact: true }).click();

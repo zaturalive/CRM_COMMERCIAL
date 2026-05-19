@@ -6,7 +6,7 @@ import { Loader2, UserCog } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-const ROLES = ["ADMIN", "COMMERCIAL", "CHIRURGIEN"] as const;
+const ROLES = ["ADMIN", "COMMERCIAL"] as const;
 type Role = (typeof ROLES)[number];
 
 const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
@@ -49,7 +49,7 @@ export function RoleSwitcher() {
         <UserCog size={11} />
         Demo — switch role
       </div>
-      <div className="grid grid-cols-3 gap-1">
+      <div className="grid grid-cols-2 gap-1">
         {ROLES.map((r) => (
           <button
             key={r}

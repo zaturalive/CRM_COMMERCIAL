@@ -139,19 +139,6 @@ test.describe("EP05 — Devis builder", () => {
     await expect(page.getByText(/TOTAL/).first()).toBeVisible();
   });
 
-  test("CHIRURGIEN voit la section technique mais la commerciale est disabled", async ({
-    page,
-  }) => {
-    await loginAs(page, "alexis@cabinet-delobaux.fr");
-    const devisId = await createDevisViaApi(page);
-    test.skip(!devisId, "Aucun process avec interventions dans le seed");
-
-    await page.goto(`/devis/${devisId}`);
-    await expect(page.getByRole("heading", { name: /partie technique/i })).toBeVisible();
-    // La section commerciale est visible mais contient un hint "Lecture seule"
-    await expect(page.getByText(/lecture seule pour ce role/i)).toBeVisible();
-  });
-
   test("Le total se met a jour apres ajout d'une option personnalisee", async ({
     page,
   }) => {

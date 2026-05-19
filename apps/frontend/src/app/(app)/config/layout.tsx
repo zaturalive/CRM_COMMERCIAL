@@ -6,10 +6,10 @@ import { authOptions } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 /**
- * Parametrage ouvert a tous les roles authentifies (ADMIN, COMMERCIAL,
- * CHIRURGIEN). Decision user le 23 avril 2026 : "le parametrage doit
- * s'afficher quand c'est un comm chir et admin, et tout le monde peut
- * ajouter des parametrages". Supersede CDCF F28 "Admin exclusif".
+ * Parametrage ouvert a tous les roles authentifies (ADMIN, COMMERCIAL).
+ * Decision user le 23 avril 2026 : "tout le monde peut ajouter des
+ * parametrages". Supersede CDCF F28 "Admin exclusif".
+ * ADR-0002 : role CHIRURGIEN retire dans le CRM Commercial.
  *
  * Seul guard restant : auth required (redirect /login si pas de session).
  */
