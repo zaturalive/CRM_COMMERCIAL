@@ -6,7 +6,7 @@ import {
   stageTransitionSchema,
   nonQualifieSchema,
   followupSchema,
-  consultationDateSchema,
+  dateRendezVousSchema,
   qualificationSchema,
   notesSchema,
   addInterventionSchema,
@@ -80,7 +80,7 @@ async function buildTransitionContext(req: Request, processId: string, stage: st
     process: {
       stage: process!.stage,
       isQualified: process!.isQualified,
-      consultationDate: process!.consultationDate,
+      dateRendezVous: process!.dateRendezVous,
       nonQualifieReason: process!.nonQualifieReason,
       followupReason: process!.followupReason,
     },
@@ -187,7 +187,7 @@ router.get(
 
     // F6 : indicateur "pret a passer au stage suivant". Reutilise les
     // donnees deja incluses (devis._count.devisInterventions, documents.status,
-    // process.consultationDate, isQualified) pour eviter une seconde query.
+    // process.dateRendezVous, isQualified) pour eviter une seconde query.
     const nextStageReady = computeNextStageReady(process);
 
     res.json({
@@ -548,12 +548,12 @@ router.patch(
   "/:id/consultation-date",
   asyncHandler(async (req, res) => {
     await loadOwnedProcess(req, req.params.id);
-    const body = consultationDateSchema.parse(req.body);
+    const body = dateRendezVousSchema.parse(req.body);
 
     const updated = await req.prisma!.process.update({
       where: { id: req.params.id },
       data: {
-        consultationDate: body.consultationDate ? new Date(body.consultationDate) : null,
+        dateRendezVous: body.dateRendezVous ? new Date(body.dateRendezVous) : null,
       },
     });
 

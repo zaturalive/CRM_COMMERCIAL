@@ -199,7 +199,7 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
                       </div>
                       <div className="mt-0.5 text-xs text-text-secondary">
                         Cree le {formatDateShort(p.createdAt)}
-                        {p.consultationDate && ` • Consult ${formatDateShort(p.consultationDate)}`}
+                        {p.dateRendezVous && ` • Consult ${formatDateShort(p.dateRendezVous)}`}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs">

@@ -53,7 +53,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 120,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -84,7 +84,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 90,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
         {
@@ -92,7 +92,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 300_000,
           duration: 90,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -121,7 +121,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 90,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
         {
@@ -129,7 +129,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 300_000,
           duration: 90,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_2,
+          datePrestation: DATE_2,
           fees: [],
         },
       ],
@@ -155,7 +155,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 100,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
         {
@@ -163,7 +163,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 300_000,
           duration: 100,
           cliniqueId: CLIN_B,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -192,7 +192,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 120,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -216,7 +216,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 120,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [
             { price: 38_000, quantity: 1, isIncluded: true },
             { price: 60_000, quantity: 2, isIncluded: true }, // 120_000 count
@@ -243,7 +243,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 120,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -275,7 +275,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 90,
           cliniqueId: null,
-          dateIntervention: null,
+          datePrestation: null,
           fees: [],
         },
       ],
@@ -299,7 +299,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 999,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -325,7 +325,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 120,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -347,7 +347,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 120,
           cliniqueId: CLIN_A,
-          dateIntervention: DATE_1,
+          datePrestation: DATE_1,
           fees: [],
         },
       ],
@@ -360,7 +360,7 @@ describe("calculateDevisTotal", () => {
     expect(r.groups[0].fraisSejour).toBe(0);
   });
 
-  // Regression F9 : avant le fix, une dateIntervention avec annee < 100
+  // Regression F9 : avant le fix, une datePrestation avec annee < 100
   // produisait une cle "cliniqueId-2-02-22" cote calculator (getUTCFullYear
   // sans pad) tandis que reconcileStays normalisait via Date.UTC(2,1,22)
   // qui ajoute 1900 → DevisStay date 1902-02-22 → cle "cliniqueId-1902-02-22"
@@ -382,7 +382,7 @@ describe("calculateDevisTotal", () => {
           priceHonoraires: 500_000,
           duration: 120,
           cliniqueId: CLIN_A,
-          dateIntervention: earlyDate,
+          datePrestation: earlyDate,
           fees: [],
         },
       ],

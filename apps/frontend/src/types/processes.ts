@@ -134,7 +134,7 @@ export interface PipelineProcess {
   followupSubStage: FollowupSubStage | null;
   followupSubStageEnteredAt: string | null;
   daysInSubStage: number | null;
-  consultationDate: string | null;
+  dateRendezVous: string | null;
   budget: number | null;
   noteCommerciale?: string | null;
   isArchived: boolean;
@@ -233,7 +233,7 @@ export interface ProcessDetail {
   followupReasonDetail: string | null;
   followupSubStage: FollowupSubStage | null;
   followupSubStageEnteredAt: string | null;
-  consultationDate: string | null;
+  dateRendezVous: string | null;
   budget: number | null;
   noteCommerciale?: string | null;
   isArchived: boolean;

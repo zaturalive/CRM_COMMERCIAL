@@ -68,7 +68,7 @@ describe("agendaProjection (EP07-S01)", () => {
       data: {
         tenantId,
         clientId,
-        consultationDate: new Date("2026-05-05T10:00:00.000Z"),
+        dateRendezVous: new Date("2026-05-05T10:00:00.000Z"),
       },
     });
 
@@ -91,7 +91,7 @@ describe("agendaProjection (EP07-S01)", () => {
       data: {
         tenantId,
         clientId,
-        consultationDate: new Date("2026-05-15T10:00:00.000Z"),
+        dateRendezVous: new Date("2026-05-15T10:00:00.000Z"),
         isArchived: true,
         archivedAt: new Date(),
       },
@@ -126,7 +126,7 @@ describe("agendaProjection (EP07-S01)", () => {
         devisId: devis.id,
         interventionId,
         cliniqueId,
-        dateIntervention: new Date("2026-06-10T00:00:00.000Z"),
+        datePrestation: new Date("2026-06-10T00:00:00.000Z"),
         priceHonoraires: 100000,
         duration: 60,
       },
@@ -175,7 +175,7 @@ describe("agendaProjection (EP07-S01)", () => {
         devisId: devis.id,
         interventionId,
         cliniqueId,
-        dateIntervention: new Date("2026-07-10T00:00:00.000Z"),
+        datePrestation: new Date("2026-07-10T00:00:00.000Z"),
         priceHonoraires: 100000,
         duration: 60,
       },

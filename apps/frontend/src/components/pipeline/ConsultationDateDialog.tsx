@@ -61,7 +61,7 @@ export function ConsultationDateDialog({
       {
         method: "PATCH",
         body: JSON.stringify({
-          consultationDate: value ? new Date(value).toISOString() : null,
+          dateRendezVous: value ? new Date(value).toISOString() : null,
         }),
       }
     );

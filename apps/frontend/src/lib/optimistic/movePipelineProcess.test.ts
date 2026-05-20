@@ -17,7 +17,7 @@ function makeProcess(id: string, stage: PipelineProcess["stage"], estimatedAmoun
     followupSubStage: null,
     followupSubStageEnteredAt: null,
     daysInSubStage: null,
-    consultationDate: null,
+    dateRendezVous: null,
     budget: null,
     noteCommerciale: null,
     isArchived: false,

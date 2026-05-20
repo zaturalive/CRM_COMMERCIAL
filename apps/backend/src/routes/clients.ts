@@ -195,7 +195,7 @@ router.get(
       return {
         id: p.id,
         stage: p.stage,
-        consultationDate: p.consultationDate,
+        dateRendezVous: p.dateRendezVous,
         isArchived: p.isArchived,
         archivedAt: p.archivedAt,
         createdAt: p.createdAt,

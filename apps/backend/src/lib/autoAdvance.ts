@@ -56,7 +56,7 @@ export async function tryAutoAdvance(processId: string): Promise<string | null> 
   const ready = computeNextStageReady({
     stage: process.stage,
     isQualified: process.isQualified,
-    consultationDate: process.consultationDate,
+    dateRendezVous: process.dateRendezVous,
     devis: process.devis.map((d) => ({
       firstSignedAt: d.firstSignedAt,
       acomptePaidAt: d.acomptePaidAt,

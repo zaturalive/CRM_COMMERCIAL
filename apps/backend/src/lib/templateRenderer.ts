@@ -19,7 +19,7 @@ export const TEMPLATE_VARIABLES = [
   "intervention.duration",
   "cabinet.name",
   "cabinet.slug",
-  "process.consultationDate",
+  "process.dateRendezVous",
   "process.budget",
   "devis.reference",
   "devis.totalCached",
@@ -50,7 +50,7 @@ export function renderText(text: string, ctx: TemplateContext): string {
  */
 export interface RenderContextSources {
   process: {
-    consultationDate: Date | null;
+    dateRendezVous: Date | null;
     budget: number | null;
     client: {
       firstName: string;
@@ -82,8 +82,8 @@ export function buildContext(sources: RenderContextSources): TemplateContext {
     "intervention.duration": interv0?.duration ?? "",
     "cabinet.name": tenant.name,
     "cabinet.slug": tenant.slug,
-    "process.consultationDate": process.consultationDate
-      ? process.consultationDate.toLocaleDateString("fr-FR")
+    "process.dateRendezVous": process.dateRendezVous
+      ? process.dateRendezVous.toLocaleDateString("fr-FR")
       : "",
     "process.budget": process.budget ?? "",
     "devis.reference": devis0?.reference ?? "",

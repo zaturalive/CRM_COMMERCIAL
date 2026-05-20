@@ -21,7 +21,7 @@ export async function buildKpis(prisma: PrismaClient, tenantId: string) {
   const consultationsThisMonth = await prisma.process.count({
     where: {
       tenantId,
-      consultationDate: { gte: monthStart, lt: monthEnd },
+      dateRendezVous: { gte: monthStart, lt: monthEnd },
       isArchived: false,
     },
   });

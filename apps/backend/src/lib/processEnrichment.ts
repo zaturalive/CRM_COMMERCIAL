@@ -30,7 +30,7 @@ interface ProcessForEnrichment {
   followupReasonDetail: string | null;
   followupSubStage: string | null;
   followupSubStageEnteredAt: Date | null;
-  consultationDate: Date | null;
+  dateRendezVous: Date | null;
   budget: number | null;
   noteCommerciale: string | null;
   isArchived: boolean;
@@ -97,7 +97,7 @@ export function enrichProcess(
     followupSubStage: p.followupSubStage,
     followupSubStageEnteredAt: p.followupSubStageEnteredAt,
     daysInSubStage: computeDaysSinceSubStageEntry(p.followupSubStageEnteredAt),
-    consultationDate: p.consultationDate,
+    dateRendezVous: p.dateRendezVous,
     budget: p.budget,
     noteCommerciale: p.noteCommerciale,
     isArchived: p.isArchived,
@@ -130,7 +130,7 @@ export function enrichProcess(
     nextStageReady: computeNextStageReady({
       stage: p.stage,
       isQualified: p.isQualified,
-      consultationDate: p.consultationDate,
+      dateRendezVous: p.dateRendezVous,
       devis: p.devis.map((d) => ({
         firstSignedAt: d.firstSignedAt,
         acomptePaidAt: d.acomptePaidAt,

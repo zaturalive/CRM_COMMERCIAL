@@ -164,7 +164,7 @@ export function PipelineView() {
     if ("error" in res && res.error) {
       const looksLikeTransitionError =
         typeof res.error === "string" &&
-        (res.error.includes("consultationDate") ||
+        (res.error.includes("dateRendezVous") ||
           res.error.includes("intervention") ||
           res.error.includes("signe") ||
           res.error.includes("document") ||

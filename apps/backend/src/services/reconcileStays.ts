@@ -1,13 +1,13 @@
 /**
  * reconcileStays.ts — synchronise les DevisStay avec les couples
- * (cliniqueId, dateIntervention) des DevisIntervention (CDCT §7.1, EP05-S04).
+ * (cliniqueId, datePrestation) des DevisIntervention (CDCT §7.1, EP05-S04).
  *
  * Algorithme idempotent :
  *  1. Lister les couples uniques (cliniqueId, date) des DevisIntervention.
  *  2. Creer les DevisStay manquants (mode AMBULATOIRE, nightCount=1 par defaut).
  *  3. Supprimer les DevisStay orphelins (couple plus present).
  *
- * A appeler apres tout PATCH qui modifie cliniqueId ou dateIntervention d'une
+ * A appeler apres tout PATCH qui modifie cliniqueId ou datePrestation d'une
  * DevisIntervention (cf. routes/devis.ts).
  *
  * Accepte un Prisma client (base ou tx) pour pouvoir etre utilise dans une
@@ -54,16 +54,16 @@ export async function reconcileStays(
     where: {
       devisId,
       cliniqueId: { not: null },
-      dateIntervention: { not: null },
+      datePrestation: { not: null },
     },
-    select: { cliniqueId: true, dateIntervention: true },
+    select: { cliniqueId: true, datePrestation: true },
   });
 
   // Couples uniques attendus
   const expected = new Map<string, { cliniqueId: string; date: Date }>();
   for (const di of interventions) {
-    if (!di.cliniqueId || !di.dateIntervention) continue;
-    const normalized = normalizeDate(di.dateIntervention);
+    if (!di.cliniqueId || !di.datePrestation) continue;
+    const normalized = normalizeDate(di.datePrestation);
     const key = coupleKey(di.cliniqueId, normalized);
     if (!expected.has(key)) {
       expected.set(key, { cliniqueId: di.cliniqueId, date: normalized });

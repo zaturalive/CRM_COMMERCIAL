@@ -73,7 +73,7 @@ export async function buildDevisBundle(
       priceHonoraires: di.priceHonoraires,
       duration: di.duration,
       cliniqueId: di.cliniqueId,
-      dateIntervention: di.dateIntervention,
+      datePrestation: di.datePrestation,
       fees: di.fees.map((f) => ({
         price: f.price,
         quantity: f.quantity,
@@ -119,8 +119,8 @@ export async function buildDevisBundle(
       name: di.intervention.name,
       priceHonoraires: di.priceHonoraires,
       cliniqueName: di.clinique ? di.clinique.name : null,
-      dateIso: di.dateIntervention
-        ? di.dateIntervention.toISOString().slice(0, 10)
+      dateIso: di.datePrestation
+        ? di.datePrestation.toISOString().slice(0, 10)
         : null,
       fees: di.fees.map((f) => ({
         label: f.label,

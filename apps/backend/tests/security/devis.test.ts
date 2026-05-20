@@ -196,14 +196,14 @@ describe("EP05 — Devis routes", () => {
       expect(res.body.data.duration).toBe(100);
     });
 
-    it("PATCH DevisIntervention : COMM peut set cliniqueId + dateIntervention + timeIntervention", async () => {
+    it("PATCH DevisIntervention : COMM peut set cliniqueId + datePrestation + heurePrestation", async () => {
       const res = await request(app)
         .patch(`/api/devis/interventions/${addedDiId}`)
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({
           cliniqueId: cliniqueAId,
-          dateIntervention: "2026-06-15T00:00:00.000Z",
-          timeIntervention: "09:30",
+          datePrestation: "2026-06-15T00:00:00.000Z",
+          heurePrestation: "09:30",
         });
       expect(res.status).toBe(200);
       expect(res.body.data.cliniqueId).toBe(cliniqueAId);
@@ -316,7 +316,7 @@ describe("EP05 — Devis routes", () => {
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({
           cliniqueId: cliniqueAId,
-          dateIntervention: "2026-07-01T00:00:00.000Z",
+          datePrestation: "2026-07-01T00:00:00.000Z",
         });
       const stays = await request(app)
         .get(`/api/devis/${devisAId}/stays`)
@@ -352,7 +352,7 @@ describe("EP05 — Devis routes", () => {
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({
           cliniqueId: cliniqueAId,
-          dateIntervention: "2026-07-01T00:00:00.000Z",
+          datePrestation: "2026-07-01T00:00:00.000Z",
         });
       const s1 = await request(app)
         .get(`/api/devis/${devisAId}/stays`)
@@ -362,7 +362,7 @@ describe("EP05 — Devis routes", () => {
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({
           cliniqueId: cliniqueAId,
-          dateIntervention: "2026-07-01T00:00:00.000Z",
+          datePrestation: "2026-07-01T00:00:00.000Z",
         });
       const s2 = await request(app)
         .get(`/api/devis/${devisAId}/stays`)

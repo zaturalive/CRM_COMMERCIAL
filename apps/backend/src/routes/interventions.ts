@@ -3,14 +3,14 @@ import type { Request } from "express";
 import { asyncHandler } from "../middleware/errorHandler";
 import {
   createInterventionSchema,
-  updateInterventionSchema,
+  updatePrestationSchema,
   interventionFeeSchema,
-  updateInterventionFeeSchema,
+  updatePrestationFeeSchema,
 } from "../schemas/interventions";
 import { attachLabelSchema, updateAssocSchema } from "../schemas/documentLabels";
 import {
   bindInterventionMessageTemplateSchema,
-  updateInterventionMessageTemplateSchema,
+  updatePrestationMessageTemplateSchema,
 } from "../schemas/messageTemplates";
 import { bindInterventionDocumentTemplateSchema } from "../schemas/documentTemplates";
 
@@ -80,7 +80,7 @@ router.patch(
   "/:id",
   asyncHandler(async (req, res) => {
     await loadOwnedIntervention(req, req.params.id);
-    const body = updateInterventionSchema.parse(req.body);
+    const body = updatePrestationSchema.parse(req.body);
     const updated = await req.prisma!.intervention.update({
       where: { id: req.params.id },
       data: body,
@@ -147,7 +147,7 @@ router.patch(
       where: { id: req.params.feeId, interventionId: req.params.id },
     });
     if (!existing) return res.status(404).json({ success: false, error: "Fee not found" });
-    const body = updateInterventionFeeSchema.parse(req.body);
+    const body = updatePrestationFeeSchema.parse(req.body);
     const updated = await req.prisma!.interventionFee.update({
       where: { id: req.params.feeId },
       data: body,
@@ -315,7 +315,7 @@ router.patch(
       return res.status(403).json({ success: false, error: "ADMIN ou COMMERCIAL requis" });
     }
     await loadOwnedIntervention(req, req.params.id);
-    const body = updateInterventionMessageTemplateSchema.parse(req.body);
+    const body = updatePrestationMessageTemplateSchema.parse(req.body);
     const existing = await req.prisma!.interventionMessageTemplate.findFirst({
       where: { id: req.params.bindingId, interventionId: req.params.id },
     });

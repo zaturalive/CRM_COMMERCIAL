@@ -11,7 +11,7 @@ export const createInterventionSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export const updateInterventionSchema = createInterventionSchema.partial();
+export const updatePrestationSchema = createInterventionSchema.partial();
 
 // ─── InterventionFee ────────────────────────────────────────────────────────
 
@@ -23,4 +23,4 @@ export const interventionFeeSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export const updateInterventionFeeSchema = interventionFeeSchema.partial();
+export const updatePrestationFeeSchema = interventionFeeSchema.partial();

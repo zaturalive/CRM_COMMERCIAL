@@ -209,7 +209,7 @@ model Process {
   followupReasonDetail       String?
   followupSubStage           FollowupSubStage? // EP09-S01 : sub-pipeline J0..ABANDON, null si stage != FOLLOWUP
   followupSubStageEnteredAt  DateTime?         // EP09-S01 : timestamp entree sub-stage actuel
-  consultationDate           DateTime?
+  dateRendezVous             DateTime?         // ex consultationDate (P4 Sprint vocabulaire commercial 2026-05-20)
   budget                     Int?              // centimes
   noteCommerciale            String?
   isArchived                 Boolean           @default(false)
@@ -405,8 +405,8 @@ model DevisIntervention {
   duration         Int       // minutes — snapshot
   cliniqueId       String?
   clinique         Clinique? @relation(fields: [cliniqueId], references: [id], onDelete: Restrict)
-  dateIntervention DateTime?
-  timeIntervention DateTime? @db.Time()  // HH:MM — v1.5 (CDCT §4.3)
+  datePrestation   DateTime?           // ex dateIntervention (P4 Sprint vocabulaire commercial)
+  heurePrestation  DateTime? @db.Time()  // ex timeIntervention, HH:MM — v1.5 (CDCT §4.3)
   isDone           Boolean   @default(false)
   doneAt           DateTime?
   order            Int       @default(0)
@@ -416,7 +416,7 @@ model DevisIntervention {
   fees DevisInterventionFee[]
 
   @@index([devisId])
-  @@index([cliniqueId, dateIntervention])
+  @@index([cliniqueId, datePrestation])
 }
 
 model DevisInterventionFee {

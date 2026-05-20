@@ -63,7 +63,7 @@ export const bindInterventionMessageTemplateSchema = z.object({
   order: z.number().int().min(0).optional(),
 });
 
-export const updateInterventionMessageTemplateSchema = z.object({
+export const updatePrestationMessageTemplateSchema = z.object({
   targetSubStage: z.enum(FOLLOWUP_SUB_STAGES).optional().nullable(),
   order: z.number().int().min(0).optional(),
 });

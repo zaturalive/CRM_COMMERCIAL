@@ -72,8 +72,8 @@ interface DevisIntervention {
   priceHonoraires: number;
   duration: number;
   cliniqueId: string | null;
-  dateIntervention: string | null;
-  timeIntervention: string | null;
+  datePrestation: string | null;
+  heurePrestation: string | null;
   order: number;
   intervention: Intervention;
   clinique: Clinique | null;
@@ -398,8 +398,8 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
       }
     >();
     for (const di of devis.devisInterventions) {
-      if (!di.cliniqueId || !di.dateIntervention) continue;
-      const dateIso = di.dateIntervention.slice(0, 10);
+      if (!di.cliniqueId || !di.datePrestation) continue;
+      const dateIso = di.datePrestation.slice(0, 10);
       const key = `${di.cliniqueId}-${dateIso}`;
       const existing = map.get(key);
       if (existing) existing.interventions.push(di);
@@ -1006,7 +1006,7 @@ function CommercialRow({
         type="date"
         min="2020-01-01"
         max="2100-12-31"
-        value={di.dateIntervention ? di.dateIntervention.slice(0, 10) : ""}
+        value={di.datePrestation ? di.datePrestation.slice(0, 10) : ""}
         disabled={disabled}
         onChange={(e) => {
           // Le min/max et la validation backend (Zod year ∈ [2020, 2100])
@@ -1014,7 +1014,7 @@ function CommercialRow({
           // frappe ici : le user voyait son input bloque pendant qu'il tapait
           // ses 4 chiffres d'annee. On laisse le browser et le backend trier.
           onPatch({
-            dateIntervention: e.target.value
+            datePrestation: e.target.value
               ? new Date(e.target.value + "T00:00:00.000Z").toISOString()
               : null,
           });
@@ -1023,10 +1023,10 @@ function CommercialRow({
       />
       <input
         type="time"
-        value={di.timeIntervention ? di.timeIntervention.slice(11, 16) : ""}
+        value={di.heurePrestation ? di.heurePrestation.slice(11, 16) : ""}
         disabled={disabled}
         onChange={(e) =>
-          onPatch({ timeIntervention: e.target.value || null })
+          onPatch({ heurePrestation: e.target.value || null })
         }
         className="rounded border border-[color:var(--border)] bg-white px-2 py-1 text-sm"
       />

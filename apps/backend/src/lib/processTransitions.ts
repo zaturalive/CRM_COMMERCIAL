@@ -23,7 +23,7 @@ export interface TransitionCheckContext {
     Process,
     | "stage"
     | "isQualified"
-    | "consultationDate"
+    | "dateRendezVous"
     | "nonQualifieReason"
     | "followupReason"
   >;
@@ -60,8 +60,8 @@ export function canTransitionTo(
       return { ok: true };
 
     case "CONSULTATION":
-      if (!ctx.process.consultationDate) {
-        return { ok: false, reason: "consultationDate requise pour passer en CONSULTATION" };
+      if (!ctx.process.dateRendezVous) {
+        return { ok: false, reason: "dateRendezVous requise pour passer en CONSULTATION" };
       }
       if (ctx.process.isQualified === false) {
         return { ok: false, reason: "Process marque non qualifie, requalifier avant de poursuivre" };
@@ -116,7 +116,7 @@ export const PIPELINE_STAGE_ORDER: PipelineStage[] = [
 export interface NextStageReadyInput {
   stage: string;
   isQualified: boolean | null;
-  consultationDate: Date | null;
+  dateRendezVous: Date | null;
   devis: Array<{
     firstSignedAt: Date | null;
     acomptePaidAt: Date | null;
@@ -134,7 +134,7 @@ export function computeNextStageReady(p: NextStageReadyInput): boolean {
     process: {
       stage: p.stage as PipelineStage,
       isQualified: p.isQualified,
-      consultationDate: p.consultationDate,
+      dateRendezVous: p.dateRendezVous,
       nonQualifieReason: null,
       followupReason: null,
     },

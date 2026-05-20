@@ -5,7 +5,7 @@ import { test, expect, type Page } from "@playwright/test";
  * ADR-0002 : role CHIRURGIEN retire, tests utilisent le COMMERCIAL (julie).
  *
  * Seed : une consultation en CONSULTATION stage (Emma/seed-p-04,
- * consultationDate = 2026-04-24) + une operation signee (Amelie/seed-p-08,
+ * dateRendezVous = 2026-04-24) + une operation signee (Amelie/seed-p-08,
  * DevisStay 2026-05-08).
  */
 

@@ -54,8 +54,8 @@ export function ProcessCard({ process, onOpen, onArchive, draggable = true }: Pr
 
   // Badge consultation : aujourd'hui / a venir / passee
   let consultBadge: { label: string; bg: string; color: string } | null = null;
-  if (isConsultation && process.consultationDate) {
-    const consultDate = new Date(process.consultationDate);
+  if (isConsultation && process.dateRendezVous) {
+    const consultDate = new Date(process.dateRendezVous);
     const today = new Date();
     const consultDay = new Date(consultDate.getFullYear(), consultDate.getMonth(), consultDate.getDate());
     const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -212,10 +212,10 @@ export function ProcessCard({ process, onOpen, onArchive, draggable = true }: Pr
 
       {/* Ligne bas : date + montant */}
       <div className="mt-1 flex items-center justify-between gap-2">
-        {process.consultationDate ? (
+        {process.dateRendezVous ? (
           <span className="inline-flex items-center gap-1 text-[11px] text-text-secondary">
             <Calendar size={11} />
-            <span className="font-mono">{formatDateShort(process.consultationDate)}</span>
+            <span className="font-mono">{formatDateShort(process.dateRendezVous)}</span>
           </span>
         ) : (
           <span />

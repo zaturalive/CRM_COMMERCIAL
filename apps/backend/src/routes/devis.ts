@@ -200,7 +200,7 @@ async function refreshDevisStatus(devisId: string) {
   let next: typeof devis.status = "BROUILLON";
   if (devis.devisInterventions.length > 0) {
     const allFilled = devis.devisInterventions.every(
-      (di) => di.cliniqueId !== null && di.dateIntervention !== null
+      (di) => di.cliniqueId !== null && di.datePrestation !== null
     );
     next = allFilled ? "COMMERCIAL_REMPLI" : "TECHNIQUE_REMPLI";
   }
@@ -506,11 +506,11 @@ router.patch(
       body.cliniqueId !== undefined &&
       body.cliniqueId !== devisIntervention.cliniqueId;
     const dateChanged =
-      body.dateIntervention !== undefined &&
-      body.dateIntervention !== null &&
-      (devisIntervention.dateIntervention === null ||
-        new Date(body.dateIntervention).toISOString() !==
-          devisIntervention.dateIntervention.toISOString());
+      body.datePrestation !== undefined &&
+      body.datePrestation !== null &&
+      (devisIntervention.datePrestation === null ||
+        new Date(body.datePrestation).toISOString() !==
+          devisIntervention.datePrestation.toISOString());
 
     if (body.cliniqueId !== undefined) {
       if (body.cliniqueId === null) {
@@ -526,19 +526,19 @@ router.patch(
         dataUpdate.cliniqueId = body.cliniqueId;
       }
     }
-    if (body.dateIntervention !== undefined) {
-      dataUpdate.dateIntervention = body.dateIntervention
-        ? new Date(body.dateIntervention)
+    if (body.datePrestation !== undefined) {
+      dataUpdate.datePrestation = body.datePrestation
+        ? new Date(body.datePrestation)
         : null;
     }
-    if (body.timeIntervention !== undefined) {
-      if (body.timeIntervention === null) {
-        dataUpdate.timeIntervention = null;
+    if (body.heurePrestation !== undefined) {
+      if (body.heurePrestation === null) {
+        dataUpdate.heurePrestation = null;
       } else {
         // HH:MM → stockage en DateTime @db.Time → on utilise 1970-01-01 comme
         // date pivot (Prisma requires a Date). Postgres Time ignore la date.
-        dataUpdate.timeIntervention = new Date(
-          `1970-01-01T${body.timeIntervention}:00.000Z`
+        dataUpdate.heurePrestation = new Date(
+          `1970-01-01T${body.heurePrestation}:00.000Z`
         );
       }
     }
@@ -689,7 +689,7 @@ router.patch(
         where: {
           devisId: devis.id,
           cliniqueId: stay.cliniqueId,
-          dateIntervention: {
+          datePrestation: {
             gte: new Date(Date.UTC(
               oldDate.getUTCFullYear(),
               oldDate.getUTCMonth(),
@@ -704,7 +704,7 @@ router.patch(
             )),
           },
         },
-        data: { dateIntervention: newDate },
+        data: { datePrestation: newDate },
       });
       await tx.devisStay.update({
         where: { id: stay.id },

@@ -3,7 +3,7 @@
  *
  * Anti-doublon (§6.5) : les frais clinique (bloc + anesthesie + sejour) sont
  * mutualises lorsque plusieurs DevisIntervention partagent le meme couple
- * (cliniqueId, dateIntervention). Pour un groupe :
+ * (cliniqueId, datePrestation). Pour un groupe :
  *   - bloc + anesthesie : cherche le CliniqueTarif qui englobe la duree
  *     cumulee du groupe (sum(duration)).
  *   - sejour : pris depuis DevisStay (un par couple cliniqueId/date).
@@ -22,7 +22,7 @@ export interface DevisInterventionInput {
   priceHonoraires: number;
   duration: number;
   cliniqueId: string | null;
-  dateIntervention: Date | null;
+  datePrestation: Date | null;
   fees: DevisFeeInput[];
 }
 
@@ -144,7 +144,7 @@ export function calculateDevisTotal(
     );
   }, 0);
 
-  // ── 3. Frais clinique par groupe (cliniqueId, dateIntervention) ────────
+  // ── 3. Frais clinique par groupe (cliniqueId, datePrestation) ────────
   const groupMap = new Map<
     string,
     {
@@ -154,15 +154,15 @@ export function calculateDevisTotal(
     }
   >();
   for (const di of interventions) {
-    if (!di.cliniqueId || !di.dateIntervention) continue;
-    const key = buildStayKey(di.cliniqueId, di.dateIntervention);
+    if (!di.cliniqueId || !di.datePrestation) continue;
+    const key = buildStayKey(di.cliniqueId, di.datePrestation);
     const existing = groupMap.get(key);
     if (existing) {
       existing.totalDuration += di.duration;
     } else {
       groupMap.set(key, {
         cliniqueId: di.cliniqueId,
-        date: di.dateIntervention,
+        date: di.datePrestation,
         totalDuration: di.duration,
       });
     }

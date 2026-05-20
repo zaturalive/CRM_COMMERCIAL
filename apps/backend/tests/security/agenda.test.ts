@@ -40,7 +40,7 @@ describe("EP07 Security — agenda endpoints", () => {
       data: {
         tenantId: adminA.tenantId,
         clientId: clientA.id,
-        consultationDate: new Date("2026-08-15T09:00:00.000Z"),
+        dateRendezVous: new Date("2026-08-15T09:00:00.000Z"),
       },
     });
   });

@@ -278,13 +278,13 @@ describe("Security — /api/pipeline & /api/processes", () => {
   });
 
   describe("Transitions — PATCH /stage", () => {
-    it("COMM drag vers CONSULTATION sans consultationDate → 422 avec raison", async () => {
+    it("COMM drag vers CONSULTATION sans dateRendezVous → 422 avec raison", async () => {
       const res = await request(app)
         .patch(`/api/processes/${processAId}/stage`)
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ targetStage: "CONSULTATION" });
       expect(res.status).toBe(422);
-      expect(res.body.error).toContain("consultationDate");
+      expect(res.body.error).toContain("dateRendezVous");
       expect(res.body.code).toBe("INVALID_TRANSITION");
     });
 
@@ -294,7 +294,7 @@ describe("Security — /api/pipeline & /api/processes", () => {
       const dateRes = await request(app)
         .patch(`/api/processes/${processAId}/consultation-date`)
         .set("Authorization", `Bearer ${commA.jwt}`)
-        .send({ consultationDate: futureDate.toISOString() });
+        .send({ dateRendezVous: futureDate.toISOString() });
       expect(dateRes.status).toBe(200);
 
       const stageRes = await request(app)

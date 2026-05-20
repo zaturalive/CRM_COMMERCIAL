@@ -9,8 +9,8 @@ export const rescheduleStaySchema = z.object({
  *
  * Regles generales :
  *  - Prix en Int centimes, >= 0.
- *  - timeIntervention : string HH:MM (24h), converti en DateTime cote handler.
- *  - dateIntervention : ISO date string (YYYY-MM-DD) ou ISO datetime.
+ *  - heurePrestation : string HH:MM (24h), converti en DateTime cote handler.
+ *  - datePrestation : ISO date string (YYYY-MM-DD) ou ISO datetime.
  */
 
 const price = z.number().int().min(0);
@@ -36,11 +36,11 @@ export const updateDevisInterventionSchema = z
     priceHonoraires: price.optional(),
     duration: z.number().int().min(1).max(24 * 60).optional(),
     cliniqueId: idSchema.nullable().optional(),
-    dateIntervention: z
+    datePrestation: z
       .string()
       .refine(
         (v) => v === "" || !Number.isNaN(new Date(v).getTime()),
-        "dateIntervention doit etre une date valide"
+        "datePrestation doit etre une date valide"
       )
       .refine(
         (v) => {
@@ -52,13 +52,13 @@ export const updateDevisInterventionSchema = z
           const year = new Date(v).getUTCFullYear();
           return year >= 2020 && year <= 2100;
         },
-        "dateIntervention doit avoir une annee entre 2020 et 2100"
+        "datePrestation doit avoir une annee entre 2020 et 2100"
       )
       .nullable()
       .optional(),
-    timeIntervention: z
+    heurePrestation: z
       .string()
-      .regex(timeRegex, "timeIntervention doit etre au format HH:MM (24h)")
+      .regex(timeRegex, "heurePrestation doit etre au format HH:MM (24h)")
       .nullable()
       .optional(),
     isDone: z.boolean().optional(),
@@ -75,8 +75,8 @@ export const updateDevisInterventionSchema = z
  */
 export const COMMERCIAL_ONLY_FIELDS = [
   "cliniqueId",
-  "dateIntervention",
-  "timeIntervention",
+  "datePrestation",
+  "heurePrestation",
 ] as const;
 
 // ─── DevisInterventionFee ───────────────────────────────────────────────────

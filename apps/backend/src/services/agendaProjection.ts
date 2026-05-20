@@ -88,7 +88,7 @@ export async function buildAgendaProjection(
     where: {
       tenantId,
       isArchived: false,
-      consultationDate: { gte: from, lte: to },
+      dateRendezVous: { gte: from, lte: to },
     },
     include: {
       client: { select: { id: true, firstName: true, lastName: true, phone: true } },
@@ -106,7 +106,7 @@ export async function buildAgendaProjection(
     const hasPayment = p.devis.some(
       (d) => d.acomptePaidAt !== null || d.soldePaidAmount > 0 || d.firstSignedAt !== null
     );
-    const start = p.consultationDate!;
+    const start = p.dateRendezVous!;
     const end = new Date(start.getTime() + 30 * 60 * 1000); // 30 min par defaut
     events.push({
       id: `consult:${p.id}`,
@@ -148,8 +148,8 @@ export async function buildAgendaProjection(
             select: {
               id: true,
               cliniqueId: true,
-              dateIntervention: true,
-              timeIntervention: true,
+              datePrestation: true,
+              heurePrestation: true,
               duration: true,
               isDone: true,
               intervention: { select: { id: true, name: true } },
@@ -164,18 +164,18 @@ export async function buildAgendaProjection(
     const dis = stay.devis.devisInterventions.filter(
       (di) =>
         di.cliniqueId === stay.cliniqueId &&
-        di.dateIntervention !== null &&
-        sameYmd(di.dateIntervention, stay.date)
+        di.datePrestation !== null &&
+        sameYmd(di.datePrestation, stay.date)
     );
     if (dis.length === 0) continue;
 
     const totalDuration = dis.reduce((s, di) => s + di.duration, 0);
 
-    // Heure de debut : la plus petite timeIntervention, sinon 8h par defaut
+    // Heure de debut : la plus petite heurePrestation, sinon 8h par defaut
     let startHour = 8;
     let startMin = 0;
     const timed = dis
-      .map((di) => di.timeIntervention)
+      .map((di) => di.heurePrestation)
       .filter((t): t is Date => t !== null);
     if (timed.length > 0) {
       timed.sort((a, b) => a.getTime() - b.getTime());

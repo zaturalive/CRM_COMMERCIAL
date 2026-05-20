@@ -350,14 +350,14 @@ function OverviewTab({
           <h3 className="font-display text-sm font-bold text-text-primary">Dates cles</h3>
           <Button size="sm" variant="ghost" onClick={() => setDateOpen(true)}>
             <CalendarCheck size={12} />{" "}
-            {process.consultationDate ? "Modifier date" : "Definir date consult"}
+            {process.dateRendezVous ? "Modifier date" : "Definir date consult"}
           </Button>
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
           <dt className="text-text-secondary">Creation</dt>
           <dd>{formatDate(process.createdAt)}</dd>
           <dt className="text-text-secondary">Consultation</dt>
-          <dd>{process.consultationDate ? formatDate(process.consultationDate) : "—"}</dd>
+          <dd>{process.dateRendezVous ? formatDate(process.dateRendezVous) : "—"}</dd>
           <dt className="text-text-secondary">Derniere MAJ</dt>
           <dd>{formatDate(process.updatedAt)}</dd>
         </dl>
@@ -390,7 +390,7 @@ function OverviewTab({
         open={dateOpen}
         onOpenChange={setDateOpen}
         processId={process.id}
-        initialDate={process.consultationDate}
+        initialDate={process.dateRendezVous}
         onSaved={onReload}
       />
       {signedDevis && process.payment && (

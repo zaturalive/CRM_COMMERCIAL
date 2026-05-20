@@ -86,14 +86,14 @@ async function main() {
   // TODO : 4 devis au minimum, dont :
   //    - 2 TECHNIQUE_REMPLI (POST_CONSULT) : interventions snapshot
   //      + fees snapshot, pas encore de clinique/date.
-  //    - 1 SIGNE (CONFIRMEE) : + clinique + dateIntervention + firstSignedAt
+  //    - 1 SIGNE (CONFIRMEE) : + clinique + datePrestation + firstSignedAt
   //      + acomptePaidAt + DevisStay + DevisOption + DevisCustomOption.
   //    - 1 SIGNE (OP_PROGRAMMEE) : tout fixe, 2 interventions meme clinique.
   //
   // Important :
   //   - Le totalCached doit etre calcule a la creation (honoraires + fees +
   //     options + custom + sejours).
-  //   - timeIntervention est un @db.Time() : utiliser new Date(Date.UTC(1970, 0, 1, hh, mm))
+  //   - heurePrestation est un @db.Time() : utiliser new Date(Date.UTC(1970, 0, 1, hh, mm))
   //   - stayKey de DevisOption : format `${cliniqueId}-YYYY-MM-DD`.
 
   console.log("Seed complete.");

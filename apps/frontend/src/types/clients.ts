@@ -43,7 +43,7 @@ export interface Client {
 export interface ClientProcessItem {
   id: string;
   stage: string;
-  consultationDate: string | null;
+  dateRendezVous: string | null;
   isArchived: boolean;
   archivedAt: string | null;
   createdAt: string;

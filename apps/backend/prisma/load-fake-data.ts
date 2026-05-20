@@ -198,13 +198,13 @@ async function main() {
     const qualificationIntensity = isQualified ? Math.floor(Math.random() * 5) + 5 : null;
 
     // Consultation date : passee si stage >= POST_CONSULT, future si CONSULTATION, optionnelle sinon
-    let consultationDate: Date | null = null;
+    let dateRendezVous: Date | null = null;
     if (stage === "CONSULTATION") {
-      consultationDate = randomDateInRange(0, 21); // dans les 3 semaines
+      dateRendezVous = randomDateInRange(0, 21); // dans les 3 semaines
     } else if (["POST_CONSULT", "CONFIRMEE", "OP_PROGRAMMEE", "EFFECTUEE"].includes(stage)) {
-      consultationDate = randomDateInRange(45, -1); // passee
+      dateRendezVous = randomDateInRange(45, -1); // passee
     } else if (Math.random() > 0.5) {
-      consultationDate = randomDateInRange(10, 30);
+      dateRendezVous = randomDateInRange(10, 30);
     }
 
     const process = await prisma.process.create({
@@ -222,7 +222,7 @@ async function main() {
           "Motivations floues",
         ]) : null,
         followupReason: stage === "FOLLOWUP" ? pick(["TEMPS", "ARGENT", "HESITATION", "AUTRE"] as const) : null,
-        consultationDate,
+        dateRendezVous,
         isArchived: stage === "EFFECTUEE" ? Math.random() > 0.3 : false,
         archivedAt: stage === "EFFECTUEE" ? randomDateInRange(10, -1) : null,
         processInterventions: {
@@ -265,7 +265,7 @@ async function main() {
         const cliniqueId = status !== "TECHNIQUE_REMPLI"
           ? pick(cliniques).id
           : null;
-        const dateIntervention = ["CONFIRMEE", "OP_PROGRAMMEE", "EFFECTUEE"].includes(stage)
+        const datePrestation = ["CONFIRMEE", "OP_PROGRAMMEE", "EFFECTUEE"].includes(stage)
           ? randomDateInRange(stage === "EFFECTUEE" ? 30 : -30, stage === "EFFECTUEE" ? 0 : 90)
           : null;
 
@@ -277,8 +277,8 @@ async function main() {
             duration: iv.duration,
             order: idx,
             cliniqueId,
-            dateIntervention,
-            timeIntervention: dateIntervention
+            datePrestation,
+            heurePrestation: datePrestation
               ? new Date(`1970-01-01T${String(8 + Math.floor(Math.random() * 6)).padStart(2, "0")}:${Math.random() > 0.5 ? "00" : "30"}:00.000Z`)
               : null,
             isDone: stage === "EFFECTUEE" && Math.random() > 0.2,

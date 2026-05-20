@@ -47,8 +47,8 @@ export const followupSchema = z.object({
   detail: z.string().max(500).optional().nullable(),
 });
 
-export const consultationDateSchema = z.object({
-  consultationDate: z
+export const dateRendezVousSchema = z.object({
+  dateRendezVous: z
     .string()
     .datetime({ message: "ISO datetime requis" })
     .nullable(),
