@@ -24,7 +24,60 @@ Le CRM informe l'utilisateur via placeholder UI et modal d'avertissement avant u
 
 ---
 
-## 2. Texte de la clause (a faire valider par un juriste)
+## 2. Texte des clauses (a faire valider par un juriste)
+
+### 2.1. Article Y — Consentement commercial explicite (ADR-0003, ajoute 2026-05-20)
+
+> **Y.1.** Le Client reconnait expressement que le service propose par
+> le Cabinet via la Plateforme **est un service de chirurgie / medecine
+> esthetique a finalite commerciale et de bien-etre**, et **non un acte
+> de soin therapeutique** au sens de l'article L.1111-8 du Code de la
+> sante publique. La Plateforme est utilisee a des fins de gestion
+> administrative, commerciale et financiere du parcours client (devis,
+> documents administratifs, paiements, rendez-vous, relances).
+>
+> **Y.2.** Le Client **consent expressement** (article 9, paragraphe 2,
+> point a, du Reglement (UE) 2016/679 — RGPD) au traitement des
+> donnees suivantes par le Cabinet et par l'Editeur en sa qualite de
+> sous-traitant :
+> - Identification : nom, prenom, telephone, email, ville
+> - Nature de la prestation envisagee (catalogue de prestations
+>   esthetiques du Cabinet)
+> - Date(s) de rendez-vous et de prestation
+> - Documents administratifs et financiers (carte d'identite,
+>   justificatif de domicile, RIB, mutuelle, devis signe, CGV signees,
+>   plan de financement, attestation employeur)
+> - Notes commerciales du Cabinet (suivi de la relation, relances,
+>   motivation, budget)
+>
+> **Y.3.** Le Client reconnait que ce consentement est **explicite,
+> libre, specifique et eclaire**, et qu'il peut etre retire a tout
+> moment par notification ecrite au Cabinet (les donnees seront alors
+> supprimees ou anonymisees sous 30 jours, sous reserve des
+> obligations legales de conservation comptable).
+>
+> **Y.4.** Le Cabinet et l'Editeur s'engagent a **ne pas stocker** sur
+> la Plateforme les donnees suivantes, qui restent dans le dossier
+> patient tenu par le praticien hors de la Plateforme (cf. obligations
+> deontologiques medicales) :
+> - Anamnese, examens cliniques, antecedents medicaux
+> - Comptes-rendus d'intervention (CRO)
+> - Ordonnances medicales, prescriptions
+> - Photos cliniques (avant / apres anatomiques)
+> - Resultats biologiques, imagerie medicale
+> - Tout autre element constituant strictement un dossier medical
+>   au sens de l'article R.1112-2 du Code de la sante publique
+>
+> **Y.5.** Le Client est informe que la Plateforme est hebergee chez
+> un prestataire **non certifie HDS** (Hebergeur de Donnees de Sante)
+> conformement a l'architecture commerciale du service. La bascule
+> vers un hebergeur HDS interviendra si l'evolution du scope produit
+> ou de la position de la CNIL le rend necessaire.
+>
+> **Y.6.** En cas de doute sur la nature des donnees, le Client
+> s'engage a contacter le Cabinet avant toute saisie ou upload.
+
+### 2.2. Article X — Interdiction de stockage de donnees Art. 9 RGPD (rappel)
 
 > ### Article X — Interdiction de stockage de donnees relevant de l'Article 9 RGPD
 >

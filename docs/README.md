@@ -11,8 +11,11 @@
 A lire en premier dans cet ordre :
 - [ADR-0001](architecture/decisions/0001-fork-depuis-crm-chirurgien.md) — fork initial depuis crm-chirurgien
 - [ADR-0002](architecture/decisions/0002-suppression-role-chirurgien-et-notes.md) — **retrait du role CHIRURGIEN et du champ noteMedecin** (decision pivot du fork)
-- [CHANGELOG-2026-05-19-20-ADR-0002-implementation.md](CHANGELOG-2026-05-19-20-ADR-0002-implementation.md) — implementation complete de l'ADR-0002 (35+ fichiers, migration, tests verts)
-- [ACTIONS-IMMEDIATES-2026-05-18.md](ACTIONS-IMMEDIATES-2026-05-18.md) — plan P0/P1/P2/P3/P4/P5 (P0+P1+P2 livres)
+- [ADR-0003](architecture/decisions/0003-pas-de-bascule-hds-immediate-mitigation-cgu-securite.md) — **pas de bascule HDS immediate**, mitigation par CGU Art. Y (consentement commercial explicite) + securite renforcee + Scaleway non-HDS
+- [CHANGELOG-2026-05-19-20-ADR-0002-implementation.md](CHANGELOG-2026-05-19-20-ADR-0002-implementation.md) — implementation complete (P0 a P7, 12+ commits, 259/259 tests verts)
+- [ACTIONS-IMMEDIATES-2026-05-18.md](ACTIONS-IMMEDIATES-2026-05-18.md) — plan initial P0/P1/P2/P3/P4/P5 (tous livres + P6 doc sweep + P7 ADR-0003)
+- [docs/legal/CGU-clause-HDS-non-medical.md](legal/CGU-clause-HDS-non-medical.md) — Art. X (interdiction donnees sante) + Art. Y (consentement commercial explicite)
+- [docs/security/CHECKLIST-SCALEWAY-NON-HDS-V1.md](security/CHECKLIST-SCALEWAY-NON-HDS-V1.md) — 13 mesures securite a livrer avant prod V1
 - [projets-paralleles-commercial-hds.md](architecture/projets-paralleles-commercial-hds.md) — detail table par table des deux versions
 - `document-reference-complet-crm-commercial.md` — synthese complete (contexte, juridique, contrat)
 

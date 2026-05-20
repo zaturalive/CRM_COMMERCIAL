@@ -24,6 +24,7 @@ Implementation complete de l'ADR-0002 (retrait UserRole.CHIRURGIEN + Process.not
 | P4.B | ✓ | Libelles UI : 6 chaines visibles "patient" → "client" (Header, Pipeline, ProcessTabs, FollowupView placeholders). Le reste (UI "intervention"/"consultation", filename `ConsultationDateDialog.tsx`) reste a faire dans un sprint dedie. |
 | P5 | ✓ | 2e passe HDS-CHECK complete : 50 stories + scan code source. **Trust Score 98.2 % (badge A)**. Rapport final dans `docs/product/HDS-CHECK-REPORT-2026-05-20-FINAL.md`. 5 residus code corriges (AIAgentWhatsAppPreview mocks, document-labels hint, DocumentLabelFormDialog placeholder, devisTemplate signature, agenda comment). |
 | P6 | ✓ | Doc sweep complet : 18 docs actifs alignes avec ADR-0002 (banners + edits ciblees), 10 stories impactees annotees |
+| P7 | ✓ | Decision strategique HDS : ADR-0003 (pas de bascule HDS immediate, mitigation par CGU Art. Y + securite renforcee + Scaleway non-HDS). Clause Y ajoutee a la CGU (consentement commercial explicite Art. 9.2.a RGPD). Checklist securite V1 livree (13 mesures P0/P1/P2). |
 
 Total commits : 5 (mais 4 a pusher sur origin/main lors de la derniere mesure).
 
