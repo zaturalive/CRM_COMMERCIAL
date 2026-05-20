@@ -205,7 +205,7 @@ export function FollowupView() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par nom patient..."
+            placeholder="Rechercher par nom client..."
             className="pl-8"
           />
         </div>

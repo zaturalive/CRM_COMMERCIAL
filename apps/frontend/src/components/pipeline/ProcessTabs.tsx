@@ -235,7 +235,7 @@ function OverviewTab({
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h3 className="font-display text-sm font-bold text-text-primary">Patient</h3>
+          <h3 className="font-display text-sm font-bold text-text-primary">Client</h3>
           <Button size="sm" variant="ghost" onClick={() => setEditClientOpen(true)}>
             <Pencil size={12} /> Modifier
           </Button>

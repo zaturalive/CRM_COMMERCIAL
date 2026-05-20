@@ -20,6 +20,8 @@ Implementation complete de l'ADR-0002 (retrait UserRole.CHIRURGIEN + Process.not
 | P1.D | ✓ | Smoke test programmatique : 259/259 tests verts, login admin+commercial OK |
 | P2 | ✓ | 4 stories BLOCKED (EP02-S05, EP04-S05, EP05-S02, EP06-S04) reformulees, seed labels commercialise |
 | P3 | ✓ | 8 stories SUSPECT resolues : Modal HDS upload (Pattern B) + Placeholders UI (Pattern A) + clause CGU Art. X redigee |
+| P4.A | ✓ | Rename champs DB : consultationDate → dateRendezVous, dateIntervention → datePrestation, timeIntervention → heurePrestation. Migration non-destructive. 36 fichiers, 259/259 tests verts. |
+| P4.B | ✓ | Libelles UI : 6 chaines visibles "patient" → "client" (Header, Pipeline, ProcessTabs, FollowupView placeholders). Le reste (UI "intervention"/"consultation", filename `ConsultationDateDialog.tsx`) reste a faire dans un sprint dedie. |
 | P6 | ✓ | Doc sweep complet : 18 docs actifs alignes avec ADR-0002 (banners + edits ciblees), 10 stories impactees annotees |
 
 Total commits : 5 (mais 4 a pusher sur origin/main lors de la derniere mesure).
@@ -257,6 +259,49 @@ Toutes passent de `SUSPECT` a `OK avec mitigation` (ou `OK avec rename` quand re
 ### Ce qui reste pour P5 (script audit)
 
 Le script `scripts/audit-hds.ts` (scan periodique des notes/uploads avec keywords HDS) n'est PAS livre dans P3. Il sera implemente en P5 quand on aura plus de donnees reelles a auditer.
+
+---
+
+## P4 — Sprint vocabulaire commercial (partiel — 2026-05-20)
+
+### P4.A — Rename champs DB (livre)
+
+Migration `20260520115039_rename_columns_commercial_vocabulary` (non-destructive via `ALTER TABLE RENAME COLUMN`) :
+
+| Avant | Apres |
+|-------|-------|
+| `Process.consultationDate` | `Process.dateRendezVous` |
+| `DevisIntervention.dateIntervention` | `DevisIntervention.datePrestation` |
+| `DevisIntervention.timeIntervention` | `DevisIntervention.heurePrestation` |
+| Index `DevisIntervention_cliniqueId_dateIntervention_idx` | `DevisIntervention_cliniqueId_datePrestation_idx` |
+
+Refactor mecanique applique sur :
+- `apps/backend/src/` : 17 fichiers (routes, schemas, lib, services)
+- `apps/backend/tests/` : 5 fichiers (security + unit + integration)
+- `apps/backend/prisma/` : 3 fichiers (seed.ts, seed.example.ts, seed.local.ts) + le schema
+- `apps/frontend/src/` : ~20 fichiers (types, components, lib, optimistic helpers)
+- `apps/frontend/tests/` : 1 fichier (e2e agenda)
+
+Schemas Zod renommes : `consultationDateSchema` → `dateRendezVousSchema`, `updateDevisInterventionSchema` accepte `datePrestation` + `heurePrestation`, `COMMERCIAL_ONLY_FIELDS` synchronise.
+
+Tests : **29 unit/integ + 230 security = 259/259 verts**.
+
+### P4.B — Libelles UI patient → client (partiel — 6 chaines)
+
+- `Header.tsx` : placeholder + aria-label barre de recherche
+- `PipelineView.tsx` : placeholder filtre liste
+- `FollowupView.tsx` : placeholder filtre follow-up
+- `ProcessTabs.tsx` : titre h3 section "Client" (anciennement "Patient")
+
+### Ce qui reste (P4.B suite)
+
+Defferre a un sprint dedie (estimation : 1 jour) :
+- Filename `apps/frontend/src/components/pipeline/ConsultationDateDialog.tsx` → `RdvDateDialog.tsx`
+- Filename + content `consultationDate` dans les noms de variables UI (vs champ DB qui est deja renomme)
+- UI labels "intervention" → "prestation" dans les ~30 composants
+- UI labels "Consultation" → "Rendez-vous" dans les badges/cards
+- Renaming des routes API (`/consultation-date` → `/date-rendez-vous`) avec backwards compat
+- E2E Playwright a relancer apres tous les libelles
 
 ---
 

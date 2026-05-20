@@ -17,10 +17,10 @@ export function Header() {
           />
           <input
             type="search"
-            placeholder="Rechercher un patient..."
+            placeholder="Rechercher un client..."
             disabled
             className="w-full rounded-md border border-[color:var(--border)] bg-[color:var(--accent-lighter)] py-2 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none disabled:cursor-not-allowed"
-            aria-label="Recherche patient (arrive en EP03)"
+            aria-label="Recherche client (arrive en EP03)"
           />
         </div>
       </div>
