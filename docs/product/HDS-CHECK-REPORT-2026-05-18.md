@@ -13,13 +13,14 @@
 
 ## Synthese globale (mise a jour P1 + P2)
 
-| Verdict | Compte initial | Apres ADR-0002 | Apres P1 + P2 (2026-05-20) |
-|---------|----------------|----------------|-----------------------------|
-| OK | 10 | 10 | 10 |
-| OK avec rename | 28 | 27 | 32 (EP02-S05, EP04-S05, EP05-S02, EP06-S04 promues) |
-| SUSPECT | 8 | 8 | 8 (P3 a traiter) |
-| BLOCKED | 4 | 5 | 0 (toutes resolues le 2026-05-20) |
-| Total | 50 | 50 | 50 |
+| Verdict | Compte initial | Apres ADR-0002 | Apres P1 + P2 | Apres P3 (2026-05-20) |
+|---------|----------------|----------------|---------------|----------------------|
+| OK | 10 | 10 | 10 | 10 |
+| OK avec rename | 28 | 27 | 32 | 34 (EP06-S01, EP09-S03 promues) |
+| OK avec mitigation | — | — | — | 6 (nouveau verdict P3 : EP06-S02, EP09-S04, EP09-S06, EP10-S01, EP10-S02, EP10-S04) |
+| SUSPECT | 8 | 8 | 8 | 0 (mitigations P3 appliquees) |
+| BLOCKED | 4 | 5 | 0 | 0 |
+| Total | 50 | 50 | 50 | 50 |
 
 NB : les annotations HDS-CHECK individuelles inserees dans chaque story restent celles
 de la passe initiale sauf pour EP02-S05, EP05-S02, EP06-S04 reecrites le 2026-05-20.
@@ -70,7 +71,14 @@ Une seconde passe complete de l'agent byan-hds-check sera lancee en P5
 - EP11-S02 : Badge engagement sur fiche client + carte process — mots a renommer : patient
 - EP12-S02 : DevisBuilder optimistic recompute — mots a renommer : clinique (residuel logistique)
 
-## Stories SUSPECT (a clarifier avec user avant impl)
+## Stories SUSPECT — toutes resolues par mitigations P3 (2026-05-20)
+
+> Decisions P3 (2026-05-20) :
+> - **Pattern A — textes libres** (EP09-S03, EP09-S04, EP09-S06) : Placeholder UI explicite "pas de donnee medicale" + Clause CGU Art. X (cf. `docs/legal/CGU-clause-HDS-non-medical.md`).
+> - **Pattern B — uploads/templates** (EP06-S02, EP10-S01, EP10-S02, EP10-S04) : Modal HDS de consentement avant upload + liste blanche variables + CGU Art. X.
+> - **EP06-S01** (checklist) : resolu par P2 (labels commerciaux).
+
+## Stories SUSPECT initiales (resolues, conservees pour historique)
 
 - EP06-S01 : Checklist documents + statuts + auto-ajout — pourquoi suspect : le hook syncProcessDocuments consomme les labels seed de EP02-S05 (medicaux). Tant que les labels ne sont pas reformules, la checklist propage la donnee Art. 9. Cf. cas limite §7.3 du skill.
 - EP06-S02 : Upload + preview + telechargement documents — pourquoi suspect : cas limite §7.3 du skill, story upload generique sans filtre semantique. Risque que l'user telecharge photo avant/apres, CRO, ordonnance. Mitigation : restreindre les usages, clause contractuelle, formation user.

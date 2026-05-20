@@ -330,7 +330,7 @@ function TemplateFormDialog({
                 id="tpl-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Relance J+3 mammoplastie"
+                placeholder="Ex: Relance J+3 prestation (contenu commercial, pas medical)"
               />
             </div>
             <div>
@@ -358,13 +358,14 @@ function TemplateFormDialog({
                 id="tpl-subject"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="Ex: Bonjour {{patient.firstName}}, suite a votre consultation..."
+                placeholder="Ex: Bonjour {{client.firstName}}, suite a votre RDV... (sujet commercial uniquement)"
               />
             </div>
           )}
           <div>
             <Label htmlFor="tpl-body" className="mb-1.5">
-              Corps {kind === "MAIL" ? "(markdown autorise)" : ""}
+              Corps (contenu commercial uniquement — pas de donnee medicale)
+              {kind === "MAIL" ? " (markdown autorise)" : ""}
             </Label>
             <textarea
               id="tpl-body"
@@ -373,7 +374,7 @@ function TemplateFormDialog({
               rows={8}
               maxLength={10000}
               className="w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
-              placeholder={"Bonjour {{patient.firstName}},\n\nNous esperons que vous reflechissez encore a votre projet d'intervention {{intervention.name}}..."}
+              placeholder={"Bonjour {{client.firstName}},\n\nVotre devis pour {{prestation.name}} est pret a signer. Pouvez-vous nous transmettre votre RIB pour planifier l'acompte ?\n\n(Contenu commercial uniquement, pas de donnee medicale.)"}
             />
           </div>
           {kind === "VIDEO" && (

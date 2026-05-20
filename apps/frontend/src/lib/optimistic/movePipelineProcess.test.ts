@@ -33,6 +33,7 @@ function makeProcess(id: string, stage: PipelineProcess["stage"], estimatedAmoun
     engagementCount: 0,
     engagementLastAt: null,
     paymentSummary: null,
+    nextStageReady: false,
   };
 }
 

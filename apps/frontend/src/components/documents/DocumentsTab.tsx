@@ -50,12 +50,22 @@ interface DocumentsTabProps {
   onChanged: () => void;
 }
 
+/** ADR-0002 + P3 Pattern B : cle sessionStorage de consentement HDS upload. */
+const UPLOAD_CONSENT_KEY = "crm-commercial:hds-upload-consent";
+
 export function DocumentsTab({ processId, clientFirstName, onChanged }: DocumentsTabProps) {
   const [docs, setDocs] = useState<ProcessDocument[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState<ProcessDocument | null>(null);
   const [previewDoc, setPreviewDoc] = useState<ProcessDocument | null>(null);
+  /**
+   * ADR-0002 + P3 Pattern B : gate de consentement avant upload.
+   * Le user doit confirmer qu'il n'uploade pas de document medical
+   * (bilan, ordonnance, CRO, photo medicale). Consent persiste en
+   * sessionStorage : une seule fois par session.
+   */
+  const [pendingUpload, setPendingUpload] = useState<{ doc: ProcessDocument; file: File } | null>(null);
 
   /**
    * Chargement de la liste documents.
@@ -145,11 +155,34 @@ export function DocumentsTab({ processId, clientFirstName, onChanged }: Document
   }
 
   /**
+   * P3 Pattern B : intercepte la selection de fichier. Si le user n'a pas
+   * encore donne son consentement HDS dans cette session, on stocke le
+   * fichier en attente et on affiche le dialog. Sinon, upload direct.
+   */
+  function handleUploadRequest(doc: ProcessDocument, file: File) {
+    const consent =
+      typeof window !== "undefined" && sessionStorage.getItem(UPLOAD_CONSENT_KEY) === "true";
+    if (consent) {
+      void uploadFile(doc, file);
+    } else {
+      setPendingUpload({ doc, file });
+    }
+  }
+
+  function confirmConsentAndUpload() {
+    if (!pendingUpload) return;
+    sessionStorage.setItem(UPLOAD_CONSENT_KEY, "true");
+    const { doc, file } = pendingUpload;
+    setPendingUpload(null);
+    void uploadFile(doc, file);
+  }
+
+  /**
    * Optimistic upload : on bump le statut et marque fileUrl comme "pending"
    * pour faire apparaitre Eye/Download immediatement. Apres succes, refetch
    * silencieux pour recuperer le vrai fileUrl serveur.
    */
-  async function handleUpload(doc: ProcessDocument, file: File) {
+  async function uploadFile(doc: ProcessDocument, file: File) {
     const previousStatus = doc.status;
     const previousFileUrl = doc.fileUrl;
     setDocs((prev) =>
@@ -269,7 +302,7 @@ export function DocumentsTab({ processId, clientFirstName, onChanged }: Document
               key={d.id}
               doc={d}
               onStatusBump={() => handleStatusBump(d)}
-              onUpload={(file) => handleUpload(d, file)}
+              onUpload={(file) => handleUploadRequest(d, file)}
               onDownload={() => handleDownload(d)}
               onPreview={() => setPreviewDoc(d)}
               onDelete={() => setDeleting(d)}
@@ -310,6 +343,38 @@ export function DocumentsTab({ processId, clientFirstName, onChanged }: Document
         processId={processId}
         clientFirstName={clientFirstName}
       />
+
+      {/* P3 Pattern B : modal de consentement HDS avant upload (ADR-0002) */}
+      <Dialog open={pendingUpload !== null} onOpenChange={(o) => !o && setPendingUpload(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Avant d'uploader ce document</DialogTitle>
+            <DialogDescription>
+              Le CRM Commercial est en periode non-HDS : aucun document medical
+              ne doit y etre stocke. Tu ne dois televerser que des documents
+              <strong> administratifs ou financiers </strong>
+              (carte d'identite, justificatif de domicile, RIB, mutuelle,
+              devis signe, CGV signees, plan de financement).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Sont <strong>interdits</strong> : bilan sanguin, ECG,
+            consentement eclaire, ordonnance, compte-rendu operatoire (CRO),
+            photo avant/apres, echographie, mammographie, et tout document
+            de santé au sens de l'Art. 9 RGPD.
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingUpload(null)}>
+              Annuler
+            </Button>
+            <Button onClick={confirmConsentAndUpload}>
+              Je confirme et j'upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

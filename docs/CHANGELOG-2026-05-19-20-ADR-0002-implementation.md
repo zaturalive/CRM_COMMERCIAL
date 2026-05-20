@@ -19,6 +19,7 @@ Implementation complete de l'ADR-0002 (retrait UserRole.CHIRURGIEN + Process.not
 | P1.C | ✓ | Frontend : 20 fichiers UI + tests/e2e purges |
 | P1.D | ✓ | Smoke test programmatique : 259/259 tests verts, login admin+commercial OK |
 | P2 | ✓ | 4 stories BLOCKED (EP02-S05, EP04-S05, EP05-S02, EP06-S04) reformulees, seed labels commercialise |
+| P3 | ✓ | 8 stories SUSPECT resolues : Modal HDS upload (Pattern B) + Placeholders UI (Pattern A) + clause CGU Art. X redigee |
 | P6 | ✓ | Doc sweep complet : 18 docs actifs alignes avec ADR-0002 (banners + edits ciblees), 10 stories impactees annotees |
 
 Total commits : 5 (mais 4 a pusher sur origin/main lors de la derniere mesure).
@@ -213,6 +214,49 @@ NB : Prisma migrate dev exige un TTY pour confirmer la perte de donnees. Comme l
 | `<P2>` | feat: P2 — reformulation stories BLOCKED + seed labels commerciaux | ~7 (a commit) |
 
 Format commit suivi : `type: description` (conventions BYAN — pas d'emoji, pas de "Generated with...").
+
+---
+
+## P3 — Arbitrage 8 stories SUSPECT (2026-05-20)
+
+> Decisions user : Pattern A = Placeholder UI + CGU. Pattern B = Modal HDS avant upload.
+
+### Mitigations techniques implementees (code)
+
+**Pattern A — Placeholders UI explicites (5 textareas)**
+- `apps/frontend/src/components/pipeline/ProcessNotes.tsx` — placeholder enrichi
+- `apps/frontend/src/components/followup/FollowupTransitionDialog.tsx` — label + placeholder
+- `apps/frontend/src/components/followup/FollowupTab.tsx` — input "Note point de blocage" + textarea "Note d'observation" + textarea "Corps du message"
+- `apps/frontend/src/components/config/MessageTemplatesAdmin.tsx` — input name, input subject, textarea body
+- Tous : reformulation patient → client, mammoplastie → prestation dans les exemples
+
+**Pattern B — Modal HDS de consentement avant upload**
+- `apps/frontend/src/components/documents/DocumentsTab.tsx` — nouvelle constante `UPLOAD_CONSENT_KEY` (sessionStorage), state `pendingUpload`, fonctions `handleUploadRequest()` et `confirmConsentAndUpload()`, modal `Dialog` qui intercepte chaque upload tant que le user n'a pas confirme une fois par session
+- Le modal liste : "interdits = bilan, ECG, consentement, ordonnance, CRO, photo avant/apres, echographie, mammographie"
+
+### Documentation creee
+
+- `docs/legal/CGU-clause-HDS-non-medical.md` — clause juridique Art. X a integrer aux CGU client final (responsabilite Florian + juriste). 5 sous-articles (interdiction, sanctions, audit, garantie). Liste les 6 zones a risque techniques et les mitigations en place.
+
+### Stories mises a jour (8)
+
+Toutes passent de `SUSPECT` a `OK avec mitigation` (ou `OK avec rename` quand resolue par P2) :
+- `EP06-S01.md` — checklist documents (resolu par P2 labels commerciaux)
+- `EP06-S02.md` — upload (Pattern B : modal + CGU)
+- `EP09-S03.md` — note follow-up (Pattern A : placeholder + CGU)
+- `EP09-S04.md` — MessageTemplate (Pattern A : placeholder + CGU)
+- `EP09-S06.md` — envoi manuel (Pattern A : placeholder + CGU + snapshot fige)
+- `EP10-S01.md` — schema DocumentTemplate (restriction usages + variables whitelist + CGU)
+- `EP10-S02.md` — CRUD DocumentTemplate (modal HDS admin + variables whitelist + CGU)
+- `EP10-S04.md` — envoi manuel template (heritage mitigations amont)
+
+### Rapport HDS mis a jour
+
+`docs/product/HDS-CHECK-REPORT-2026-05-18.md` : nouvelle colonne "Apres P3", nouveau verdict "OK avec mitigation" (6 stories), SUSPECT = 0.
+
+### Ce qui reste pour P5 (script audit)
+
+Le script `scripts/audit-hds.ts` (scan periodique des notes/uploads avec keywords HDS) n'est PAS livre dans P3. Il sera implemente en P5 quand on aura plus de donnees reelles a auditer.
 
 ---
 

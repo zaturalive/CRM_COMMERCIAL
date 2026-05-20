@@ -61,7 +61,7 @@ export function ProcessNotes({ process, onReload, onChanged }: ProcessNotesProps
           onChange={(e) => handleChange(e.target.value)}
           rows={6}
           className="w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          placeholder="Contexte commercial, relances, budget, motivation..."
+          placeholder="Contexte commercial, relances, budget, motivation... (Note commerciale uniquement — pas de donnee medicale.)"
         />
       </section>
     </div>

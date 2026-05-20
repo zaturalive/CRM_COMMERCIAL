@@ -117,14 +117,14 @@ export function FollowupTransitionDialog({
 
           <div>
             <Label htmlFor="followup-note" className="mb-1.5">
-              Note (optionnel)
+              Note commerciale (optionnelle — pas de donnee medicale)
             </Label>
             <textarea
               id="followup-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              placeholder="Ex : Le patient a appele, il reflechi encore au prix..."
+              placeholder="Ex : Le client a appele, il reflechit encore au prix. (Note commerciale uniquement — pas de donnee medicale.)"
               className="w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
               maxLength={2000}
             />

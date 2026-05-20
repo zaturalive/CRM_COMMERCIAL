@@ -812,7 +812,7 @@ function ObservationDialog({
           </div>
           <div>
             <Label htmlFor="obs-note" className="mb-1.5">
-              Note
+              Note commerciale (pas de donnee medicale)
             </Label>
             <textarea
               id="obs-note"
@@ -820,6 +820,7 @@ function ObservationDialog({
               onChange={(e) => setNote(e.target.value)}
               rows={4}
               maxLength={2000}
+              placeholder="Note commerciale uniquement (rappel, relance, budget, motivation...). Pas de donnee medicale."
               className="w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
           </div>
@@ -933,13 +934,14 @@ function SendMessageDialog({
           )}
           <div>
             <Label htmlFor="msg-body" className="mb-1.5">
-              Corps du message
+              Corps du message (contenu commercial uniquement)
             </Label>
             <textarea
               id="msg-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={8}
+              placeholder="Message commercial uniquement. Pas de donnee medicale (bilan, ordonnance, CRO, photo medicale)."
               className="w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
           </div>
