@@ -3,6 +3,8 @@
 > Source autoritaire : `files(2)/cahier-des-charges-technique-v1_5.md` §4.
 > Initial : 19 tables MVP. Post-MVP 2026-04-28 : +8 tables (EP09-EP11) → **27 tables au total**.
 > Multi-tenant par `tenantId`, enums stricts.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire la valeur `CHIRURGIEN` de l'enum `UserRole` et la colonne `Process.noteMedecin`. Migration `20260519134100_remove_chirurgien_role_and_note_medecin` appliquee. Les references restantes a CHIRURGIEN dans ce document sont rayees ou annotees `(ADR-0002)`. Voir `docs/CHANGELOG-2026-05-19-20-ADR-0002-implementation.md` pour le detail.
 
 ---
 
@@ -44,7 +46,7 @@ DevisIntervention (1) ──< (N) DevisInterventionFee
 | tenantId | UUID | FK Tenant, NOT NULL | |
 | email | String | UNIQUE dans tenant | |
 | passwordHash | String | NOT NULL | bcrypt |
-| role | Enum UserRole | NOT NULL | ADMIN, COMMERCIAL, CHIRURGIEN |
+| role | Enum UserRole | NOT NULL | ADMIN, COMMERCIAL (ADR-0002 retire CHIRURGIEN dans le fork commercial) |
 | firstName | String | NOT NULL | |
 | lastName | String | NOT NULL | |
 | createdAt | DateTime | DEFAULT now() | |
@@ -88,8 +90,8 @@ Index : `(tenantId, phone)`, `(tenantId, email)`.
 | **followupSubStageEnteredAt** | **DateTime** | **NULL** | **EP09 : timestamp d'entree dans le sub-stage actuel** |
 | consultationDate | DateTime | NULL | Obligatoire pour CONTACT → CONSULTATION |
 | budget | Int | NULL | centimes euros |
-| noteCommerciale | Text | NULL | Ecriture COMMERCIAL, invisible CHIRURGIEN |
-| noteMedecin | Text | NULL | Ecriture CHIRURGIEN, lecture COMMERCIAL |
+| noteCommerciale | Text | NULL | Ecriture COMMERCIAL + ADMIN (ADR-0002 : plus de role-gating) |
+| ~~noteMedecin~~ | ~~Text~~ | — | **Retire par ADR-0002 (fork commercial non-HDS)** — colonne supprimee par migration `20260519134100_remove_chirurgien_role_and_note_medecin` |
 | isArchived | Boolean | DEFAULT false | |
 | archivedAt | DateTime | NULL | |
 | createdAt | DateTime | DEFAULT now() | |
@@ -203,7 +205,7 @@ Contrainte : les intervalles `[dureeMin, dureeMax]` ne se chevauchent pas par cl
 | cliniqueId | UUID | FK Clinique, NULL | renseigne par commercial uniquement |
 | dateIntervention | DateTime | NULL | date op renseignee par commercial |
 | timeIntervention | Time | NULL | v1.5 — heure HH:MM, CDCT §4.3 |
-| isDone | Boolean | DEFAULT false | cochee par chirurgien |
+| isDone | Boolean | DEFAULT false | cochee par COMMERCIAL + ADMIN (ADR-0002) |
 | doneAt | DateTime | NULL | |
 | order | Int | DEFAULT 0 | |
 
@@ -218,7 +220,7 @@ Contrainte : les intervalles `[dureeMin, dureeMax]` ne se chevauchent pas par cl
 | label | String | NOT NULL | snapshot |
 | price | Int | NOT NULL | snapshot, override possible |
 | quantity | Int | NOT NULL, DEFAULT 1 | |
-| isIncluded | Boolean | DEFAULT true | decochable par chirurgien |
+| isIncluded | Boolean | DEFAULT true | decochable par COMMERCIAL + ADMIN |
 | order | Int | DEFAULT 0 | |
 
 ### 2.14 DevisOption (options catalogue cochees)
@@ -472,7 +474,7 @@ Isolation tenant : via le `Process` parent (chaque handler verifie l'ownership).
 
 | Enum | Valeurs |
 |---|---|
-| UserRole | ADMIN, COMMERCIAL, CHIRURGIEN |
+| UserRole | ADMIN, COMMERCIAL (ADR-0002) |
 | ProcessStage | CONTACT, CONSULTATION, POST_CONSULT, CONFIRMEE, OP_PROGRAMMEE, EFFECTUEE, NON_QUALIFIE, FOLLOWUP, ANNULEE |
 | FollowupReason | TEMPS, ARGENT, HESITATION, AUTRE |
 | DocumentStatus | EN_ATTENTE, RECU, VALIDE |
@@ -516,8 +518,8 @@ Isolation tenant : via le `Process` parent (chaque handler verifie l'ownership).
 - `NON_QUALIFIE` requiert `nonQualifieReason` non vide
 - `FOLLOWUP` requiert `followupReason` non null
 - Transition CONTACT → CONSULTATION requiert `consultationDate` non null
-- `noteMedecin` ecriture CHIRURGIEN uniquement
-- `noteCommerciale` ecriture COMMERCIAL uniquement, invisible au CHIRURGIEN
+- ~~`noteMedecin`~~ : **retire par ADR-0002** (migration `20260519134100_remove_chirurgien_role_and_note_medecin`)
+- `noteCommerciale` ecriture COMMERCIAL + ADMIN (plus de role-gating)
 - Devis technique : `cliniqueId` reste NULL sur `DevisIntervention`
 - Devis commercial : `cliniqueId`, `dateIntervention`, `timeIntervention` renseignes par le COMMERCIAL
 - `DevisStay.mode = NUIT` exige `nightCount ≥ 1 AND ≤ 30`

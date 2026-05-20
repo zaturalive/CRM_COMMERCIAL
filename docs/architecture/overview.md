@@ -1,12 +1,14 @@
 # Architecture — Vue d'ensemble
 
 > C4 niveaux 1 et 2. Principes transverses. Cartographie des responsabilites.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN. Les sections ci-dessous qui mentionnent "COMMERCIAL et CHIRURGIEN" sont a lire comme "COMMERCIAL seul" dans le fork commercial. Voir `docs/CHANGELOG-2026-05-19-20-ADR-0002-implementation.md`.
 
 ---
 
-## 0. Statut deux projets paralleles (mise a jour 2026-05-17)
+## 0. Statut deux projets paralleles (mise a jour 2026-05-20)
 
-Depuis la decision du 15 mai 2026, ce repo coexiste avec un projet jumeau commercial a creer (non-HDS pour l'instant, HDS plus tard apres validation). Cet `overview.md` decrit **le repo actuel** (CRM Chirurgien, HDS-ready), pas le jumeau.
+Ce repo est le **fork commercial** non-HDS du projet `CRM_chirurgien` (decision 15 mai 2026, fork le 18 mai 2026). Le repo source reste HDS-ready et conservera le role CHIRURGIEN + noteMedecin. Cet overview a ete ecrit pour le repo source ; les divergences sont annotees `(ADR-0002)`.
 
 Voir [ADR-0008](decisions/0008-projets-paralleles-commercial-hds.md) pour la decision pivot et [projets-paralleles-commercial-hds.md](projets-paralleles-commercial-hds.md) pour le detail des deux versions.
 
@@ -175,7 +177,7 @@ Les 5 transitions principales + 2 sorties paralleles sont documentees dans [data
 
 - **Tenant** : filtre automatique via Prisma extended client, isolation garantie cote ORM. **Test de securite obligatoire** (voir [ADR-0005](decisions/0005-test-strategy.md)).
 - **Role** : enforce cote backend (middleware sur chaque route) ET cote front (sidebar role-aware, guards de pages). Le front ne fait pas autorite — le backend tranche.
-- **ADMIN exclusif** : routes `/api/cliniques/*`, `/api/interventions/*`, `/api/document-labels/*` et toutes les routes `/api/config/*` renvoient **403** pour COMMERCIAL et CHIRURGIEN.
+- ~~**ADMIN exclusif** : routes `/api/cliniques/*`, `/api/interventions/*`, `/api/document-labels/*` et toutes les routes `/api/config/*` renvoient **403** pour COMMERCIAL et CHIRURGIEN.~~ — **caduc** : ADR-0006 (23 avril) a ouvert le Parametrage a tous les roles authentifies. ADR-0002 a retire CHIRURGIEN. Seul l'auth reste enforce.
 
 ### 3.8 Style UI
 
@@ -220,7 +222,7 @@ Liquid glass sur fond degrade lavande. Pas de glow, ombres subtiles. Icones Luci
 - Pas de Stripe, pas de Yousign, pas de WhatsApp Cloud API
 - Pas de HDS (hebergement standard suffit au MVP)
 - Pas de i18n
-- Pas de multi-praticien (1 chirurgien par tenant — [ADR-0004](decisions/0004-multi-praticien-v1.md))
+- Pas de multi-praticien (~~1 chirurgien par tenant~~) — **sans objet dans le fork commercial** : ADR-0002 retire CHIRURGIEN ([ADR-0004](decisions/0004-multi-praticien-v1.md), [ADR-0002](decisions/0002-suppression-role-chirurgien-et-notes.md))
 - Pas de portail patient
 - Pas de Doctolib API
 - Pas de templates mails automatises
@@ -240,7 +242,7 @@ Tout est documente comme "Coming Soon V1/V1.1/V1.2" dans l'UI avec un placeholde
 │  /pipeline           role: admin + commercial            │
 │  /clients            role: admin + commercial + chir     │
 │  /clients/[id]       role: admin + commercial + chir     │
-│  /agenda             role: all (chirurgien = principal)  │
+│  /agenda             role: ADMIN + COMMERCIAL (ADR-0002) │
 │  /devis/[id]         role: admin + commercial + chir     │
 │  /config/cliniques   role: admin exclusif                │
 │  /config/interventions  role: admin exclusif             │

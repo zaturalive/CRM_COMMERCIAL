@@ -1,7 +1,9 @@
 # ADR-0005 — Strategie de tests pragmatique MVP, securite obligatoire
 
 **Date** : 22 avril 2026
-**Statut** : Accepte
+**Statut** : Accepte (annote 2026-05-20 fork commercial)
+
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 a retire le role CHIRURGIEN. Les cas de test `CHIRURGIEN tente PATCH ... → 403` ci-dessous sont **caducs** et ont ete supprimes du test suite (cf. `tests/security/devis.test.ts` post-2026-05-20). Le seed de test ne cree plus que ADMIN + COMMERCIAL. Le smoke test "cocher intervention done" est realise par le COMMERCIAL.
 
 ---
 
@@ -44,8 +46,8 @@ Ces tests sont la priorite 0. Si l'un saute, pas de deploy.
 - COMMERCIAL tente POST `/api/interventions` → **403**
 - COMMERCIAL tente POST `/api/cliniques` → **403**
 - COMMERCIAL tente POST `/api/document-labels` → **403**
-- CHIRURGIEN tente PATCH `/api/devis-interventions/:id` avec `cliniqueId` dans le body → **403** (devis commercial reserve COMMERCIAL)
-- COMMERCIAL tente PATCH `/api/processes/:id/notes` avec `noteMedecin` → **403**
+- ~~CHIRURGIEN tente PATCH `/api/devis-interventions/:id` avec `cliniqueId` dans le body → 403~~ — **caduc post-ADR-0002**
+- ~~COMMERCIAL tente PATCH `/api/processes/:id/notes` avec `noteMedecin` → 403~~ — **caduc post-ADR-0002** (champ retire de la BDD)
 
 ### Authentification
 - Route API sans `Authorization` header → **401**
@@ -87,7 +89,7 @@ Priorite 1 — happy path de chaque endpoint avec un Postgres ephemere (Testcont
 
 Setup :
 - `docker-compose.test.yml` : Postgres isole port 5433
-- Seed de test minimal : 1 tenant, 1 admin, 1 commercial, 1 chirurgien, 1 clinique, 2 interventions, 0 process
+- Seed de test minimal : 1 tenant, 1 admin, 1 commercial, 1 clinique, 2 interventions, 0 process (ADR-0002 retire le user chirurgien)
 - Reset DB avant chaque test (transactions rollback)
 
 Tests :
@@ -118,7 +120,7 @@ Les 3 smoke tests :
 
 1. **Login + dashboard** : login → voir le dashboard avec KPIs. Timeout 10s.
 2. **Creation process complet** : login commercial → creer fiche client → creer process → cocher intervention → remplir devis commercial → signer → voir badge "Confirmee". Timeout 60s.
-3. **Cocher intervention done + archivage** : login chirurgien → ouvrir agenda → cliquer event → cocher intervention done → verifier archivage auto. Timeout 30s.
+3. **Cocher intervention done + archivage** : login COMMERCIAL → ouvrir agenda → cliquer event → cocher intervention done → verifier archivage auto. Timeout 30s. (ADR-0002 : le COMMERCIAL a recupere l'action initialement reservee CHIRURGIEN)
 
 Pas de tests UI detaille. Les details visuels sont valides a l'oeil sur le prototype.
 

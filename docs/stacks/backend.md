@@ -2,6 +2,8 @@
 
 > Node.js 20 + Express + TypeScript + Prisma + Zod + JWT + Puppeteer.
 > Source architecture : `files(2)/cahier-des-charges-technique-v1_5.md` §5-7.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN et la noteMedecin (cf. `docs/CHANGELOG-2026-05-19-20-ADR-0002-implementation.md` §P1.B). Tous les role-gating CHIRURGIEN ont ete supprimes, le fichier `lib/processSerializer.ts` (filtre role-based) et le test `tests/security/notes-bypass.test.ts` ont ete supprimes. DB : `crm_commercial`.
 
 ---
 

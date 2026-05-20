@@ -19,6 +19,7 @@ Implementation complete de l'ADR-0002 (retrait UserRole.CHIRURGIEN + Process.not
 | P1.C | ✓ | Frontend : 20 fichiers UI + tests/e2e purges |
 | P1.D | ✓ | Smoke test programmatique : 259/259 tests verts, login admin+commercial OK |
 | P2 | ✓ | 4 stories BLOCKED (EP02-S05, EP04-S05, EP05-S02, EP06-S04) reformulees, seed labels commercialise |
+| P6 | ✓ | Doc sweep complet : 18 docs actifs alignes avec ADR-0002 (banners + edits ciblees), 10 stories impactees annotees |
 
 Total commits : 5 (mais 4 a pusher sur origin/main lors de la derniere mesure).
 
@@ -215,13 +216,85 @@ Format commit suivi : `type: description` (conventions BYAN — pas d'emoji, pas
 
 ---
 
+## P6 — Doc sweep complet (ajoute 2026-05-20 sur demande user)
+
+> Demande explicite du user : "noublie pas de documenter tout ce que tu modifies, les features ajoutees, modifiees, supprimees". Sweep des 38 fichiers docs qui mentionnaient encore CHIRURGIEN / noteMedecin / chirurgien.
+
+### Fichiers mis a jour (banners ADR-0002 + edits ciblees)
+
+**Top-level + index**
+- `docs/README.md` — titre `CRM Commercial`, section "0. Fork CRM Commercial — point d'entree", roles reduits a ADMIN + COMMERCIAL, table Z5 annotee, calendar "agenda des prestations"
+- `docs/context/glossary.md` — banner ADR-0002, enum `UserRole` reduit, switcher 2 roles, definitions clinique/devis technique adaptees
+- `docs/context/user-flows.md` — banner ADR-0002, switch CHIRURGIEN supprime
+
+**Architecture**
+- `docs/architecture/data-model.md` — banner ADR-0002, `UserRole` reduit, `noteMedecin` raye, `isDone`/`isIncluded` role-gating supprime, references finales raye
+- `docs/architecture/overview.md` — banner ADR-0002, section "ADMIN exclusif" annotee caduque (ADR-0006), agenda role maj
+- `docs/architecture/decisions/0005-test-strategy.md` — banner ADR-0002, cas de test CHIRURGIEN PATCH 403 rayes, seed reduit a 2 users, smoke test "cocher intervention done" porte par COMMERCIAL
+- `docs/architecture/decisions/0006-config-open-to-all-roles.md` — banner ADR-0002, liste roles reduite
+
+**Document de reference**
+- `docs/document-reference-complet-crm-commercial.md` — banner ADR-0002, enum `UserRole` annote, auth roles maj, separation des roles adaptee
+
+**Deploy + infra**
+- `docs/DEPLOY.md` — banner avec substitutions (repo path, DB, sous-domaine, comptes demo), users CHIRURGIEN rayes
+- `docs/stacks/infra.md` — banner avec substitutions (DB `crm_commercial`, network `crm-commercial-network`, ports 3301/4100, path `/opt/crm-commercial`)
+- `docs/stacks/database.md` — banner ADR-0002, `enum UserRole` reduit, seed snippet (user chirurgien retire), recap users reduit
+- `docs/stacks/backend.md` — banner ADR-0002 + retrait `processSerializer.ts` / `notes-bypass.test.ts`
+- `docs/stacks/frontend.md` — banner ADR-0002, port 3301, agenda role maj, redirect CHIRURGIEN raye
+
+**Testing**
+- `docs/testing/EP04-pipeline-manual-tests.md` — section 1.3 CHIRURGIEN rayee, section 10 reduite a 1 note commerciale, recap users a 2 entrees
+
+**Product**
+- `docs/product/backlog.md` — banner ADR-0002, scenarios switch chirurgien adaptes, DEMO_MODE warning maj
+- `docs/product/epics.md` — banner ADR-0002, valeurs metier adaptees (4 occurrences)
+- `docs/product/epic-security-advanced.md` — SEC-06 annote `obsolete` (champ noteMedecin retire)
+
+**Stories impactees (10)**
+- `EP01-S03` (Sidebar) — header HDS maj, role list reduit
+- `EP03-S02` (Fiche Client) — header HDS, user story role list reduit
+- `EP04-S04` (Process Panel) — header HDS maj
+- `EP04-S05` (Note commerciale) — story integralement reecrite (P2 + bonus)
+- `EP05-S01` (Devis snapshot) — header HDS + user story
+- `EP05-S06` (Options live) — header HDS, ligne "Honoraires chirurgien" → "praticien"
+- `EP05-S07` (PDF) — header HDS, signature PDF "praticien + client placeholder"
+- `EP07-S01` (Agenda) — header HDS + user story + role list
+- `EP07-S02` (EventSheet) — header HDS + user story + drag event role-gating retire
+- `EP08-S01` (Dashboard) — header HDS + user story + role list `COMM + ADMIN`
+- `EP09-S02` (Follow-up) — header HDS + sidebar role list
+
+### Approche
+
+Pour eviter de re-ecrire des centaines de paragraphes ecrits par le repo source, j'ai applique **2 strategies** :
+1. **Banner "MAJ 2026-05-20 (fork commercial)" en tete de fichier** — explique la divergence et renvoie au CHANGELOG.
+2. **Edits ciblees sur les claims explicites** — listes de roles (`ADMIN | COMMERCIAL | CHIRURGIEN`), user stories ("En tant que chirurgien..."), tableaux d'acces (`/pipeline redirect CHIRURGIEN`), comptes demo (`chirurgien@...`).
+
+Les textes plus narratifs qui mentionnent "le chirurgien" comme persona generique (sans implications RBAC) sont laisses tels quels — ils referencent le metier client final (un cabinet de chirurgiens), pas le role UserRole. La distinction etait deja documentee dans ADR-0002.
+
+### Fichiers laisses tels quels (volontairement)
+
+Historique / ADR sources :
+- `docs/architecture/decisions/0001-fork-depuis-crm-chirurgien.md` (ADR du fork lui-meme)
+- `docs/architecture/decisions/0002-suppression-role-chirurgien-et-notes.md` (l'ADR elle-meme)
+- `docs/architecture/decisions/0004-multi-praticien-v1.md` (decision V1 multi-praticien, historique)
+- `docs/architecture/decisions/0007-refactor-laravel-react.md` (historique)
+- `docs/architecture/decisions/0008-projets-paralleles-commercial-hds.md` (decision pivot)
+- `docs/architecture/projets-paralleles-commercial-hds.md` (planification du fork)
+- `docs/architecture/features-tables-mapping.md` (audit code historique 2026-05-16)
+- `docs/CHANGELOG-24-avril-2026.md` + `docs/CHANGELOG-2026-04-28.md` (changelogs historiques)
+- `docs/ACTIONS-IMMEDIATES-2026-05-18.md` (plan initial — texte preserve comme reference)
+- `docs/extrait_delobaux/donnees-configuration-seed.md` (donnees source du cabinet, historique)
+
+---
+
 ## Ce qui n'a PAS ete fait dans cette session
 
 - **P3** — arbitrage des 8 stories SUSPECT (patterns textes libres + uploads). Necessite decision user sur les mitigations (warnings UI, audits, restrictions).
 - **P4** — Sprint 1 vocabulaire commercial (rename Patient → Client, Consultation → Rendez-vous, dateIntervention → datePrestation). Cible : 2-3 jours d'effort. Migration unique `rename_columns_commercial_vocabulary` a generer.
 - **P5** — 2e passe HDS-CHECK complete sur les 50 stories avec les regles ADR-0002. A faire apres P3 + P4 pour avoir une vue finale.
 - **package-lock.json + package.json** — nom du workspace frontend (`@crm-chirurgien/frontend`) inchange. P4 ou un cleanup ulterieur.
-- **Documentation ancienne** (data-model.md, glossary.md, decisions/0005-test-strategy.md, etc.) — conservent leurs references au modele initial avec CHIRURGIEN. Ces docs documentent l'histoire et un encadre pointant vers ADR-0002 suffit (a faire en P4 / P5).
+- **CHANGELOG-2026-04-28.md, CHANGELOG-24-avril-2026.md** — changelogs historiques laisses tels quels.
 
 ---
 

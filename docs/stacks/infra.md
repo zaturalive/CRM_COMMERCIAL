@@ -2,6 +2,14 @@
 
 > Docker Compose dev (sans reverse proxy), deploy serveur perso MVP via Traefik → Scaleway V1 → HDS V2.
 > **Traefik uniquement**. Pas de Nginx.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ce document a ete ecrit pour le repo source CRM_chirurgien. Dans le fork commercial :
+> - Nom de la DB : `crm_commercial` (au lieu de `crm_chirurgien`)
+> - Nom du network Docker : `crm-commercial-network` (au lieu de `crm-chirurgien-network`)
+> - Port frontend host : `3301` (au lieu de `3300` ou `3000`) — voir `docker/docker-compose.yml`
+> - Port backend host : `4100` (au lieu de `4000`)
+> - Repo path deploy (suggestion) : `/opt/crm-commercial` (au lieu de `/opt/crm-chirurgien`)
+> Les exemples ci-dessous reproduisent le contenu du repo source ; remplace les occurrences `crm_chirurgien` / `crm-chirurgien-network` par leurs equivalents commercial quand tu les copies.
 
 ---
 

@@ -2,6 +2,8 @@
 
 > Prisma ORM, migrations auto, multi-tenant par `tenantId` FK sur chaque table.
 > Source schema : `docs/architecture/data-model.md`.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire la valeur `CHIRURGIEN` de l'enum `UserRole` et la colonne `Process.noteMedecin`. DB renommee `crm_commercial`. Migration appliquee : `20260519134100_remove_chirurgien_role_and_note_medecin`. Voir `docs/CHANGELOG-2026-05-19-20-ADR-0002-implementation.md`.
 
 ---
 
@@ -48,7 +50,7 @@ generator client {
 
 // ── ENUMS ──────────────────────────────────────────────────────────
 
-enum UserRole { ADMIN COMMERCIAL CHIRURGIEN }
+enum UserRole { ADMIN COMMERCIAL }  // ADR-0002 retire CHIRURGIEN (fork commercial)
 
 enum ProcessStage {
   CONTACT CONSULTATION POST_CONSULT CONFIRMEE OP_PROGRAMMEE
@@ -174,12 +176,12 @@ async function main() {
     }
   });
 
-  // 2. Users (1 admin, 1 commercial, 1 chirurgien)
+  // 2. Users (1 admin, 1 commercial) — ADR-0002 : plus de user CHIRURGIEN dans le fork commercial
   await prisma.user.createMany({
     data: [
       { tenantId: tenant.id, email: "admin@cabinet-delobaux.fr", passwordHash: hashSync("demo", 10), role: "ADMIN", firstName: "Florian", lastName: "Admin" },
       { tenantId: tenant.id, email: "commercial@cabinet-delobaux.fr", passwordHash: hashSync("demo", 10), role: "COMMERCIAL", firstName: "Julie", lastName: "Commercial" },
-      { tenantId: tenant.id, email: "chirurgien@cabinet-delobaux.fr", passwordHash: hashSync("demo", 10), role: "CHIRURGIEN", firstName: "Alexis", lastName: "Delobaux" },
+      // ADR-0002 : user CHIRURGIEN retire (alexis@cabinet-delobaux.fr / Dr Delobaux). Le COMMERCIAL prend le relais.
     ],
     skipDuplicates: true
   });
@@ -307,7 +309,7 @@ Le chemin est stocke dans `ProcessDocument.fileUrl` comme relatif : `{tenantId}/
 | Entite | Nombre | Source |
 |---|---|---|
 | Tenant | 1 (cabinet-delobaux) | — |
-| User | 3 (admin, commercial, chirurgien) | — |
+| User | 2 (admin, commercial) — ADR-0002 retire chirurgien | — |
 | Clinique | 2 (CEPE, ALPHAND) | seed spec §1 |
 | CliniqueTarif | 16 (8 par clinique) | seed spec §1.1, §1.2 |
 | CliniqueOption | 6 (3 par clinique) | proto seed.js §cliniques |

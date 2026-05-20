@@ -4,6 +4,8 @@
 **Statut** : Accepte — supersede CDCF v2.0 F28 et CDCT v1.5 §1.3
 **Decideur** : Dimitry (user)
 
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN. La liste "ADMIN, COMMERCIAL, CHIRURGIEN" ci-dessous se reduit a "ADMIN, COMMERCIAL" dans le fork commercial. Le constat reste valable : le Parametrage est accessible a tous les roles authentifies.
+
 ---
 
 ## Contexte
@@ -33,7 +35,7 @@ Et confirme lors du challenge :
 
 ## Decision
 
-**Le Parametrage est ouvert a tous les roles authentifies** (ADMIN, COMMERCIAL, CHIRURGIEN).
+**Le Parametrage est ouvert a tous les roles authentifies** (ADMIN, COMMERCIAL — ADR-0002 retire CHIRURGIEN dans le fork commercial).
 
 Concretement :
 - Sidebar : item "Parametrage" visible pour les 3 roles

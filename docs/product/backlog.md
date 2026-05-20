@@ -1,7 +1,9 @@
 # Backlog — Priorisation et sprint map
 
-> Priorisation MoSCoW + organisation en sprints. MVP a livrer le **24 avril 2026**.
+> Priorisation MoSCoW + organisation en sprints. MVP a livrer le **24 avril 2026** (repo source).
 > Pour un solo dev, les sprints sont plutot des "batches" de features coherentes.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN et la noteMedecin. Les scenarios qui mentionnent "Switch chirurgien" / "note medicale" / "(chirurgien)" sont a interpreter comme COMMERCIAL dans le fork commercial. Voir ACTIONS-IMMEDIATES-2026-05-18.md pour le plan P0/P1/P2/P3/P4/P5.
 
 ---
 
@@ -14,13 +16,13 @@ La demo du 24 avril est **un scenario** (cf. MVP v4 §5). Priorite : que le scen
 1. Login admin → parametrer 1 clinique + 2-3 interventions + frais + doc labels
 2. Switch commercial → creer fiche + process + cocher interventions + date consult
 3. Clic fil d'Ariane → Consultation
-4. Switch chirurgien → ouvrir agenda + remplir devis technique + note medicale
+4. ~~Switch chirurgien → ouvrir agenda + remplir devis technique + note medicale~~ — **adapte ADR-0002** : COMMERCIAL ouvre l'agenda + remplit devis technique (plus de note medicale)
 5. Switch commercial → devis commercial (clinique + date + heure + options contextuelles + option a la volee)
 6. Voir anti-doublon → Copier texte → PDF → Envoyer grise
 7. Simuler signature + acompte → Confirmee
 8. Documents : marquer recus + preview + badge X/Y + preview IA mock
 9. Tous docs recus + dates → Op programmee + barre progression paiement
-10. Switch chirurgien → cocher interventions done → archivage auto
+10. ~~Switch chirurgien~~ → COMMERCIAL coche interventions done → archivage auto (ADR-0002)
 11. Fiche Client → historique + devis signes/non
 12. Dashboard mis a jour
 
@@ -49,7 +51,7 @@ Tout ce qui n'est **pas** dans ce scenario = **nice to have** au MVP.
 | EP04-S03 | ProcessCard + badges | Pipeline | Visuel pipeline |
 | EP04-S04 | Process Panel + fil d'Ariane | Pipeline | Etape 2-10 scenario |
 | EP05-S01 | Devis + DevisIntervention + snapshot | Devis | Etape 4 scenario |
-| EP05-S02 | Devis technique (chirurgien) | Devis | Etape 4 scenario |
+| EP05-S02 | Devis technique (UI partie technique — ex chirurgien, ADR-0002) | Devis | Etape 4 scenario |
 | EP05-S03 | Devis commercial (3 cols + heure) | Devis | Etape 5 scenario |
 | EP05-S04 | Sejours + reconcileStays | Devis | Etape 5 scenario |
 | EP05-S05 | Options contextuelles + anti-doublon | Devis | Etape 5-6 scenario |
@@ -360,6 +362,6 @@ pour decider lesquelles meritent une section 7.x detaillee.
 - **Monitoring** : Sentry (frontend errors + backend exceptions) + Grafana / Uptime Kuma (disponibilite + temps reponse). 1/2 journee de setup.
 - **Page "Mot de passe oublie"** : flow standard email -> token -> reset. Pre-requis pour livrer le projet a un vrai client.
 - **Page "Changer mon mot de passe"** dans le profil user : aujourd'hui aucune UI cote utilisateur. Bloquant si le client doit changer le mdp `demo` initial.
-- **Desactivation de `DEMO_MODE` en prod reelle** : aujourd'hui le switcher de role (boutons ADMI/COMM/CHIR) est visible en sidebar tant que `NEXT_PUBLIC_DEMO_MODE=true`. A passer a `false` quand le cabinet entre en vraie utilisation (sinon Julie peut switcher en chirurgien).
+- **Desactivation de `DEMO_MODE` en prod reelle** : le switcher de role (boutons ADMI/COMM) est visible en sidebar tant que `NEXT_PUBLIC_DEMO_MODE=true`. A passer a `false` en prod reelle. (ADR-0002 : le bouton CHIR n'existe plus dans le fork commercial.)
 - **Cleanup prefixe `cabinet-` du tenant slug** : `cabinet-delobaux` -> `delobaux` (migration SQL + update seed). Plus simple a retenir / taper. Affecte juste l'UX login et l'email format.
 

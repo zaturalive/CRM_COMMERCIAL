@@ -1,6 +1,8 @@
 # Glossaire metier
 
 > Reference rapide des termes. Le glossaire complet est dans `files(2)/glossaire-userflows-v3.md`.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN et la notion noteMedecin. Le COMMERCIAL prend le relais sur l'agenda, le devis technique et le toggle isDone des prestations. Le switcher de role ne propose plus que ADMIN / COMMERCIAL.
 
 ---
 
@@ -9,7 +11,7 @@
 | Terme | Definition courte |
 |---|---|
 | **Cabinet** | Structure d'exercice = un tenant dans le CRM |
-| **Clinique** | Etablissement ou se deroulent les operations. Un chirurgien opere dans plusieurs cliniques |
+| **Clinique** | Etablissement ou se deroulent les prestations. Un praticien opere dans plusieurs cliniques |
 | **Fiche Client** | Donnees pereennes du patient. Page dediee `/clients/[id]` |
 | **Process** | Parcours d'un patient pour une prestation donnee. Carte dans la pipeline |
 | **Pipeline** | Vue Kanban : 5 colonnes sequentielles + 2 sections paralleles |
@@ -18,7 +20,7 @@
 | **Bandeau contextuel** | Ligne coloree sous le fil d'Ariane, message d'action prioritaire par stage |
 | **Qualification** | Attribut du Process : qualifie/non qualifie + raison + intensite 1-10 |
 | **Intervention** | Acte chirurgical ou esthetique specifique (abdo, lipo, botox...) |
-| **Devis technique** | 1re partie remplie par le chirurgien : interventions + duree + frais supp. **Pas de clinique** |
+| **Devis technique** | 1re partie remplie par le COMMERCIAL (ex-chirurgien dans le repo source) : prestations + duree + frais supp. **Pas de clinique** |
 | **Devis commercial** | 2e partie remplie par le commercial : clinique + date + heure + sejour + options |
 | **Heure d'intervention** | Champ `timeIntervention` sur `DevisIntervention`, HH:MM |
 | **Frais supplementaire (intervention)** | Cout annexe lie a une intervention (implants, kit, consommables). Catalogue admin |
@@ -39,7 +41,7 @@
 | **Coordinateur / Commercial** | Personne en charge du suivi commercial (qualification, devis, relances) |
 | **Seed** | Donnees pre-remplies pour la demo (2 cliniques, 20 interventions, 15 clients, 8 process) |
 | **Multi-tenant** | Une instance, plusieurs cabinets isoles par sous-domaine |
-| **Switcher de role** | Dropdown dans la sidebar footer pour basculer Admin / Commercial / Chirurgien (demo) |
+| **Switcher de role** | Dropdown dans la sidebar footer pour basculer Admin / Commercial (demo, ADR-0002) |
 
 ---
 
@@ -47,7 +49,7 @@
 
 Voir [data-model.md §3](../architecture/data-model.md) pour les valeurs exactes.
 
-- `UserRole` — ADMIN / COMMERCIAL / CHIRURGIEN
+- `UserRole` — ADMIN / COMMERCIAL (ADR-0002 retire la valeur CHIRURGIEN dans le fork commercial)
 - `ProcessStage` — CONTACT → CONSULTATION → POST_CONSULT → CONFIRMEE → OP_PROGRAMMEE → EFFECTUEE, + NON_QUALIFIE / FOLLOWUP / ANNULEE
 - `DocumentStatus` — EN_ATTENTE / RECU / VALIDE
 - `DevisStatus` — BROUILLON / TECHNIQUE_REMPLI / COMMERCIAL_REMPLI / ENVOYE / SIGNE / REFUSE

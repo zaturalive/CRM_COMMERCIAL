@@ -2,6 +2,8 @@
 
 > Next.js 15 App Router + TypeScript + Tailwind + shadcn/ui + CSS variables.
 > Source design : `files(2)/spec-design-figma-v1_3.md`.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN du `UserRole`. Les composants `ProcessNotes.tsx`, `DevisBuilder.tsx`, `Sidebar.tsx`, `RoleSwitcher.tsx`, `EventSheet.tsx` ne referencent plus CHIRURGIEN. Port frontend dev : `3301` (au lieu de 3300, conflit avec autofront local). Voir `docs/CHANGELOG-2026-05-19-20-ADR-0002-implementation.md` §P1.C.
 
 ---
 
@@ -100,7 +102,7 @@ apps/frontend/
 | `/pipeline` | ADMIN + COMMERCIAL | `KanbanBoard` 5 col + 2 sections, ouverture `ProcessPanel` |
 | `/clients` | tous | `ClientsTable` + recherche |
 | `/clients/[id]` | tous | `ClientProfilePage` |
-| `/agenda` | tous (chirurgien = principal) | `CalendarView` + `EventSheet` |
+| `/agenda` | tous (ADMIN + COMMERCIAL — ADR-0002 retire CHIRURGIEN) | `CalendarView` + `EventSheet` |
 | `/devis/[id]` | tous | `DevisBuilder` |
 | `/config/cliniques` | ADMIN exclusif | `CliniqueForm`, `TarifGrid` |
 | `/config/interventions` | ADMIN exclusif | `InterventionList`, `DocumentLabelPicker` |
@@ -109,7 +111,7 @@ apps/frontend/
 **Guards** :
 - `/(app)/layout.tsx` : redirect `/login` si non authentifie
 - `/(app)/config/layout.tsx` : redirect `/dashboard` si role ≠ ADMIN
-- `/(app)/pipeline/page.tsx` : redirect `/dashboard` si role CHIRURGIEN
+- ~~`/(app)/pipeline/page.tsx` : redirect `/dashboard` si role CHIRURGIEN~~ — **caduc** (ADR-0002 retire CHIRURGIEN, redirect supprime de fait)
 
 Le `ProcessPanel` n'est **pas une route URL**. C'est un sheet overlay ouvert via `?process=<id>` en query param pour partage.
 

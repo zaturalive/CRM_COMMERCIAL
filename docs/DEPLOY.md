@@ -1,7 +1,14 @@
 # Déploiement Scaleway — guide pratique
 
-> Version MVP + demo vitrine. Référence pour la mise en ligne du CRM
+> Version MVP + demo vitrine. Référence historique pour la mise en ligne du CRM
 > Chirurgien sur `crm-chirurgie.a3n.fr`.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ce guide a ete ecrit pour le repo source. Pour le fork commercial :
+> - Repo path : `/opt/crm-commercial` (au lieu de `/opt/crm-chirurgien`)
+> - DB : `crm_commercial`
+> - Sous-domaine cible : `crm-commercial.<editeur>.com` (a definir avec Florian)
+> - Comptes demo : `admin@cabinet-demo.fr` et `commercial@cabinet-demo.fr` uniquement (ADR-0002 retire `chirurgien@`)
+> Les commandes ci-dessous restent valables avec ces substitutions.
 
 ## 1. Prérequis serveur
 
@@ -279,10 +286,10 @@ Mot de passe : `demo` (tous).
 |---|---|---|
 | `demo` | ADMIN | `admin@cabinet-demo.fr` |
 | `demo` | COMMERCIAL | `commercial@cabinet-demo.fr` |
-| `demo` | CHIRURGIEN | `chirurgien@cabinet-demo.fr` |
+| ~~`demo`~~ | ~~CHIRURGIEN~~ | ~~`chirurgien@cabinet-demo.fr`~~ — **retire par ADR-0002 (fork commercial)** |
 | `cabinet-delobaux` | ADMIN | `florian@cabinet-delobaux.fr` |
 | `cabinet-delobaux` | COMMERCIAL | `julie@cabinet-delobaux.fr` |
-| `cabinet-delobaux` | CHIRURGIEN | `alexis@cabinet-delobaux.fr` |
+| ~~`cabinet-delobaux`~~ | ~~CHIRURGIEN~~ | ~~`alexis@cabinet-delobaux.fr`~~ — **retire par ADR-0002 (fork commercial)** |
 
 ---
 

@@ -3,6 +3,8 @@
 > 13 epics : 8 epics MVP initiaux + 5 epics post-MVP (EP09-EP13).
 > Mapping depuis `files(2)/cahier-des-charges-fonctionnel-v2.md` §8.
 > Ajouts post-MVP issus du brief Florian 2026-04-26 (cf. CHANGELOG-2026-04-28.md) et brief utilisateur 2026-04-29 (cf. CHANGELOG-2026-04-29.md).
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN. Les mentions "chirurgien" dans les valeurs metier sont a lire comme COMMERCIAL pour le fork commercial.
 
 ---
 
@@ -53,7 +55,7 @@
 
 ## EP02 — Parametrage Admin
 
-**Valeur metier** : permet a Florian (admin) de configurer le cabinet avant utilisation par commercial/chirurgien.
+**Valeur metier** : permet a Florian (admin) de configurer le cabinet avant utilisation par le COMMERCIAL (fork commercial — ADR-0002).
 
 **Scope** :
 - CRUD Cliniques + grille tarifaire + options catalogue (F29)
@@ -139,7 +141,7 @@
 
 **Stories** :
 - EP05-S01 : Table Devis + DevisIntervention + snapshot a la creation
-- EP05-S02 : Devis technique (UI chirurgien) + frais supp editables
+- EP05-S02 : Devis technique (UI partie technique, ex chirurgien — ADR-0002) + frais supp editables
 - EP05-S03 : Devis commercial (UI commercial) avec 3 colonnes Clinique/Date/Heure
 - EP05-S04 : Sejours + mode hospitalisation + reconcileStays hook
 - EP05-S05 : Options catalogue contextuelles clinique + anti-doublon
@@ -176,7 +178,7 @@ regression (208 security + 18 unit).
 
 ## EP07 — Agenda — DONE 2026-04-23
 
-**Valeur metier** : interface principale du chirurgien.
+**Valeur metier** : interface principale de planning des prestations (ADR-0002 : portee par le COMMERCIAL dans le fork commercial).
 
 **Scope** :
 - Vue projetee Jour/Semaine/Mois (F09)
@@ -196,7 +198,7 @@ regression (208 security + 18 unit).
 
 ## EP08 — Dashboard — DONE 2026-04-23
 
-**Valeur metier** : vision CA + KPIs pour commercial et chirurgien.
+**Valeur metier** : vision CA + KPIs pour ADMIN + COMMERCIAL (ADR-0002 retire CHIRURGIEN).
 
 **Scope** :
 - 4 KPIs + chart CA + previsionnel + CA en attente Follow-up (F31)

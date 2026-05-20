@@ -1,8 +1,10 @@
 # CRM Commercial Esthétique — Document de Référence Complet
 
-**Version :** 3.0 — 16 mai 2026  
-**Auteur :** Dimitry (développeur freelance)  
+**Version :** 3.1 — 20 mai 2026 (mise à jour ADR-0002)
+**Auteur :** Dimitry (développeur freelance)
 **Objet :** Document auto-suffisant consolidant l'intégralité du contexte projet, des décisions prises, des analyses juridiques, du contrat de sous-traitance, et des spécifications techniques. Destiné à servir de source unique de vérité pour toute personne ou IA travaillant sur le projet.
+
+> **MAJ 2026-05-20** : ADR-0002 (18 mai) retire le role CHIRURGIEN et la colonne Process.noteMedecin du fork commercial. Les sections ci-dessous qui les mentionnent comme "conservés" sont obsolètes — cf. `docs/CHANGELOG-2026-05-19-20-ADR-0002-implementation.md` pour le détail des modifications appliquées.
 
 ---
 
@@ -77,7 +79,7 @@ Les 18 tables du modèle de données actuel sont toutes conservées. Elles conti
 
 **Features conservées :** Pipeline complète (5 colonnes + follow-up + non qualifié), fiche client (contact), process (opportunité), devis 2 temps avec calcul auto, frais supplémentaires, séjours ambu/nuit, options à la volée, règle anti-doublon, agenda (vue projetée), paramétrage lieux + catalogue, gestion documentaire administrative, dashboard CA, génération PDF, archivage auto, fonctionnalité copier, multi-tenant.
 
-**Enums conservés :** ProcessStage (CONTACT, CONSULTATION, POST_CONSULT, CONFIRMEE, OP_PROGRAMMEE, EFFECTUEE, NON_QUALIFIE, FOLLOWUP, ANNULEE), FollowupReason, DocumentStatus, DevisStatus, HospitalisationMode, UserRole (ADMIN, COMMERCIAL, CHIRURGIEN), SourceAcquisition.
+**Enums conservés :** ProcessStage (CONTACT, CONSULTATION, POST_CONSULT, CONFIRMEE, OP_PROGRAMMEE, EFFECTUEE, NON_QUALIFIE, FOLLOWUP, ANNULEE), FollowupReason, DocumentStatus, DevisStatus, HospitalisationMode, UserRole (ADMIN, COMMERCIAL — **ADR-0002 retire CHIRURGIEN**), SourceAcquisition.
 
 ## B.2 Ce qu'on RETIRE (reporté Phase 2 — nécessitera HDS)
 
@@ -126,7 +128,7 @@ Multi-tenant via sous-domaines : chaque cabinet = un sous-domaine. Header `X-Ten
 
 Format de réponse API : `{ success: true, data: {...} }` ou `{ success: false, error: 'message' }`.
 
-Auth : JWT côté backend, NextAuth côté frontend. Rôles : ADMIN, COMMERCIAL, CHIRURGIEN.
+Auth : JWT côté backend, NextAuth côté frontend. Rôles : ADMIN, COMMERCIAL (ADR-0002 retire CHIRURGIEN).
 
 ## C.3 Modèle de données
 
@@ -154,7 +156,7 @@ Déploiement : Docker Compose sur une instance cloud, avec Nginx en reverse prox
 Même sans données de santé, le RGPD standard s'applique aux données personnelles (nom, email, téléphone). Mesures implémentées :
 
 - Authentification sécurisée (bcrypt, sessions sécurisées, HTTPS)
-- Séparation des rôles (commercial ≠ chirurgien ≠ admin)
+- Séparation des rôles (commercial ≠ admin — ADR-0002 retire CHIRURGIEN)
 - Variables d'environnement pour les secrets (hors du code, hors du repo Git)
 - HTTPS obligatoire (TLS 1.3)
 - Mot de passe fort imposé
@@ -376,7 +378,7 @@ Annexe 4 — Document de split Phase 1 / Phase 2 (devoir de conseil)
 | 9 | Documentation technique de déploiement (README Docker) | ~1/2 journée |
 | 10 | Document de split Phase 1 / Phase 2 formalisé | ~1/2 journée |
 | 11 | Authentification sécurisée (bcrypt, HTTPS) | Déjà fait / ~2h |
-| 12 | Séparation des rôles (commercial ≠ chirurgien ≠ admin) | ~1-2 jours |
+| 12 | Séparation des rôles (commercial ≠ admin — ADR-0002) | ~1-2 jours |
 | 13 | Variables d'environnement / secrets hors du code | ~2h |
 | 14 | HTTPS obligatoire | Inclus dans le déploiement |
 

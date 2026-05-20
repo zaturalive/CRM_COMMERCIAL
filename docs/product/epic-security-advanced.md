@@ -17,7 +17,7 @@
 | SEC-03 | Switch-role demo blinde en prod | `/api/demo/switch-role` monte conditionnellement mais aucun test qui prouve le 404 en `NODE_ENV=production`. Gros trou si deploy mal configure. | done |
 | SEC-04 | Helmet + headers securite | Middleware absent. Pas de CSP, X-Frame-Options, HSTS, X-Content-Type-Options. Install + mount + test de presence. | done |
 | SEC-05 | Error leakage 500 en prod | Stack trace fuite ? Tester en `NODE_ENV=production` qu'un 500 ne renvoie pas `err.stack`. | done |
-| SEC-06 | Authorization bypass direct backend | Tests partiels pour notes. Ajouter scenarios explicites : COMM essaie PATCH `noteMedecin`, CHIR essaie PATCH `noteCommerciale`, verifier 403 + audit que la reponse n'expose pas la valeur tentee. | done |
+| SEC-06 | ~~Authorization bypass direct backend~~ | ~~COMM essaie PATCH `noteMedecin`, CHIR essaie PATCH `noteCommerciale`~~ — **caduc post-ADR-0002** (champ `noteMedecin` retire de la BDD + role CHIRURGIEN supprime). Test file `tests/security/notes-bypass.test.ts` supprime le 2026-05-20. | obsolete |
 
 ---
 

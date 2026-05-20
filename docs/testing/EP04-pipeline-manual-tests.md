@@ -29,7 +29,7 @@ Tous sur tenant `cabinet-delobaux`, password `demo` :
 |---|---|
 | florian@cabinet-delobaux.fr | ADMIN |
 | julie@cabinet-delobaux.fr | COMMERCIAL |
-| alexis@cabinet-delobaux.fr | CHIRURGIEN |
+| ~~alexis@cabinet-delobaux.fr~~ | ~~CHIRURGIEN~~ — **retire par ADR-0002** |
 
 ### 0.3 Seed pipeline
 
@@ -48,14 +48,15 @@ Tous sur tenant `cabinet-delobaux`, password `demo` :
 - [ ] Sidebar affiche : Dashboard, Pipeline, Clients, Agenda, Paramétrage
 - [ ] `/pipeline` accessible directement
 
-### 1.3 CHIRURGIEN (alexis)
-- [ ] Sidebar **n'affiche PAS** Pipeline
-- [ ] Taper `/pipeline` manuellement → **redirect vers `/dashboard`**
+### ~~1.3 CHIRURGIEN (alexis)~~
+- ~~[ ] Sidebar **n'affiche PAS** Pipeline~~
+- ~~[ ] Taper `/pipeline` manuellement → **redirect vers `/dashboard`**~~
+> Section caduque post-ADR-0002 : le role CHIRURGIEN n'existe plus dans le fork commercial. La pipeline est accessible a tous les roles authentifies.
 
 ### 1.4 Role switcher
 - [ ] En tant que COMMERCIAL, switcher en bas de sidebar visible
 - [ ] Switch → ADMIN → sidebar inchangée (déjà tout)
-- [ ] Switch → CHIR → Pipeline disparaît
+- ~~[ ] Switch → CHIR → Pipeline disparaît~~ — caduc (ADR-0002)
 
 ---
 
@@ -222,26 +223,20 @@ Sur au moins 3 cartes différentes, vérifier :
 
 ## 10. Notes role-based (EP04-S05) ⭐
 
-**Test central pour la sécurité métier. À faire avec les 3 rôles.**
+**MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire la note medicale et le role CHIRURGIEN. La section 10 ne teste plus qu'une seule note (commerciale) pour ADMIN + COMMERCIAL.
 
 ### 10.1 En tant que COMMERCIAL (julie)
 - [ ] Tab Notes : champ "Note commerciale" visible et **éditable**
 - [ ] Taper du texte → attendre 2s → toast / indicateur "Sauvegardé"
 - [ ] Recharger la page → texte persisté
-- [ ] Champ "Note médecin" : **visible mais grisé / read-only + icône Lock**
-- [ ] Tenter de cliquer dessus → aucun effet
-- [ ] (Bonus) Forcer l'édition via DevTools + PATCH curl avec JWT COMM → backend renvoie **403**, toast d'erreur affiché
+- ~~[ ] Champ "Note médecin" : visible mais grisé / read-only~~ — caduc ADR-0002 (champ supprime)
 
-### 10.2 En tant que CHIRURGIEN (alexis)
-- [ ] Tab Notes : champ "Note médecin" visible et **éditable**
+### ~~10.2 En tant que CHIRURGIEN (alexis)~~
+> Section caduque post-ADR-0002 : le role CHIRURGIEN n'existe plus.
+
+### 10.2 En tant qu'ADMIN (florian)
+- [ ] Tab Notes : **note commerciale éditable** (ADR-0002 : plus de note medecin)
 - [ ] Auto-save fonctionne
-- [ ] Section "Note commerciale" : **complètement absente du DOM** (pas grisée, invisible)
-- [ ] DevTools → Network → `GET /api/processes/:id` : payload JSON **NE CONTIENT PAS** `noteCommerciale` (champ omis, pas nul)
-- [ ] (Bonus) Tenter PATCH noteCommerciale via curl avec JWT CHIR → **403**
-
-### 10.3 En tant qu'ADMIN (florian)
-- [ ] **Les deux notes éditables**
-- [ ] Auto-save fonctionne sur les deux
 - [ ] Recharger → persisté
 
 ---

@@ -1,31 +1,38 @@
-# CRM Chirurgien — Documentation projet
+# CRM Commercial — Documentation projet
 
-> Entrée unique de la documentation projet. Generee par audit BYAN le 22 avril 2026 sur la base des specs autoritaires v2.0 (CDCF) / v1.5 (CDCT) / v1.3 (Design Figma) / v3.0 (Glossaire) / v4.0 (MVP).
+> Documentation du **fork commercial** du repo CRM_chirurgien (decision 15 mai 2026, fork le 18 mai 2026).
+> Ce repo est en **periode non-HDS** : aucune donnee de sante n'est stockee.
+> Entree unique de la doc projet. Generee par audit BYAN le 22 avril 2026 sur la base des specs autoritaires v2.0 (CDCF) / v1.5 (CDCT) / v1.3 (Design Figma) / v3.0 (Glossaire) / v4.0 (MVP), heritee du repo source. Adaptee au fork commercial le 2026-05-20.
 
 ---
 
-## 0bis. Statut deux projets paralleles (mise a jour 2026-05-17)
+## 0. Fork CRM Commercial — point d'entree
 
-Depuis le 15 mai 2026, ce repo coexiste avec un projet jumeau commercial a creer (non-HDS pour l'instant, HDS plus tard apres validation produit). Cette documentation decrit **le repo actuel** (CRM Chirurgien, HDS-ready). Le jumeau aura sa propre arborescence.
-
-A lire dans cet ordre :
-- [ADR-0008](architecture/decisions/0008-projets-paralleles-commercial-hds.md) — decision pivot
+A lire en premier dans cet ordre :
+- [ADR-0001](architecture/decisions/0001-fork-depuis-crm-chirurgien.md) — fork initial depuis crm-chirurgien
+- [ADR-0002](architecture/decisions/0002-suppression-role-chirurgien-et-notes.md) — **retrait du role CHIRURGIEN et du champ noteMedecin** (decision pivot du fork)
+- [CHANGELOG-2026-05-19-20-ADR-0002-implementation.md](CHANGELOG-2026-05-19-20-ADR-0002-implementation.md) — implementation complete de l'ADR-0002 (35+ fichiers, migration, tests verts)
+- [ACTIONS-IMMEDIATES-2026-05-18.md](ACTIONS-IMMEDIATES-2026-05-18.md) — plan P0/P1/P2/P3/P4/P5 (P0+P1+P2 livres)
 - [projets-paralleles-commercial-hds.md](architecture/projets-paralleles-commercial-hds.md) — detail table par table des deux versions
-- `document-reference-complet-crm-commercial.md` v3.0 — synthese complete (contexte, juridique, contrat)
-- [CHANGELOG-2026-05-17.md](CHANGELOG-2026-05-17.md) — recap de la formalisation documentaire de ce jour
+- `document-reference-complet-crm-commercial.md` — synthese complete (contexte, juridique, contrat)
+
+## 0bis. Statut deux projets paralleles (mise a jour 2026-05-20)
+
+Depuis le 15 mai 2026, ce repo (CRM Commercial, **non-HDS**) coexiste avec son repo source `CRM_chirurgien` (HDS-ready). Cette doc decrit le repo **commercial** apres application de l'ADR-0002. Les sections historiques referencent encore l'ancien modele a 3 roles (ADMIN/COMMERCIAL/CHIRURGIEN) — voir banners en debut de chaque doc impactee.
 
 ---
 
 ## 1. Qu'est-ce que ce projet
 
-CRM multi-tenant pour cabinets de chirurgie esthetique. Produit **vendu a Florian** (client gestionnaire / formateur), premier cabinet utilisateur **Delobaux (Lyon)**.
+CRM multi-tenant pour cabinets de prestations esthetiques (fork commercial non-HDS). Produit **vendu a Florian** (client gestionnaire / formateur), premier cabinet utilisateur **Delobaux (Lyon)**.
 
-Trois roles cohabitent dans la meme app :
-- **Admin** — parametrage (cliniques, interventions, documents, frais supp). Seul role a voir le module Parametrage dans la sidebar.
-- **Commercial** — pipeline + fiche client + devis commercial + documents.
-- **Chirurgien** — agenda + devis technique (interventions + frais supp).
+Deux roles cohabitent dans la meme app (ADR-0002, 2026-05-18) :
+- **Admin** — parametrage (cliniques, prestations, documents, frais supp). Acces complet.
+- **Commercial** — pipeline + fiche client + devis (partie technique et commerciale) + documents + agenda.
 
-Le MVP est une demo de bout en bout (pas une prod), livree a Florian le **24 avril 2026**. La production reelle viendra apres validation client.
+> **Note historique** : la version d'origine (repo `CRM_chirurgien`) integrait un 3e role CHIRURGIEN avec un champ `noteMedecin` pour les observations medicales. Ces deux notions ont ete retirees du fork commercial pour rester dans le perimetre non-HDS (cf. ADR-0002). Le COMMERCIAL a heritage de toutes les actions auparavant reservees au CHIRURGIEN.
+
+Le MVP est une demo de bout en bout (pas une prod), livree a Florian le **24 avril 2026** dans le repo source. Le fork commercial a ete cree le 18 mai 2026 et a recu ses premieres adaptations (ADR-0002) les 19-20 mai 2026.
 
 ---
 
@@ -41,7 +48,7 @@ Le MVP est une demo de bout en bout (pas une prod), livree a Florian le **24 avr
 | Auth | NextAuth v5 (cote front) + JWT (cote API) | session cookie front, bearer token API |
 | PDF | Puppeteer | headless Chromium, template HTML → PDF |
 | Drag & Drop | @dnd-kit/core | accessibilite correcte |
-| Calendar | react-big-calendar | vue projetee, agenda chirurgien |
+| Calendar | react-big-calendar | vue projetee, agenda des prestations |
 | Icones | Lucide **uniquement** | pas d'emoji dans l'UI (Mantra IA-23) |
 | Tests unit/int | Vitest + Supertest | |
 | Tests E2E | Playwright **dans Docker** | reproductibilite CI |
@@ -202,7 +209,7 @@ Les specs ont ete reconciliees quand elles se contredisaient. Les arbitrages son
 | # | Sujet | Tranchage | Reference |
 |---|---|---|---|
 | Z3 | `DevisStay` persiste ou calcule ? | **Persiste** en BDD (table dediee) | [ADR-0003](architecture/decisions/0003-devis-stay-persisted.md) |
-| Z5 | Multi-praticien au MVP ? | **Non**, 1 chirurgien / tenant. Schema pret pour V1. | [ADR-0004](architecture/decisions/0004-multi-praticien-v1.md) |
+| Z5 | Multi-praticien au MVP ? | **Sans objet dans le fork commercial** (role CHIRURGIEN retire par ADR-0002). Le schema reste pret pour reintroduction si bascule HDS. | [ADR-0004](architecture/decisions/0004-multi-praticien-v1.md) / [ADR-0002](architecture/decisions/0002-suppression-role-chirurgien-et-notes.md) |
 | Z10 | Strategie de tests ? | **Pragmatique MVP** : securite obligatoire, happy paths + smoke E2E | [ADR-0005](architecture/decisions/0005-test-strategy.md) |
 | — | Parametrage reserve ADMIN ? | **Non**, ouvert a tous les roles (23/04, revert CDCF F28) | [ADR-0006](architecture/decisions/0006-config-open-to-all-roles.md) |
 

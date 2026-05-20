@@ -1,6 +1,8 @@
 # Parcours utilisateurs — Synthese
 
 > 8 parcours documentes. Versions detaillees dans `files(2)/glossaire-userflows-v3.md` Annexe B.
+>
+> **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN. Les parcours initialement portes par le chirurgien (B.2 agenda, B.6 ouverture agenda, B.3 devis technique) sont desormais executes par le COMMERCIAL. Les references "chirurgien" / "consultation chirurgicale" dans le corps du document sont des survivances de la version source — a remplacer mentalement par "praticien" (libre) ou "COMMERCIAL" selon le contexte. Reformulation complete prevue en P4 Sprint vocabulaire.
 
 ---
 
@@ -145,7 +147,7 @@ Si hesitation :
 
 5. Verification multi-roles :
    - Switch COMMERCIAL → Parametrage disparait
-   - Switch CHIRURGIEN → idem
+   - (Le switch CHIRURGIEN du repo source n'existe plus — ADR-0002)
    - Retour ADMIN → reapparait
 
 6. Donnees seed de test (8 process fictifs)
