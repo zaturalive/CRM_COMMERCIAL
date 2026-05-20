@@ -120,6 +120,56 @@ Le CRM informe l'utilisateur via placeholder UI et modal d'avertissement avant u
 > y compris les personnes concernees, decoulant d'un manquement aux
 > presentes obligations.
 
+### 2.4. Article Z — Droits des personnes concernees (clients finaux du Cabinet) (ajoute 2026-05-20)
+
+> **Z.1.** Le Cabinet (= Client de l'Editeur) reconnait que les personnes
+> concernees (= clients finaux du Cabinet, c'est-a-dire les personnes
+> dont les donnees sont saisies dans la Plateforme) disposent des droits
+> garantis par le RGPD :
+> - Droit d'acces (Art. 15)
+> - Droit de rectification (Art. 16)
+> - Droit a l'effacement / a l'oubli (Art. 17)
+> - Droit a la limitation du traitement (Art. 18)
+> - Droit a la portabilite (Art. 20)
+> - Droit d'opposition (Art. 21)
+> - **Droit a l'anonymisation** : toute personne peut demander au Cabinet
+>   que ses donnees soient anonymisees ou supprimees de la Plateforme.
+>   Le Cabinet s'engage a executer la demande sous 30 jours.
+>
+> **Z.2.** Information explicite des personnes concernees — obligation
+> du Cabinet : le Cabinet s'engage a inserer **dans la facture, le devis,
+> ou le contrat de prestation** remis a la personne concernee une mention
+> du type :
+>
+> > "Vos donnees personnelles (nom, prenom, telephone, email, ville,
+> > nature de la prestation envisagee, devis, documents administratifs)
+> > sont traitees par [Nom du Cabinet] et hebergees dans un CRM commercial
+> > non-HDS [referer l'editeur si pertinent]. Vous disposez d'un droit
+> > d'acces, de rectification, d'opposition, d'effacement et a
+> > l'anonymisation. Pour exercer ces droits ou refuser tout traitement
+> > de vos donnees dans cet outil, contactez [email contact RGPD du
+> > Cabinet]. Si vous souhaitez beneficier de notre prestation sans
+> > apparaitre dans notre outil de gestion, indiquez-le nous avant le
+> > debut de la relation commerciale."
+>
+> **Z.3.** Principe d'avertissement prealable : la conformite RGPD du
+> Cabinet repose sur **l'information claire et prealable** des personnes
+> concernees. Tant que le Cabinet informe le client de la presence de
+> ses donnees dans la Plateforme **avant** la saisie et qu'il propose
+> une alternative (refus du traitement), aucune saisie ne peut etre
+> consideree comme abusive.
+>
+> **Z.4.** Le Cabinet s'engage a tenir un **registre des demandes de
+> droits RGPD** (Art. 30) et a notifier l'Editeur en cas de demande
+> qui necessite une action technique sur la Plateforme (anonymisation,
+> export, suppression).
+>
+> **Z.5.** L'Editeur fournit au Cabinet des outils techniques pour
+> executer ces droits :
+> - Endpoint `GET /api/clients/:id/export` (export JSON des donnees du client)
+> - Endpoint `POST /api/clients/:id/anonymize` (anonymisation : prenom/nom/phone/email → "ANONYMISE", garde les donnees commerciales agregees)
+> - Endpoint `DELETE /api/clients/:id` (suppression cascade — exception : conservation des metadonnees comptables 5 ans Art. L.123-22 Code Commerce)
+
 ---
 
 ## 3. Mecaniques techniques associees (deja en place — P3)
