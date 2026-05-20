@@ -131,8 +131,9 @@ Le projet reste en **periode non-HDS** : aucune donnee de sante n'est stockee st
 | **D9** | Script migration externe (CSV → BDD) | 0.5 j + N j imprevu | P1 | — |
 | **D10** | Tests E2E + smoke complet | 1 j | P0 | D5/D7/D8 done |
 | **D11** | Deploy production Scaleway + DNS + smoke prod | 1 j | P0 | D4, D6, D10 done |
+| **D12** | i18n MVP fr/en (next-intl + 30 chaines critiques) | 1 j | P0 | — |
 
-**Total estime : 8.1 jours + buffer 0.5 j → 8.6 jours.**
+**Total estime : 9.1 jours + buffer 0.5 j → 9.6 jours (D12 ajoute apres meeting).**
 
 ### 3.2. Detail de chaque livrable
 
@@ -305,6 +306,24 @@ Devis final livre apres benchmark effectif.
 - Monitoring : verifier que Grafana voit le serveur, logs Loki coulent
 
 **Critere d'acceptance** : `https://crm-commercial.<domaine>/` repond, login admin OK, 1 cabinet test peut creer un client et un devis sans erreur.
+
+#### D12 — i18n MVP fr/en (next-intl + 30 chaines critiques)
+
+**Objectif** : preparer l'app pour servir des clients francophones et anglophones, avec une infra i18n complete et les chaines les plus visibles deja traduites.
+
+**Scope** :
+- Lib : `next-intl@4.12` en mode "without i18n routing" (locale via cookie, pas dans l'URL)
+- Locales supportees : `fr` (defaut) + `en`
+- Fichiers messages : `apps/frontend/messages/fr.json` + `messages/en.json` avec ~30 cles critiques (Common, Login, Sidebar, ProcessPanel, ProcessStage, Hds)
+- Configuration : `src/i18n/{routing,request,setLocale}.ts`
+- Composant `<LanguageSwitcher />` dans le footer Sidebar (boutons FR / EN)
+- Server action `setLocale()` qui ecrit le cookie + revalidate
+- `NextIntlClientProvider` integre dans `app/layout.tsx`
+- Composants refactores : `Sidebar.tsx` (navigation + appellation + non-HDS notice), `Header.tsx` (search + logout), `login/page.tsx` (titre + labels + features), `DocumentsTab.tsx` (modal HDS)
+
+**Hors scope (post-deadline, V1.1)** : PDF devis traduit, emails traduits, messages d'erreur Zod traduits, ~150 autres chaines composants a traduire au fil de l'eau.
+
+**Critere d'acceptance** : login marche en FR et EN, sidebar bilingue, switcher fonctionnel.
 
 ### 3.3. Risques deadline
 
