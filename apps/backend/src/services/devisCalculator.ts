@@ -128,7 +128,7 @@ export function calculateDevisTotal(
 ): DevisCalculationResult {
   const { interventions, cliniques, stays, options, customOptions } = input;
 
-  // ── 1. Honoraires chirurgien ──────────────────────────────────────────
+  // ── 1. Honoraires praticien (ADR-0002 : ex "chirurgien") ──────────────────────
   const honoraires = interventions.reduce(
     (acc, di) => acc + di.priceHonoraires,
     0

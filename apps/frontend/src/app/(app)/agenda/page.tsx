@@ -2,7 +2,7 @@ import { AgendaView } from "@/components/agenda/AgendaView";
 
 /**
  * EP07-S01 — Agenda vue projetee.
- * Accessible tous roles. Chirurgien : interface principale.
+ * Accessible tous roles (ADMIN + COMMERCIAL — ADR-0002 retire CHIRURGIEN).
  */
 export default function AgendaPage() {
   return (

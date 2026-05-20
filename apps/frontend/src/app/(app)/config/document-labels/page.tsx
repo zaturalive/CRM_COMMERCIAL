@@ -73,7 +73,7 @@ export default function ConfigDocumentLabelsPage() {
             {!loading && (!labels || labels.length === 0) && (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-sm text-text-secondary">
-                  Aucun document label. Exemples : Bilan sanguin, Consentement eclaire, Photos...
+                  Aucun document label. Exemples : Carte d'identite, RIB, Devis signe, CGV signees, Mutuelle...
                 </TableCell>
               </TableRow>
             )}

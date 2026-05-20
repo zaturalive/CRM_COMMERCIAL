@@ -23,26 +23,33 @@ interface Message {
  * une connexion WebSocket vers l'API WhatsApp Business Cloud + Claude API.
  */
 export function AIAgentWhatsAppPreview({ patientFirstName }: AIAgentWhatsAppPreviewProps) {
+  // ADR-0002 + EP06-S04 reformulee (2026-05-20) : mocks commerciaux uniquement,
+  // plus aucune reference a un document medical.
   const initial: Message[] = [
     {
       id: "m1",
       author: "bot",
-      text: `Bonjour ${patientFirstName}, je suis l'assistante virtuelle du Dr Delobaux.`,
+      text: `Bonjour ${patientFirstName}, je suis l'assistante virtuelle du cabinet. Votre devis est pret a signer.`,
     },
     {
       id: "m2",
-      author: "bot",
-      text: "Pourriez-vous m'envoyer votre bilan sanguin en photo ?",
+      author: "patient",
+      text: "Super, je peux y jeter un oeil quand ?",
     },
     {
       id: "m3",
-      author: "patient",
-      text: "Bien sur, je fais ca ce soir",
+      author: "bot",
+      text: "Vous pouvez le consulter via le lien que je viens de vous envoyer. Pouvez-vous m'envoyer votre RIB pour planifier l'acompte ?",
     },
     {
       id: "m4",
+      author: "patient",
+      text: "Bien sur, je fais ca ce soir.",
+    },
+    {
+      id: "m5",
       author: "bot",
-      text: "Parfait, je vous rappelle aussi votre consentement eclaire a signer.",
+      text: "Parfait. Merci aussi d'envoyer votre carte d'identite pour finaliser le dossier. Le RDV de pre-prestation est confirme pour le 12 juin.",
     },
   ];
 
@@ -55,23 +62,28 @@ export function AIAgentWhatsAppPreview({ patientFirstName }: AIAgentWhatsAppPrev
   }, [messages.length]);
 
   function pickBotReply(userText: string): string {
+    // ADR-0002 + EP06-S04 : keywords commerciaux uniquement (devis, rib,
+    // identite, rdv, acompte, solde, cgv). Pas de keyword medical.
     const t = userText.toLowerCase();
-    if (/bilan|sanguin|prise de sang/.test(t)) {
-      return "Parfait, je note que le bilan sanguin est fait. Envoyez-moi le fichier quand vous l'avez.";
+    if (/rib|prelevement|virement/.test(t)) {
+      return "Parfait, je note que le RIB est envoye. Je vais pouvoir planifier l'acompte.";
     }
-    if (/consentement|signe|signer/.test(t)) {
-      return "Super. Pensez aussi a la consultation anesthesiste avant l'intervention.";
+    if (/devis|sign|signature/.test(t)) {
+      return "Super. Une fois le devis signe, n'oubliez pas de retourner les CGV signees.";
     }
-    if (/photo|image|scan/.test(t)) {
-      return "Merci pour la photo, je la transmets au docteur.";
+    if (/identite|cni|passeport|justif/.test(t)) {
+      return "Merci pour le document, je le transmets au cabinet.";
     }
-    if (/rdv|rendez-vous|anesthesiste|consultation/.test(t)) {
-      return "Je regarde les creneaux disponibles chez l'anesthesiste et je reviens vers vous.";
+    if (/rdv|rendez-vous|date|planning/.test(t)) {
+      return "Je regarde les creneaux disponibles et je reviens vers vous.";
+    }
+    if (/acompte|solde|paiement|finance/.test(t)) {
+      return "Je note votre paiement et je transmets au cabinet. Vous recevrez un recu sous 24h.";
     }
     if (/merci|thanks|parfait/.test(t)) {
       return "Avec plaisir ! N'hesitez pas si vous avez d'autres questions.";
     }
-    return "Bien recu, je transmets au Dr Delobaux et je reviens vers vous rapidement.";
+    return "Bien recu, je transmets au cabinet et je reviens vers vous rapidement.";
   }
 
   function send() {

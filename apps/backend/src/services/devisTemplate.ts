@@ -251,8 +251,8 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   </div>
 
   <div class="signatures">
-    <div class="sign">Signature chirurgien</div>
-    <div class="sign">Signature patient</div>
+    <div class="sign">Signature praticien</div>
+    <div class="sign">Signature client</div>
   </div>
 
   <div class="footer">

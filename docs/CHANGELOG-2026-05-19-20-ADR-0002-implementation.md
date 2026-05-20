@@ -22,6 +22,7 @@ Implementation complete de l'ADR-0002 (retrait UserRole.CHIRURGIEN + Process.not
 | P3 | ✓ | 8 stories SUSPECT resolues : Modal HDS upload (Pattern B) + Placeholders UI (Pattern A) + clause CGU Art. X redigee |
 | P4.A | ✓ | Rename champs DB : consultationDate → dateRendezVous, dateIntervention → datePrestation, timeIntervention → heurePrestation. Migration non-destructive. 36 fichiers, 259/259 tests verts. |
 | P4.B | ✓ | Libelles UI : 6 chaines visibles "patient" → "client" (Header, Pipeline, ProcessTabs, FollowupView placeholders). Le reste (UI "intervention"/"consultation", filename `ConsultationDateDialog.tsx`) reste a faire dans un sprint dedie. |
+| P5 | ✓ | 2e passe HDS-CHECK complete : 50 stories + scan code source. **Trust Score 98.2 % (badge A)**. Rapport final dans `docs/product/HDS-CHECK-REPORT-2026-05-20-FINAL.md`. 5 residus code corriges (AIAgentWhatsAppPreview mocks, document-labels hint, DocumentLabelFormDialog placeholder, devisTemplate signature, agenda comment). |
 | P6 | ✓ | Doc sweep complet : 18 docs actifs alignes avec ADR-0002 (banners + edits ciblees), 10 stories impactees annotees |
 
 Total commits : 5 (mais 4 a pusher sur origin/main lors de la derniere mesure).

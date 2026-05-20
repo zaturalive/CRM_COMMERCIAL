@@ -103,7 +103,7 @@ export function DocumentLabelFormDialog({ open, onOpenChange, existing, onSucces
               id="label-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="ex: Bilan sanguin"
+              placeholder="ex: Carte d'identite, RIB, Devis signe"
               required
             />
           </div>
