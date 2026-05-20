@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "CRM Chirurgien",
-  description: "CRM multi-tenant pour cabinets de chirurgie esthetique",
+  title: "CRM Commercial",
+  description: "CRM multi-tenant pour cabinets de prestations esthetiques",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

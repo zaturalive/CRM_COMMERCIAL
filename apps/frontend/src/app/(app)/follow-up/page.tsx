@@ -1,7 +1,7 @@
 import { FollowupView } from "@/components/followup/FollowupView";
 
 export const metadata = {
-  title: "Follow-up — CRM Chirurgien",
+  title: "Follow-up — CRM Commercial",
 };
 
 export default function FollowupPage() {
