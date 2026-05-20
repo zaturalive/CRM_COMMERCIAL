@@ -33,14 +33,19 @@ Une lecture stricte du RGPD + position CJUE expose le repo a une qualification H
 
 **Pas de bascule HDS immediate.** Le projet reste sur un hebergement Scaleway non-HDS. La mitigation se fait par 3 mecaniques cumulatives :
 
-1. **CGU renforcees + consentement explicite (Art. 9.2.a RGPD)** — voir clause Art. X + Art. Y dans `docs/legal/CGU-clause-HDS-non-medical.md`. Le client signe et coche une clause qui :
+1. **CGU renforcees + consentement explicite (Art. 9.2.a RGPD)** — voir clause Art. X + Y + Z dans `docs/legal/CGU-clause-HDS-non-medical.md`. Le client signe et coche une clause qui :
    - Reconnait que le service rendu par le cabinet (chirurgie esthetique) **n'est pas une prestation medicale au sens HDS** (acte de bien-etre, pas de finalite therapeutique)
    - Consent expressement (Art. 9.2.a) au traitement des donnees relatives a la prestation envisagee dans un CRM **commercial** non-HDS
    - Reconnait que le CRM ne stocke aucune donnee medicale au sens strict (anamnese, examen clinique, ordonnance, CRO, etc.) — ces donnees restent dans le dossier patient du praticien (hors-CRM)
 
-2. **Securite renforcee** (cf. §5 ci-dessous)
+2. **Messaging in-app exhaustif** (decision Florian 2026-05-20, voir `docs/legal/MESSAGING-IN-APP-NON-HDS.md`) — strategie de substitution a la validation juriste formelle :
+   - Mention "commercial / non-HDS / pas de donnees de sante" repetee dans CHAQUE point de contact utilisateur (login, sidebar, footer, modales, placeholders, mails, PDF)
+   - Aucun ecran de saisie sans rappel — couverture 27 emplacements identifies
+   - Defense par exhaustivite : en cas de litige, preuve de l'information loyale et exhaustive
 
-3. **Hebergement Scaleway non-HDS** : VPS dedies en France, isolation reseau, chiffrement at rest, sauvegardes chiffrees.
+3. **Securite renforcee** (cf. §Securite renforcee ci-dessous + `docs/security/CHECKLIST-SCALEWAY-NON-HDS-V1.md`)
+
+4. **Hebergement Scaleway non-HDS** : VPS dedies en France, isolation reseau, chiffrement at rest, sauvegardes chiffrees.
 
 ## Risque residuel assume
 
