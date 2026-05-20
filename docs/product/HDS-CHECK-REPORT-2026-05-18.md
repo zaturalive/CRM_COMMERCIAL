@@ -1,29 +1,30 @@
-# Rapport HDS-Check des stories — 2026-05-18
+# Rapport HDS-Check des stories — 2026-05-18 (MAJ 2026-05-20)
 
 > Audit produit par le skill byan-hds-check (cf .claude/skills/byan-hds-check/SKILL.md)
 > Periode actuelle : NON-HDS (cf. ADR-0008 du repo source crm-chirurgien)
 >
 > **MAJ 2026-05-18 apres ADR-0002** : suppression du role CHIRURGIEN + suppression du
-> concept noteMedecin/notePraticien. Les annotations "rename chirurgien -> praticien"
-> dans la version initiale du rapport sont **obsoletes** — il faut lire desormais
-> "retirer la reference au role CHIRURGIEN, le COMMERCIAL fait l'action". Voir
-> [ADR-0002](../architecture/decisions/0002-suppression-role-chirurgien-et-notes.md)
-> pour le detail.
+> concept noteMedecin/notePraticien. Voir [ADR-0002](../architecture/decisions/0002-suppression-role-chirurgien-et-notes.md).
+>
+> **MAJ 2026-05-20 — P1 + P2 appliques** :
+> - P1 (ADR-0002 implementation) : schema + backend + frontend mis a jour, migration `20260519134100_remove_chirurgien_role_and_note_medecin` appliquee, tests verts (259/259).
+> - P2 (3 stories BLOCKED reformulees) : EP02-S05, EP05-S02, EP06-S04 passent de BLOCKED a `OK avec rename`. EP04-S05 reste BLOCKED tant que la story elle-meme n'est pas reformulee (le code est deja conforme — la note medicale est retiree).
+> - Documents labels du seed remplaces par 8 labels administratifs / financiers (carte d'identite, justificatif domicile, RIB, mutuelle, attestation employeur, devis signe, CGV signees, plan de financement).
 
-## Synthese globale (mise a jour ADR-0002)
+## Synthese globale (mise a jour P1 + P2)
 
-| Verdict | Compte initial | Compte apres ADR-0002 |
-|---------|----------------|----------------------|
-| OK | 10 | 10 (inchange) |
-| OK avec rename | 28 | 27 — la mention "chirurgien -> praticien" devient "retrait reference role CHIRURGIEN" |
-| SUSPECT | 8 | 8 (inchange) |
-| BLOCKED | 4 | 5 — EP04-S05 reste BLOCKED mais voit sa partie noteMedecin retiree de la story (au lieu d'une simple reformulation contractuelle) |
-| Total | 50 | 50 |
+| Verdict | Compte initial | Apres ADR-0002 | Apres P1 + P2 (2026-05-20) |
+|---------|----------------|----------------|-----------------------------|
+| OK | 10 | 10 | 10 |
+| OK avec rename | 28 | 27 | 32 (EP02-S05, EP04-S05, EP05-S02, EP06-S04 promues) |
+| SUSPECT | 8 | 8 | 8 (P3 a traiter) |
+| BLOCKED | 4 | 5 | 0 (toutes resolues le 2026-05-20) |
+| Total | 50 | 50 | 50 |
 
 NB : les annotations HDS-CHECK individuelles inserees dans chaque story restent celles
-de la passe initiale. Une seconde passe de l'agent byan-hds-check sera lancee par la
-prochaine instance Claude pour repasser sur chaque story avec les nouvelles regles
-ADR-0002. Voir `docs/ACTIONS-IMMEDIATES-2026-05-18.md` §3.
+de la passe initiale sauf pour EP02-S05, EP05-S02, EP06-S04 reecrites le 2026-05-20.
+Une seconde passe complete de l'agent byan-hds-check sera lancee en P5
+(cf. `docs/ACTIONS-IMMEDIATES-2026-05-18.md` §P5) une fois P3 + P4 termines.
 
 ## Stories OK
 
@@ -82,13 +83,15 @@ ADR-0002. Voir `docs/ACTIONS-IMMEDIATES-2026-05-18.md` §3.
 
 ## Stories BLOCKED (a reformuler ou reporter en HDS)
 
-- EP02-S05 : Document Labels + picker d'association — donnees Art. 9 detectees : Bilan sanguin, ECG, Consentement eclaire, "documents pre-operatoires" (seed §11). Action recommandee : remplacer le seed medical par des labels commerciaux uniquement (carte vitale, mutuelle, RIB, justificatif d'identite), ou reporter le seed medical en bascule HDS (ADR-0003 a venir).
+Toutes les stories BLOCKED initiales (4) ont ete resolues le 2026-05-20.
 
-- EP04-S05 : Notes commerciale + medicale avec droits role-based — donnees Art. 9 detectees : note medicale, noteMedecin, confidentiel medical. Cas canonique du skill §7.4 + exemple §9. **Decision ADR-0002 (2026-05-18)** : la partie medicale de la story est retiree purement et simplement (pas de notePraticien avec contractualisation). Le scope residuel de la story est reduit a la note commerciale (champ noteCommerciale) + retrait de la reference au role CHIRURGIEN puisque ce role est retire de la plateforme. Story implementable apres reformulation.
+- ~~EP02-S05 : Document Labels + picker d'association~~ — **RESOLU 2026-05-20**. Story reformulee + seed remplace par 8 labels administratifs / financiers (carte d'identite, justificatif domicile, RIB, mutuelle, attestation employeur, devis signe, CGV signees, plan de financement). Verdict : `OK avec rename`.
 
-- EP05-S02 : Devis technique (UI chirurgien) — donnees Art. 9 detectees : la formulation "focusser sur l'acte medical" requalifie la prestation en acte medical. Action recommandee : reformuler "focusser sur la partie technique de la prestation" + renommer chirurgien -> praticien. Apres reformulation, story implementable.
+- ~~EP04-S05 : Notes commerciale + medicale avec droits role-based~~ — **RESOLU 2026-05-20**. **Decision ADR-0002 (2026-05-18)** appliquee : la partie medicale est retiree (code + texte de la story). Scope residuel = note commerciale unique, plus de role-gating au-dela de l'auth. Verdict : `OK avec rename`.
 
-- EP06-S04 : Preview Agent IA mock WhatsApp interactif — donnees Art. 9 detectees : les messages mock pre-remplis citent explicitement "bilan sanguin" et "consentement eclaire". Action recommandee : reformuler les messages mock avec un contenu purement commercial (devis a signer, RDV a confirmer, RIB a fournir, justificatif d'identite). Apres reformulation, story implementable.
+- ~~EP05-S02 : Devis technique (UI chirurgien)~~ — **RESOLU 2026-05-20**. Story reformulee : "focusser sur la partie technique de la prestation" + role-gating CHIRURGIEN retire (COMMERCIAL + ADMIN ont la main). Verdict : `OK avec rename`.
+
+- ~~EP06-S04 : Preview Agent IA mock WhatsApp interactif~~ — **RESOLU 2026-05-20**. Mocks reformulees avec contenu purement commercial (devis a signer, RIB pour acompte, carte d'identite, RDV de pre-prestation). Verdict : `OK avec rename`.
 
 ## Recommandations transverses
 

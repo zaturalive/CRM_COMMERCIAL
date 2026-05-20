@@ -127,41 +127,47 @@ interface InterventionSpec {
   labelSlugs: string[];
 }
 
+// ADR-0002 + reformulation EP02-S05 (2026-05-20) :
+// Les labelSlugs referencent uniquement des documents administratifs et
+// financiers (id, rib, devis, cgv, mutuelle, employeur, financement,
+// justif). Plus aucune trace de documents medicaux (bilan, consent,
+// echo, mammo, etc.).
 const INTERVENTIONS: InterventionSpec[] = [
-  { slug: "lipo-360-f", name: "Liposuccion 360° Femmes", category: "CHIRURGIE", duration: 210, priceHonoraires: 900000, fees: [{ label: "Kit canules VASER", defaultPrice: 38000 }, { label: "Gaine post-op", defaultPrice: 12000 }], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "ordo", "photos-dos", "photos-face", "photos-profil"] },
-  { slug: "lipo-cuisses", name: "Liposuccion des cuisses", category: "CHIRURGIE", duration: 180, priceHonoraires: 850000, fees: [{ label: "Kit canules", defaultPrice: 35000 }], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "ordo"] },
-  { slug: "lipo-vaser-bras", name: "Liposuccion des bras VASER", category: "CHIRURGIE", duration: 90, priceHonoraires: 600000, fees: [{ label: "Kit canules VASER", defaultPrice: 28000 }], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid"] },
-  { slug: "bbl", name: "BBL — Brazilian Butt Lift", category: "CHIRURGIE", duration: 150, priceHonoraires: 1000000, fees: [{ label: "Kit injection", defaultPrice: 42000 }], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "ordo"] },
-  { slug: "protheses", name: "Protheses mammaires", category: "CHIRURGIE", duration: 90, priceHonoraires: 700000, fees: [{ label: "Protheses Motiva", defaultPrice: 180000, defaultQuantity: 2 }], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "echo", "mammo", "ordo"] },
-  { slug: "changement-protheses", name: "Changement de protheses", category: "CHIRURGIE", duration: 60, priceHonoraires: 550000, fees: [{ label: "Nouvelles protheses Motiva", defaultPrice: 180000, defaultQuantity: 2 }], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "echo"] },
-  { slug: "pexie", name: "Pexie mammaire (ptose)", category: "CHIRURGIE", duration: 120, priceHonoraires: 850000, fees: [], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "echo", "photos-face", "photos-profil"] },
-  { slug: "abdo", name: "Abdominoplastie", category: "CHIRURGIE", duration: 120, priceHonoraires: 950000, fees: [{ label: "Gaine abdo", defaultPrice: 15000 }], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "ordo", "photos-face", "photos-profil"] },
-  { slug: "rhino", name: "Rhinoplastie", category: "CHIRURGIE", duration: 90, priceHonoraires: 750000, fees: [], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid", "photos-face", "photos-profil"] },
-  { slug: "blepharo", name: "Blepharoplastie 4 paupieres", category: "CHIRURGIE", duration: 90, priceHonoraires: 600000, fees: [], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid"] },
-  { slug: "lifting", name: "Lifting cervico-facial", category: "CHIRURGIE", duration: 180, priceHonoraires: 950000, fees: [], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid"] },
-  { slug: "gyneco", name: "Gynecomastie homme", category: "CHIRURGIE", duration: 75, priceHonoraires: 600000, fees: [], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid"] },
-  { slug: "renuvion", name: "Renuvion", category: "CHIRURGIE", duration: 45, priceHonoraires: 350000, fees: [{ label: "Cartridge Renuvion", defaultPrice: 80000 }], labelSlugs: ["consent", "anesth", "pieceid"] },
-  { slug: "otoplastie", name: "Otoplastie (oreilles decollees)", category: "CHIRURGIE", duration: 60, priceHonoraires: 500000, fees: [], labelSlugs: ["bilan", "consent", "anesth", "pieceid"] },
-  { slug: "botox", name: "Botox global 3 zones + yeux + bouche", category: "MED_ESTH", duration: 30, priceHonoraires: 45000, fees: [{ label: "Toxine botulique", defaultPrice: 18000 }], labelSlugs: ["consent", "pieceid"] },
-  { slug: "ha-l", name: "Acide hyaluronique 1 mL", category: "MED_ESTH", duration: 20, priceHonoraires: 35000, fees: [{ label: "Seringue HA", defaultPrice: 18000 }], labelSlugs: ["consent", "pieceid"] },
-  { slug: "meso-corps", name: "Mesotherapie corps", category: "MED_ESTH", duration: 45, priceHonoraires: 25000, fees: [], labelSlugs: ["consent"] },
-  { slug: "peeling", name: "Peeling depigmentant visage", category: "MED_ESTH", duration: 60, priceHonoraires: 22000, fees: [], labelSlugs: ["consent"] },
-  { slug: "lipo-lipoedeme", name: "Liposuccion des Lipoedeme molle", category: "CHIRURGIE", duration: 180, priceHonoraires: 900000, fees: [], labelSlugs: ["bilan", "consent", "anesth", "ecg", "pieceid"] },
-  { slug: "skin-tightening", name: "Resserrement cutane ultrasons", category: "MED_ESTH", duration: 60, priceHonoraires: 45000, fees: [], labelSlugs: ["consent"] },
+  { slug: "lipo-360-f", name: "Liposuccion 360° Femmes", category: "CHIRURGIE", duration: 210, priceHonoraires: 900000, fees: [{ label: "Kit canules VASER", defaultPrice: 38000 }, { label: "Gaine post-op", defaultPrice: 12000 }], labelSlugs: ["id", "justif", "rib", "mutuelle", "devis", "cgv", "financement"] },
+  { slug: "lipo-cuisses", name: "Liposuccion des cuisses", category: "CHIRURGIE", duration: 180, priceHonoraires: 850000, fees: [{ label: "Kit canules", defaultPrice: 35000 }], labelSlugs: ["id", "rib", "mutuelle", "devis", "cgv"] },
+  { slug: "lipo-vaser-bras", name: "Liposuccion des bras VASER", category: "CHIRURGIE", duration: 90, priceHonoraires: 600000, fees: [{ label: "Kit canules VASER", defaultPrice: 28000 }], labelSlugs: ["id", "rib", "devis", "cgv"] },
+  { slug: "bbl", name: "BBL — Brazilian Butt Lift", category: "CHIRURGIE", duration: 150, priceHonoraires: 1000000, fees: [{ label: "Kit injection", defaultPrice: 42000 }], labelSlugs: ["id", "justif", "rib", "mutuelle", "devis", "cgv", "financement"] },
+  { slug: "protheses", name: "Protheses mammaires", category: "CHIRURGIE", duration: 90, priceHonoraires: 700000, fees: [{ label: "Protheses Motiva", defaultPrice: 180000, defaultQuantity: 2 }], labelSlugs: ["id", "justif", "rib", "mutuelle", "devis", "cgv", "financement"] },
+  { slug: "changement-protheses", name: "Changement de protheses", category: "CHIRURGIE", duration: 60, priceHonoraires: 550000, fees: [{ label: "Nouvelles protheses Motiva", defaultPrice: 180000, defaultQuantity: 2 }], labelSlugs: ["id", "rib", "mutuelle", "devis", "cgv"] },
+  { slug: "pexie", name: "Pexie mammaire (ptose)", category: "CHIRURGIE", duration: 120, priceHonoraires: 850000, fees: [], labelSlugs: ["id", "justif", "rib", "mutuelle", "devis", "cgv"] },
+  { slug: "abdo", name: "Abdominoplastie", category: "CHIRURGIE", duration: 120, priceHonoraires: 950000, fees: [{ label: "Gaine abdo", defaultPrice: 15000 }], labelSlugs: ["id", "justif", "rib", "mutuelle", "devis", "cgv", "financement"] },
+  { slug: "rhino", name: "Rhinoplastie", category: "CHIRURGIE", duration: 90, priceHonoraires: 750000, fees: [], labelSlugs: ["id", "rib", "mutuelle", "devis", "cgv"] },
+  { slug: "blepharo", name: "Blepharoplastie 4 paupieres", category: "CHIRURGIE", duration: 90, priceHonoraires: 600000, fees: [], labelSlugs: ["id", "rib", "devis", "cgv"] },
+  { slug: "lifting", name: "Lifting cervico-facial", category: "CHIRURGIE", duration: 180, priceHonoraires: 950000, fees: [], labelSlugs: ["id", "justif", "rib", "mutuelle", "devis", "cgv", "financement"] },
+  { slug: "gyneco", name: "Gynecomastie homme", category: "CHIRURGIE", duration: 75, priceHonoraires: 600000, fees: [], labelSlugs: ["id", "rib", "devis", "cgv"] },
+  { slug: "renuvion", name: "Renuvion", category: "CHIRURGIE", duration: 45, priceHonoraires: 350000, fees: [{ label: "Cartridge Renuvion", defaultPrice: 80000 }], labelSlugs: ["id", "rib", "devis", "cgv"] },
+  { slug: "otoplastie", name: "Otoplastie (oreilles decollees)", category: "CHIRURGIE", duration: 60, priceHonoraires: 500000, fees: [], labelSlugs: ["id", "rib", "devis", "cgv"] },
+  { slug: "botox", name: "Botox global 3 zones + yeux + bouche", category: "MED_ESTH", duration: 30, priceHonoraires: 45000, fees: [{ label: "Toxine botulique", defaultPrice: 18000 }], labelSlugs: ["id", "devis", "cgv"] },
+  { slug: "ha-l", name: "Acide hyaluronique 1 mL", category: "MED_ESTH", duration: 20, priceHonoraires: 35000, fees: [{ label: "Seringue HA", defaultPrice: 18000 }], labelSlugs: ["id", "devis", "cgv"] },
+  { slug: "meso-corps", name: "Mesotherapie corps", category: "MED_ESTH", duration: 45, priceHonoraires: 25000, fees: [], labelSlugs: ["id", "devis", "cgv"] },
+  { slug: "peeling", name: "Peeling depigmentant visage", category: "MED_ESTH", duration: 60, priceHonoraires: 22000, fees: [], labelSlugs: ["id", "devis", "cgv"] },
+  { slug: "lipo-lipoedeme", name: "Liposuccion des Lipoedeme molle", category: "CHIRURGIE", duration: 180, priceHonoraires: 900000, fees: [], labelSlugs: ["id", "rib", "mutuelle", "devis", "cgv"] },
+  { slug: "skin-tightening", name: "Resserrement cutane ultrasons", category: "MED_ESTH", duration: 60, priceHonoraires: 45000, fees: [], labelSlugs: ["id", "devis", "cgv"] },
 ];
 
+// ADR-0002 + reformulation EP02-S05 (2026-05-20) :
+// Anciens labels medicaux (bilan, consent, anesth, ecg, ordo, echo, mammo,
+// photos-face/profil/dos) retires. Remplaces par 8 labels administratifs
+// et financiers neutres.
 const DOCUMENT_LABELS = [
-  { slug: "bilan", name: "Bilan sanguin", description: "Bilan biologique pre-op recent (< 1 mois)" },
-  { slug: "consent", name: "Consentement eclaire", description: "Formulaire de consentement signe" },
-  { slug: "anesth", name: "Consultation anesthesiste", description: "Compte-rendu pre-anesthesique" },
-  { slug: "ecg", name: "ECG", description: "Electrocardiogramme recent" },
-  { slug: "pieceid", name: "Piece d'identite", description: "CNI ou passeport en cours de validite" },
-  { slug: "ordo", name: "Ordonnance pre-op", description: "Traitements et precautions" },
-  { slug: "photos-face", name: "Photos face", description: "Photo de face en lumiere naturelle" },
-  { slug: "photos-profil", name: "Photos profil", description: "Photo de profil gauche + droite" },
-  { slug: "photos-dos", name: "Photos dos", description: "Photo de dos" },
-  { slug: "echo", name: "Echographie mammaire", description: "Pour interventions mammaires" },
-  { slug: "mammo", name: "Mammographie", description: "Recommandee si > 35 ans" },
+  { slug: "id", name: "Carte d'identite", description: "CNI ou passeport en cours de validite" },
+  { slug: "justif", name: "Justificatif de domicile", description: "Facture energie / telecom < 3 mois" },
+  { slug: "rib", name: "RIB", description: "Releve d'identite bancaire pour prelevement acompte / solde" },
+  { slug: "mutuelle", name: "Mutuelle", description: "Carte de tiers payant ou attestation mutuelle" },
+  { slug: "employeur", name: "Attestation employeur", description: "Preuve de revenus pour dossier de financement" },
+  { slug: "devis", name: "Devis signe", description: "Devis emis par le cabinet, contresigne par le client" },
+  { slug: "cgv", name: "CGV signees", description: "Conditions generales de vente acceptees et signees" },
+  { slug: "financement", name: "Plan de financement", description: "Echeancier de paiement valide par le client" },
 ];
 
 async function main() {
