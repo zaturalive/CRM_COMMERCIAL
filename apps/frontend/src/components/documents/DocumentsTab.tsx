@@ -17,6 +17,7 @@ import {
   Video,
 } from "lucide-react";
 import { getSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/api";
 import { formatApiError } from "@/lib/formatApiError";
 import { cn } from "@/lib/utils";
@@ -54,6 +55,8 @@ interface DocumentsTabProps {
 const UPLOAD_CONSENT_KEY = "crm-commercial:hds-upload-consent";
 
 export function DocumentsTab({ processId, clientFirstName, onChanged }: DocumentsTabProps) {
+  const tHds = useTranslations("Hds");
+  const tCommon = useTranslations("Common");
   const [docs, setDocs] = useState<ProcessDocument[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -348,29 +351,20 @@ export function DocumentsTab({ processId, clientFirstName, onChanged }: Document
       <Dialog open={pendingUpload !== null} onOpenChange={(o) => !o && setPendingUpload(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Avant d'uploader ce document</DialogTitle>
-            <DialogDescription>
-              Le CRM Commercial est en periode non-HDS : aucun document medical
-              ne doit y etre stocke. Tu ne dois televerser que des documents
-              <strong> administratifs ou financiers </strong>
-              (carte d'identite, justificatif de domicile, RIB, mutuelle,
-              devis signe, CGV signees, plan de financement).
-            </DialogDescription>
+            <DialogTitle>{tHds("uploadModalTitle")}</DialogTitle>
+            <DialogDescription>{tHds("uploadModalIntro")}</DialogDescription>
           </DialogHeader>
 
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            Sont <strong>interdits</strong> : bilan sanguin, ECG,
-            consentement eclaire, ordonnance, compte-rendu operatoire (CRO),
-            photo avant/apres, echographie, mammographie, et tout document
-            de santé au sens de l'Art. 9 RGPD.
+            {tHds("uploadModalForbidden")}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setPendingUpload(null)}>
-              Annuler
+              {tCommon("cancel")}
             </Button>
             <Button onClick={confirmConsentAndUpload}>
-              Je confirme et j'upload
+              {tHds("uploadModalConfirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,10 +1,12 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { LogOut, Search } from "lucide-react";
 
 export function Header() {
   const { data: session } = useSession();
+  const tCommon = useTranslations("Common");
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-[color:var(--border)] bg-white/60 px-6 backdrop-blur">
@@ -17,10 +19,10 @@ export function Header() {
           />
           <input
             type="search"
-            placeholder="Rechercher un client..."
+            placeholder={`${tCommon("search")}...`}
             disabled
             className="w-full rounded-md border border-[color:var(--border)] bg-[color:var(--accent-lighter)] py-2 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none disabled:cursor-not-allowed"
-            aria-label="Recherche client (arrive en EP03)"
+            aria-label={tCommon("search")}
           />
         </div>
       </div>
@@ -37,10 +39,10 @@ export function Header() {
             signOut({ callbackUrl: `${window.location.origin}/login` })
           }
           className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border)] px-3 py-1.5 text-sm text-text-primary hover:bg-white/80"
-          aria-label="Se deconnecter"
+          aria-label={tCommon("logout")}
         >
           <LogOut size={14} strokeWidth={1.75} />
-          <span>Se deconnecter</span>
+          <span>{tCommon("logout")}</span>
         </button>
       </div>
     </header>

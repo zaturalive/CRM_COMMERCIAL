@@ -1,0 +1,77 @@
+{
+  "Common": {
+    "appName": "CRM Commercial",
+    "appTagline": "Sales management platform for aesthetic care centers",
+    "nonHdsNotice": "Non-HDS commercial tool, no health data is stored",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "logout": "Sign out"
+  },
+  "Login": {
+    "title": "Sign in",
+    "subtitle": "Access your center",
+    "cabinetCode": "Center code",
+    "cabinetPlaceholder": "e.g. demo",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in...",
+    "errorInvalid": "Invalid email, password or center code",
+    "demoAccountsTitle": "Demo accounts (password: demo):",
+    "feature1": "5-stage sales pipeline",
+    "feature2": "Two-step quote with automatic calculation",
+    "feature3": "Service agenda",
+    "feature4": "Document management"
+  },
+  "Sidebar": {
+    "dashboard": "Dashboard",
+    "pipeline": "Pipeline",
+    "followUp": "Follow-up",
+    "clients": "Clients",
+    "agenda": "Agenda",
+    "settings": "Settings",
+    "payments": "Payments",
+    "aiAgent": "AI Agent",
+    "messages": "Messages",
+    "signatures": "Signatures",
+    "demoSwitch": "Demo - switch role",
+    "languageLabel": "Language"
+  },
+  "ProcessPanel": {
+    "tabOverview": "Overview",
+    "tabNotes": "Notes",
+    "tabDocuments": "Documents",
+    "tabQuote": "Quote",
+    "tabFollowup": "Follow-up",
+    "clientSection": "Client",
+    "qualificationSection": "Qualification",
+    "interventionsSection": "Services",
+    "keyDatesSection": "Key dates"
+  },
+  "ProcessStage": {
+    "CONTACT": "Contact",
+    "CONSULTATION": "Appointment",
+    "POST_CONSULT": "Post-appointment",
+    "CONFIRMEE": "Confirmed",
+    "OP_PROGRAMMEE": "Service scheduled",
+    "EFFECTUEE": "Completed",
+    "NON_QUALIFIE": "Not qualified",
+    "FOLLOWUP": "Follow-up",
+    "ANNULEE": "Cancelled"
+  },
+  "Hds": {
+    "uploadModalTitle": "Before uploading this document",
+    "uploadModalIntro": "CRM Commercial operates in non-HDS mode: no medical document may be stored. Only upload administrative or financial documents (ID card, proof of address, IBAN, health insurance card, signed quote, signed terms, financing plan).",
+    "uploadModalForbidden": "Forbidden: blood test, ECG, informed consent, prescription, operating report (OR), before/after photos, ultrasound, mammography, and any health data as defined by Article 9 of GDPR.",
+    "uploadModalConfirm": "I confirm and upload",
+    "noteCommercialOnly": "Commercial note only — no medical data.",
+    "footerNotice": "CRM Commercial non-HDS - no health data should be stored in this tool"
+  }
+}

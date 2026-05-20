@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT ?? "demo";
 const TENANT_STORAGE_KEY = "crm-chirurgie:last-cabinet";
 
 export default function LoginPage() {
+  const t = useTranslations("Login");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -46,7 +49,7 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (res?.error) {
-      setError("Email, mot de passe ou cabinet invalide");
+      setError(t("errorInvalid"));
       return;
     }
     if (typeof window !== "undefined") {
@@ -67,15 +70,18 @@ export default function LoginPage() {
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent font-display text-3xl font-bold text-white shadow-lg">
             C
           </div>
-          <h1 className="font-display text-3xl font-bold text-white">CRM Commercial</h1>
+          <h1 className="font-display text-3xl font-bold text-white">{tCommon("appName")}</h1>
           <p className="mt-2 text-sm text-white/60">
-            La plateforme CRM pour cabinets de prestations esthetiques
+            {tCommon("appTagline")}
+          </p>
+          <p className="mt-1 text-[11px] text-amber-300/80">
+            {tCommon("nonHdsNotice")}
           </p>
           <ul className="mt-8 space-y-2 text-left text-sm text-white/70">
-            <li>Pipeline commerciale 5 etapes</li>
-            <li>Devis en deux temps avec calcul auto</li>
-            <li>Agenda des prestations</li>
-            <li>Gestion documentaire</li>
+            <li>{t("feature1")}</li>
+            <li>{t("feature2")}</li>
+            <li>{t("feature3")}</li>
+            <li>{t("feature4")}</li>
           </ul>
         </div>
       </div>
@@ -83,15 +89,15 @@ export default function LoginPage() {
       {/* Droite : formulaire */}
       <div className="flex w-full items-center justify-center p-8 md:w-1/2">
         <div className="w-full max-w-sm">
-          <h2 className="font-display text-2xl font-bold text-text-primary">Connexion</h2>
+          <h2 className="font-display text-2xl font-bold text-text-primary">{t("title")}</h2>
           <p className="mt-1 text-sm text-text-secondary">
-            Accedez a votre cabinet
+            {t("subtitle")}
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div>
               <label htmlFor="cabinet" className="block text-sm font-medium text-text-primary">
-                Code cabinet
+                {t("cabinetCode")}
               </label>
               <input
                 id="cabinet"
@@ -99,14 +105,14 @@ export default function LoginPage() {
                 value={tenantSlug}
                 onChange={(e) => setTenantSlug(e.target.value)}
                 required
-                placeholder="ex : demo"
+                placeholder={t("cabinetPlaceholder")}
                 autoComplete="organization"
                 className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-text-primary">
-                Email
+                {t("email")}
               </label>
               <input
                 id="email"
@@ -119,7 +125,7 @@ export default function LoginPage() {
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-text-primary">
-                Mot de passe
+                {t("password")}
               </label>
               <input
                 id="password"
@@ -136,12 +142,12 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60"
             >
-              {loading ? "Connexion..." : "Se connecter"}
+              {loading ? t("submitting") : t("submit")}
             </button>
           </form>
 
           <div className="mt-6 space-y-1.5 text-xs text-text-secondary">
-            <p className="font-semibold">Comptes demo (mot de passe <code>demo</code>) :</p>
+            <p className="font-semibold">{t("demoAccountsTitle")}</p>
             <p>
               Cabinet <code>demo</code> :{" "}
               <code>admin / commercial @cabinet-demo.fr</code>

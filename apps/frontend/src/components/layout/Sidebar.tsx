@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import {
   LayoutDashboard,
   KanbanSquare,
@@ -18,12 +19,14 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleSwitcher } from "./RoleSwitcher";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 type UserRole = "ADMIN" | "COMMERCIAL";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: "dashboard" | "pipeline" | "followUp" | "clients" | "agenda" | "settings" | "payments" | "aiAgent" | "messages" | "signatures";
+  testId: string;  // garde stable pour les e2e existants (FR minuscule)
   icon: LucideIcon;
   roles: UserRole[]; // roles autorises a voir ce lien
   badge?: "V1" | "V1.1" | "V1.2";
@@ -31,85 +34,26 @@ interface NavItem {
 }
 
 // Source : spec-design-figma-v1_3.md §2.1 (sidebar role-aware) + CDCF F28.
+// MAJ D12 (i18n) : labelKey pointe vers messages/{fr,en}.json -> Sidebar.X.
 const NAV_ITEMS: NavItem[] = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    roles: ["ADMIN", "COMMERCIAL"],
-  },
-  {
-    href: "/pipeline",
-    label: "Pipeline",
-    icon: KanbanSquare,
-    roles: ["ADMIN", "COMMERCIAL"],
-  },
-  {
-    href: "/follow-up",
-    label: "Follow-up",
-    icon: Activity,
-    // EP09-S02 : page dediee aux process en stage=FOLLOWUP avec
-    // sub-pipeline J0/J1/J3/J7/J14/J30/Abandon.
-    roles: ["ADMIN", "COMMERCIAL"],
-  },
-  {
-    href: "/clients",
-    label: "Clients",
-    icon: Users,
-    roles: ["ADMIN", "COMMERCIAL"],
-  },
-  {
-    href: "/agenda",
-    label: "Agenda",
-    icon: Calendar,
-    roles: ["ADMIN", "COMMERCIAL"],
-  },
-  {
-    href: "/config/cliniques",
-    label: "Parametrage",
-    icon: Settings,
-    // Decision user 23/04 : ouvert a tous les roles (revert du "ADMIN exclusif"
-    // des specs CDCF F28). Tous peuvent ajouter des parametrages.
-    roles: ["ADMIN", "COMMERCIAL"],
-  },
+  { href: "/dashboard", labelKey: "dashboard", testId: "dashboard", icon: LayoutDashboard, roles: ["ADMIN", "COMMERCIAL"] },
+  { href: "/pipeline", labelKey: "pipeline", testId: "pipeline", icon: KanbanSquare, roles: ["ADMIN", "COMMERCIAL"] },
+  { href: "/follow-up", labelKey: "followUp", testId: "follow-up", icon: Activity, roles: ["ADMIN", "COMMERCIAL"] },
+  { href: "/clients", labelKey: "clients", testId: "clients", icon: Users, roles: ["ADMIN", "COMMERCIAL"] },
+  { href: "/agenda", labelKey: "agenda", testId: "agenda", icon: Calendar, roles: ["ADMIN", "COMMERCIAL"] },
+  { href: "/config/cliniques", labelKey: "settings", testId: "parametrage", icon: Settings, roles: ["ADMIN", "COMMERCIAL"] },
   // Coming Soon — visibles a tous les roles pour teaser les futures features.
-  {
-    href: "#",
-    label: "Paiements",
-    icon: CreditCard,
-    roles: ["ADMIN", "COMMERCIAL"],
-    badge: "V1.1",
-    disabled: true,
-  },
-  {
-    href: "#",
-    label: "Agent IA",
-    icon: Bot,
-    roles: ["ADMIN", "COMMERCIAL"],
-    badge: "V1.2",
-    disabled: true,
-  },
-  {
-    href: "#",
-    label: "Messages",
-    icon: Mail,
-    roles: ["ADMIN", "COMMERCIAL"],
-    badge: "V1",
-    disabled: true,
-  },
-  {
-    href: "#",
-    label: "Signatures",
-    icon: FileSignature,
-    roles: ["ADMIN", "COMMERCIAL"],
-    badge: "V1.1",
-    disabled: true,
-  },
+  { href: "#", labelKey: "payments", testId: "paiements", icon: CreditCard, roles: ["ADMIN", "COMMERCIAL"], badge: "V1.1", disabled: true },
+  { href: "#", labelKey: "aiAgent", testId: "agent-ia", icon: Bot, roles: ["ADMIN", "COMMERCIAL"], badge: "V1.2", disabled: true },
+  { href: "#", labelKey: "messages", testId: "messages", icon: Mail, roles: ["ADMIN", "COMMERCIAL"], badge: "V1", disabled: true },
+  { href: "#", labelKey: "signatures", testId: "signatures", icon: FileSignature, roles: ["ADMIN", "COMMERCIAL"], badge: "V1.1", disabled: true },
 ];
 
 export function Sidebar() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const t = useTranslations("Sidebar");
+  const tCommon = useTranslations("Common");
 
   if (!session) return null;
   const role = session.role as UserRole;
@@ -129,10 +73,13 @@ export function Sidebar() {
           </div>
           <div>
             <div className="font-display text-sm font-semibold text-white">
-              CRM Commercial
+              {tCommon("appName")}
             </div>
             <div className="text-[11px] text-white/50">
               {session.tenantName ?? session.tenantSlug}
+            </div>
+            <div className="text-[9px] text-white/40 mt-0.5">
+              {tCommon("nonHdsNotice")}
             </div>
           </div>
         </div>
@@ -170,7 +117,7 @@ export function Sidebar() {
               }
             >
               <Icon size={18} strokeWidth={1.75} />
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1">{t(item.labelKey)}</span>
               {item.badge && (
                 <span
                   className={cn(
@@ -187,14 +134,14 @@ export function Sidebar() {
           );
 
           return item.disabled ? (
-            <div key={item.label} data-testid={`nav-${item.label.toLowerCase()}`}>
+            <div key={item.labelKey} data-testid={`nav-${item.testId}`}>
               {content}
             </div>
           ) : (
             <Link
-              key={item.label}
+              key={item.labelKey}
               href={item.href}
-              data-testid={`nav-${item.label.toLowerCase()}`}
+              data-testid={`nav-${item.testId}`}
             >
               {content}
             </Link>
@@ -217,6 +164,7 @@ export function Sidebar() {
           </div>
         </div>
         <RoleSwitcher />
+        <LanguageSwitcher />
       </div>
     </aside>
   );

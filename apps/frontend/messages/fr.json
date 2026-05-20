@@ -1,0 +1,77 @@
+{
+  "Common": {
+    "appName": "CRM Commercial",
+    "appTagline": "Plateforme de gestion commerciale pour cabinets de prestations esthetiques",
+    "nonHdsNotice": "Outil commercial non-HDS, aucune donnee de sante n'est stockee",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "add": "Ajouter",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "search": "Rechercher",
+    "loading": "Chargement...",
+    "saving": "Sauvegarde...",
+    "logout": "Se deconnecter"
+  },
+  "Login": {
+    "title": "Connexion",
+    "subtitle": "Accedez a votre cabinet",
+    "cabinetCode": "Code cabinet",
+    "cabinetPlaceholder": "ex : demo",
+    "email": "Email",
+    "password": "Mot de passe",
+    "submit": "Se connecter",
+    "submitting": "Connexion...",
+    "errorInvalid": "Email, mot de passe ou cabinet invalide",
+    "demoAccountsTitle": "Comptes demo (mot de passe demo) :",
+    "feature1": "Pipeline commerciale 5 etapes",
+    "feature2": "Devis en deux temps avec calcul auto",
+    "feature3": "Agenda des prestations",
+    "feature4": "Gestion documentaire"
+  },
+  "Sidebar": {
+    "dashboard": "Tableau de bord",
+    "pipeline": "Pipeline",
+    "followUp": "Follow-up",
+    "clients": "Clients",
+    "agenda": "Agenda",
+    "settings": "Parametrage",
+    "payments": "Paiements",
+    "aiAgent": "Agent IA",
+    "messages": "Messages",
+    "signatures": "Signatures",
+    "demoSwitch": "Demo - changer role",
+    "languageLabel": "Langue"
+  },
+  "ProcessPanel": {
+    "tabOverview": "Vue d'ensemble",
+    "tabNotes": "Notes",
+    "tabDocuments": "Documents",
+    "tabQuote": "Devis",
+    "tabFollowup": "Suivi",
+    "clientSection": "Client",
+    "qualificationSection": "Qualification",
+    "interventionsSection": "Prestations",
+    "keyDatesSection": "Dates cles"
+  },
+  "ProcessStage": {
+    "CONTACT": "Contact",
+    "CONSULTATION": "Rendez-vous",
+    "POST_CONSULT": "Post-rdv",
+    "CONFIRMEE": "Confirmee",
+    "OP_PROGRAMMEE": "Prestation programmee",
+    "EFFECTUEE": "Effectuee",
+    "NON_QUALIFIE": "Non qualifie",
+    "FOLLOWUP": "Follow-up",
+    "ANNULEE": "Annulee"
+  },
+  "Hds": {
+    "uploadModalTitle": "Avant d'uploader ce document",
+    "uploadModalIntro": "Le CRM Commercial est en periode non-HDS : aucun document medical ne doit y etre stocke. Tu ne dois televerser que des documents administratifs ou financiers (carte d'identite, justificatif de domicile, RIB, mutuelle, devis signe, CGV signees, plan de financement).",
+    "uploadModalForbidden": "Sont interdits : bilan sanguin, ECG, consentement eclaire, ordonnance, compte-rendu operatoire (CRO), photo avant/apres, echographie, mammographie, et tout document de sante au sens de l'Art. 9 RGPD.",
+    "uploadModalConfirm": "Je confirme et j'upload",
+    "noteCommercialOnly": "Note commerciale uniquement — pas de donnee medicale.",
+    "footerNotice": "CRM commercial non-HDS - aucune donnee de sante ne doit etre stockee dans cet outil"
+  }
+}

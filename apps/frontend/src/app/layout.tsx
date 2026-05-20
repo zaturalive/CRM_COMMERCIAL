@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import { authOptions } from "@/lib/auth";
 import { SessionProvider } from "@/components/providers/SessionProvider";
 import { Toaster } from "@/components/ui/Toast";
@@ -14,14 +16,18 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
+  const locale = await getLocale();
+  const messages = await getMessages();
   return (
     <html
-      lang="fr"
+      lang={locale}
       className={cn(inter.variable, dmSans.variable, jetbrainsMono.variable)}
     >
       <body className="font-sans">
-        <SessionProvider session={session}>{children}</SessionProvider>
-        <Toaster />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <SessionProvider session={session}>{children}</SessionProvider>
+          <Toaster />
+        </NextIntlClientProvider>
       </body>
     </html>
   );
