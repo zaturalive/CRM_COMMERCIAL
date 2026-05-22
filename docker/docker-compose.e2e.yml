@@ -17,12 +17,12 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.playwright
     container_name: crm-commercial-e2e
-    # network_mode: host permet au container E2E de voir `localhost:3200`
+    # network_mode: host permet au container E2E de voir `localhost:3301`
     # comme l'hote — meme URL que NEXTAUTH_URL cote frontend container.
     # Pas de conflit de coherence, les cookies NextAuth voyagent correctement.
     network_mode: host
     environment:
-      - BASE_URL=http://localhost:3300
+      - BASE_URL=http://localhost:3301
       - CI=true
     volumes:
       - ../apps/frontend/playwright-report:/app/apps/frontend/playwright-report
