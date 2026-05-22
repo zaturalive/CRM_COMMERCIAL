@@ -53,7 +53,7 @@ DevisIntervention (1) ──< (N) DevisInterventionFee
 
 Index : `(tenantId, email)` unique.
 
-### 2.3 Client (fiche patient perenne)
+### 2.3 Client (fiche client perenne)
 
 | Champ | Type | Contraintes | Description |
 |---|---|---|---|
@@ -88,7 +88,7 @@ Index : `(tenantId, phone)`, `(tenantId, email)`.
 | followupReasonDetail | Text | NULL | Si Autre |
 | **followupSubStage** | **Enum FollowupSubStage** | **NULL** | **EP09 : J0/J1/J3/J7/J14/J30/ABANDON, NULL si stage ≠ FOLLOWUP** |
 | **followupSubStageEnteredAt** | **DateTime** | **NULL** | **EP09 : timestamp d'entree dans le sub-stage actuel** |
-| consultationDate | DateTime | NULL | Obligatoire pour CONTACT → CONSULTATION |
+| dateRendezVous | DateTime | NULL | Obligatoire pour CONTACT → CONSULTATION (ex-`consultationDate`, P4.A 2026-05-20) |
 | budget | Int | NULL | centimes euros |
 | noteCommerciale | Text | NULL | Ecriture COMMERCIAL + ADMIN (ADR-0002 : plus de role-gating) |
 | ~~noteMedecin~~ | ~~Text~~ | — | **Retire par ADR-0002 (fork commercial non-HDS)** — colonne supprimee par migration `20260519134100_remove_chirurgien_role_and_note_medecin` |
@@ -120,7 +120,7 @@ Contrainte : `UNIQUE(processId, interventionId)`.
 | category | String | NOT NULL | CHIRURGIE, MED_ESTH, SOIN |
 | duration | Int | NOT NULL | minutes |
 | priceHonoraires | Int | NOT NULL | centimes euros |
-| marginCoeff | Decimal | NULL | Non montre au patient |
+| marginCoeff | Decimal | NULL | Non montre au client |
 | isActive | Boolean | DEFAULT true | |
 | createdAt | DateTime | DEFAULT now() | |
 
@@ -203,13 +203,13 @@ Contrainte : les intervalles `[dureeMin, dureeMax]` ne se chevauchent pas par cl
 | priceHonoraires | Int | NOT NULL | snapshot a la creation |
 | duration | Int | NOT NULL | snapshot a la creation |
 | cliniqueId | UUID | FK Clinique, NULL | renseigne par commercial uniquement |
-| dateIntervention | DateTime | NULL | date op renseignee par commercial |
-| timeIntervention | Time | NULL | v1.5 — heure HH:MM, CDCT §4.3 |
+| datePrestation | DateTime | NULL | date prestation renseignee par commercial (ex-`dateIntervention`, P4.A 2026-05-20) |
+| heurePrestation | Time | NULL | v1.5 — heure HH:MM (ex-`timeIntervention`, P4.A 2026-05-20) |
 | isDone | Boolean | DEFAULT false | cochee par COMMERCIAL + ADMIN (ADR-0002) |
 | doneAt | DateTime | NULL | |
 | order | Int | DEFAULT 0 | |
 
-**Regle metier** : plusieurs `DevisIntervention` peuvent partager (cliniqueId, dateIntervention) — chaque ligne garde sa `timeIntervention` propre.
+**Regle metier** : plusieurs `DevisIntervention` peuvent partager (cliniqueId, datePrestation) — chaque ligne garde sa `heurePrestation` propre.
 
 ### 2.13 DevisInterventionFee (snapshot frais supp par ligne de devis)
 
@@ -502,7 +502,7 @@ Isolation tenant : via le `Process` parent (chaque handler verifie l'ownership).
 
 | De | Vers | Conditions | Action auto |
 |---|---|---|---|
-| CONTACT | CONSULTATION | `isQualified = true` AND `consultationDate NOT NULL` | — |
+| CONTACT | CONSULTATION | `isQualified = true` AND `dateRendezVous NOT NULL` | — |
 | CONTACT | NON_QUALIFIE | `isQualified = false` AND `nonQualifieReason NOT NULL` | — |
 | NON_QUALIFIE | CONTACT | Manuel | — |
 | CONSULTATION | POST_CONSULT | ≥ 1 `DevisIntervention` sur le process | `Devis.status = TECHNIQUE_REMPLI` |
@@ -517,11 +517,11 @@ Isolation tenant : via le `Process` parent (chaque handler verifie l'ownership).
 
 - `NON_QUALIFIE` requiert `nonQualifieReason` non vide
 - `FOLLOWUP` requiert `followupReason` non null
-- Transition CONTACT → CONSULTATION requiert `consultationDate` non null
+- Transition CONTACT → CONSULTATION requiert `dateRendezVous` non null (ex-`consultationDate`)
 - ~~`noteMedecin`~~ : **retire par ADR-0002** (migration `20260519134100_remove_chirurgien_role_and_note_medecin`)
 - `noteCommerciale` ecriture COMMERCIAL + ADMIN (plus de role-gating)
 - Devis technique : `cliniqueId` reste NULL sur `DevisIntervention`
-- Devis commercial : `cliniqueId`, `dateIntervention`, `timeIntervention` renseignes par le COMMERCIAL
+- Devis commercial : `cliniqueId`, `datePrestation`, `heurePrestation` renseignes par le COMMERCIAL
 - `DevisStay.mode = NUIT` exige `nightCount ≥ 1 AND ≤ 30`
 - `DevisCustomOption.price ≥ 0`, `DevisCustomOption.quantity ≥ 1`
 - Creation `Intervention` : uniquement via `/api/interventions` (ADMIN)
@@ -530,7 +530,7 @@ Isolation tenant : via le `Process` parent (chaque handler verifie l'ownership).
 ### 4.3 Hooks backend
 
 - `syncProcessDocuments(processId)` — apres ajout/modif `DevisIntervention`. Force aussi par `GET /api/processes/:id` (EP13, idempotent — fix bug "documents pas affiches")
-- `reconcileStays(devisId)` — apres modif `DevisIntervention.(cliniqueId|dateIntervention)`. EP13 : `normalizeDate` utilise `setUTCFullYear` (pas `Date.UTC`) pour preserver les annees < 100 sans 1900-shift
+- `reconcileStays(devisId)` — apres modif `DevisIntervention.(cliniqueId|datePrestation)`. EP13 : `normalizeDate` utilise `setUTCFullYear` (pas `Date.UTC`) pour preserver les annees < 100 sans 1900-shift
 - `checkAutoArchive(processId)` — apres `PATCH /api/devis-interventions/:id/done`
 - `updateDevisTotal(devisId)` — apres toute modif sur `Devis*` tables
 - `tryAutoAdvance(processId)` — EP13 : verifie `tenant.autoAdvanceProcesses` puis `canTransitionTo(nextStage)`. Avance si OK. Hooks installes sur `PATCH /processes/:id/qualification`, `PATCH /processes/:id/consultation-date`, `POST /devis/:id/interventions`, `POST /devis/:id/sign`, `PATCH /devis/:id/acompte`, `PATCH /processes/:id/documents/:dId`. Retourne le new stage que les routes process mergent dans la response
@@ -604,7 +604,7 @@ Cette convention au MVP evite une migration breaking en V1. Justifiee au CDCT §
 
 Le service `lib/templateRenderer.ts` :
 - Substitue `{{path.to.field}}` dans `MessageTemplate.body` / `subject` ET dans `DocumentTemplate.bodyHtml`
-- Variables disponibles : `patient.*`, `intervention.*`, `cabinet.*`, `process.*`, `devis.*`, `user.*`, `today`
+- Variables disponibles : `client.*` (anciennement `patient.*`), `intervention.*`, `cabinet.*`, `process.*`, `devis.*`, `user.*`, `today`
 - Une variable inconnue reste litterale (ex `{{unknown}}` non substituee)
 
 ### 7.3 Cascade delete
@@ -614,4 +614,75 @@ Le service `lib/templateRenderer.ts` :
 
 ---
 
-*Reference : CDCT v1.5 §4-6, brief Florian 2026-04-26 (EP09-EP11). Derniere mise a jour : 28 avril 2026.*
+## 8. Extensions V1 (ADR-0003, D5+D7)
+
+Tables et colonnes ajoutees en V1 pour conformite RGPD et securite renforcee (cf `docs/architecture/decisions/0003-pas-de-bascule-hds-immediate-mitigation-cgu-securite.md`).
+
+### 8.1 Tenant — extensions CGU + Drive
+
+Colonnes ajoutees a `Tenant` (UC-03 onboarding CGU + UC-46 Google Drive) :
+
+| Champ | Type | Contraintes | Description |
+|---|---|---|---|
+| cguAcceptedAt | DateTime | NULL | Timestamp acceptance CGU par ADMIN. NULL = CGU pas encore acceptee = utilisation bloquee (UC-03) |
+| cguVersion | String | NULL | Version de CGU acceptee (ex `1.0-2026-05-22`) |
+| cguSignatoryName | String | NULL | Nom du signataire (ADMIN, saisi a l acceptance) |
+| driveTokens | Json | NULL | Tokens OAuth2 chiffres pour Google Drive (V1.1, UC-46) |
+
+### 8.2 User — extensions 2FA
+
+Colonnes ajoutees a `User` (UC-06 2FA TOTP) :
+
+| Champ | Type | Contraintes | Description |
+|---|---|---|---|
+| totpSecret | String | NULL | Secret TOTP (lib otplib) chiffre at rest pgcrypto |
+| mfaEnabled | Boolean | DEFAULT false | Active l etape 2FA au login |
+| recoveryCodes | String[] | DEFAULT [] | Codes de secours hash bcrypt, one-shot |
+
+### 8.3 AuditLog — table nouvelle (D5)
+
+Table immutable append-only pour audit conformite RGPD :
+
+| Champ | Type | Contraintes | Description |
+|---|---|---|---|
+| id | UUID | PK | |
+| tenantId | UUID | FK Tenant | Isolation tenant |
+| userId | UUID | FK User, NULL | Utilisateur si applicable |
+| action | String | NOT NULL | Code action (login, document.uploaded, cgu.accepted, stats.pulled, ...) |
+| ip | String | NULL | IP source |
+| userAgent | String | NULL | User-Agent du client |
+| details | Json | NULL | Donnees additionnelles structurees |
+| createdAt | DateTime | DEFAULT now() | Timestamp en UTC |
+
+**Regle metier** : append-only, pas de UPDATE/DELETE en runtime. Retention 5 ans (V1, partition automatique a etudier).
+
+### 8.4 RevokedToken — table nouvelle (D5)
+
+Table pour invalidation cote backend des JWT (logout, suspicion de fuite) :
+
+| Champ | Type | Contraintes | Description |
+|---|---|---|---|
+| jti | String | PK | JWT ID a revoquer (claim `jti` du token) |
+| tenantId | UUID | FK Tenant | |
+| revokedAt | DateTime | DEFAULT now() | |
+| reason | String | NULL | `logout`, `password_change`, `suspected_compromise`, ... |
+| expiresAt | DateTime | NOT NULL | Le row peut etre purge apres cette date |
+
+**Regle metier** : middleware JWT verifie `jti` contre cette table — refuse si revoque.
+
+### 8.5 Migrations futures
+
+Liste des migrations a creer en V1 :
+
+| Migration | Story / Deadline | Description |
+|-----------|------------------|-------------|
+| `add_tenant_cgu_columns` | D7 | `Tenant.cguAcceptedAt`, `cguVersion`, `cguSignatoryName` |
+| `add_user_2fa_columns` | D5 | `User.totpSecret`, `mfaEnabled`, `recoveryCodes` |
+| `create_audit_log` | D5 | Table `AuditLog` complete |
+| `create_revoked_token` | D5 | Table `RevokedToken` complete |
+| `add_tenant_drive_tokens` | V1.1 (PD1) | `Tenant.driveTokens` (Json chiffre) |
+| `add_pgcrypto_encryption` | D5 | Chiffrement at rest sur `Client.email`, `Client.phone`, `User.totpSecret` via `pgp_sym_encrypt` |
+
+---
+
+*Reference : CDCT v2.0 (2026-05-22), CDCF v1.0, brief Florian 2026-04-26 (EP09-EP11), brief Florian 2026-05-18 (post-POC). Derniere mise a jour : 22 mai 2026.*
