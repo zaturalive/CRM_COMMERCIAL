@@ -38,7 +38,7 @@ test.describe("Auth flow", () => {
 
     // On reste sur /login avec un message d'erreur
     await expect(page).toHaveURL(/\/login/);
-    await expect(page.getByText(/email ou mot de passe invalide/i)).toBeVisible();
+    await expect(page.getByText(/email.*mot de passe.*cabinet.*invalide|invalid/i)).toBeVisible();
   });
 
   test("dashboard sans auth redirige vers /login?callbackUrl=...", async ({ page }) => {

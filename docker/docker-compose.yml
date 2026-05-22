@@ -26,6 +26,7 @@ services:
       - BACKEND_URL=http://backend:4000
       - NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-true}
       - NEXT_PUBLIC_TENANT_SLUG=${NEXT_PUBLIC_TENANT_SLUG:-cabinet-test}
+      - NEXT_PUBLIC_DEFAULT_TENANT=${NEXT_PUBLIC_DEFAULT_TENANT:-cabinet-delobaux}
     volumes:
       - ../apps/frontend:/app/apps/frontend
       # Volume anonyme pour .next (evite pollution hot-reload de l'hote)
