@@ -33,7 +33,7 @@ async function createDevisViaApi(page: Page): Promise<string | null> {
     );
   }
 
-  const base = "http://localhost:4000";
+  const base = process.env.BACKEND_BASE_URL ?? "http://localhost:4100";
   let processId: string | null = null;
 
   {

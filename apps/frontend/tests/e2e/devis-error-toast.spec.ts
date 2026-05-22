@@ -22,7 +22,7 @@ async function createDevisViaApi(page: Page): Promise<string> {
   const { jwt } = (await session.json()) as { jwt?: string };
   if (!jwt) throw new Error("no jwt in session");
 
-  const base = "http://localhost:4000";
+  const base = process.env.BACKEND_BASE_URL ?? "http://localhost:4100";
   const auth = { Authorization: `Bearer ${jwt}` };
 
   const intRes = await page.request.post(`${base}/api/interventions`, {
