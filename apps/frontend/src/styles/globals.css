@@ -119,6 +119,14 @@ body:not(.theme-vencor) .vc-wordmark__dot {
 body.theme-vencor .vc-wordmark-only-vencor { display: inline; }
 body.theme-vencor .vc-wordmark-only-classic { display: none; }
 
+/* Sidebar brand mark : carre "C" en Classic, glass + point platine en Vencor */
+body.theme-vencor .sidebar-brand-mark {
+  background: var(--vc-glass) !important;
+  color: var(--vc-platine) !important;
+  border: 1px solid var(--vc-hair);
+  backdrop-filter: blur(40px);
+}
+
 /* Login panneau marque — gradient theme-aware */
 .login-brand-panel {
   background: linear-gradient(135deg, #1A1A2E 0%, #252540 50%, #2D1F6E 100%);
@@ -349,15 +357,58 @@ body.theme-vencor [class*="bg-red-50"] {
 }
 
 /* ============================================================================
-   Aucun dossier placeholders : forcer un fond glass + texte plus visible.
+   Aucun dossier placeholders : fond plus sombre + texte plus blanc en Vencor
+   pour que ca se voit bien sur fond onyx mais reste discret.
+   Aussi : .text-gray-300 (utilise dans KanbanColumn / FollowupKanbanColumn)
    ============================================================================ */
 body.theme-vencor [class*="bg-emerald-50"],
 body.theme-vencor [class*="bg-blue-50"],
 body.theme-vencor [class*="bg-purple-50"],
 body.theme-vencor [class*="bg-violet-50"],
 body.theme-vencor [class*="bg-indigo-50"] {
-  background-color: var(--vc-glass) !important;
+  background-color: rgba(0, 0, 0, 0.30) !important;
+  color: var(--vc-text) !important;
+  border-color: var(--vc-hair) !important;
+}
+/* "Aucun dossier" texte (gris-300) -> blanc plus visible en Vencor */
+body.theme-vencor .text-gray-300 {
   color: var(--vc-text-dim) !important;
+}
+
+/* ============================================================================
+   Badges status document (En attente / Recu / Valide) : 3 couleurs distinctes
+   muted en theme Vencor (avant tous neutralises vers platine = indistinguables).
+   ============================================================================ */
+body.theme-vencor .doc-status-badge--en-attente {
+  background-color: rgba(251, 191, 36, 0.20) !important;
+  color: rgb(252, 211, 77) !important;
+}
+body.theme-vencor .doc-status-badge--en-attente:hover {
+  background-color: rgba(251, 191, 36, 0.30) !important;
+}
+body.theme-vencor .doc-status-badge--recu {
+  background-color: rgba(59, 130, 246, 0.20) !important;
+  color: rgb(147, 197, 253) !important;
+}
+body.theme-vencor .doc-status-badge--recu:hover {
+  background-color: rgba(59, 130, 246, 0.30) !important;
+}
+body.theme-vencor .doc-status-badge--valide {
+  background-color: rgba(16, 185, 129, 0.20) !important;
+  color: rgb(110, 231, 183) !important;
+}
+body.theme-vencor .doc-status-badge--valide:hover {
+  background-color: rgba(16, 185, 129, 0.30) !important;
+}
+
+/* ============================================================================
+   KanbanColumn drop zone : en Classic le fond utilise un style inline pastel
+   par stage (colors.bg + alpha). En Vencor on override avec un fond sombre
+   semi-transparent + border hairlines.
+   ============================================================================ */
+body.theme-vencor .kanban-drop-zone {
+  background: rgba(0, 0, 0, 0.25) !important;
+  border-color: var(--vc-hair) !important;
 }
 
 /* ============================================================================

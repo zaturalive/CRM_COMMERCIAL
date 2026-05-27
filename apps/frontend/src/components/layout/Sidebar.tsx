@@ -66,20 +66,23 @@ export function Sidebar() {
       className="flex w-60 shrink-0 flex-col"
       style={{ background: "var(--sidebar-bg)" }}
     >
-      {/* Logo / nom cabinet */}
+      {/* Logo / nom cabinet — wordmark theme-aware (Vencor. en theme-vencor, C en Classic) */}
       <div className="px-5 py-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-display text-lg font-bold text-white">
+          <div className="sidebar-brand-mark flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-display text-lg font-bold text-white">
             C
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="font-display text-sm font-semibold text-white">
-              {tCommon("appName")}
+              <span className="vc-wordmark-only-classic">{tCommon("appName")}</span>
+              <span className="vc-wordmark-only-vencor vc-wordmark">
+                Vencor<span className="vc-wordmark__dot">.</span>
+              </span>
             </div>
-            <div className="text-[11px] text-white/50">
+            <div className="text-[11px] text-white/60 truncate">
               {session.tenantName ?? session.tenantSlug}
             </div>
-            <div className="text-[9px] text-white/40 mt-0.5">
+            <div className="text-[9px] text-white/40 mt-0.5 leading-tight">
               {tCommon("nonHdsNotice")}
             </div>
           </div>

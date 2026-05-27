@@ -545,10 +545,10 @@ function StatusPill({
         setTimeout(() => setBumping(false), 200);
       }}
       className={cn(
-        "rounded-full px-2 py-0.5 text-[11px] font-semibold transition",
-        status === "EN_ATTENTE" && "bg-gray-100 text-gray-700 hover:bg-gray-200",
-        status === "RECU" && "bg-blue-100 text-blue-800 hover:bg-blue-200",
-        status === "VALIDE" && "bg-emerald-100 text-emerald-800 hover:bg-emerald-200",
+        "doc-status-badge rounded-full px-2 py-0.5 text-[11px] font-semibold transition",
+        status === "EN_ATTENTE" && "doc-status-badge--en-attente bg-gray-100 text-gray-700 hover:bg-gray-200",
+        status === "RECU" && "doc-status-badge--recu bg-blue-100 text-blue-800 hover:bg-blue-200",
+        status === "VALIDE" && "doc-status-badge--valide bg-emerald-100 text-emerald-800 hover:bg-emerald-200",
         bumping && "scale-[1.15]"
       )}
       aria-label={`Statut ${DOCUMENT_STATUS_LABELS[status]}, clic pour avancer`}
