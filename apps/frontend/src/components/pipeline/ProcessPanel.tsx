@@ -128,7 +128,7 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
         <DialogPrimitive.Content
           className={cn(
             "fixed right-0 top-0 z-50 flex h-screen w-full max-w-[720px] flex-col",
-            "border-l border-white/70 bg-white/95 shadow-2xl backdrop-blur-md",
+            "border-l border-[color:var(--border)] bg-[color:var(--surface)] shadow-2xl backdrop-blur-md",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right",
             "duration-200"
@@ -153,7 +153,7 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
           {detail && (
             <>
               {/* Header fixe */}
-              <div className="border-b border-[color:var(--border)] bg-white/60 p-5">
+              <div className="border-b border-[color:var(--border)] bg-[color:var(--surface-glass)] p-5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
@@ -175,7 +175,7 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
                   <DialogPrimitive.Close asChild>
                     <button
                       type="button"
-                      className="rounded-md p-1.5 text-text-secondary hover:bg-white/80 hover:text-text-primary"
+                      className="rounded-md p-1.5 text-[color:var(--text-secondary)] hover:bg-[color:var(--surface-glass)] hover:text-[color:var(--text-primary)]"
                       aria-label="Fermer"
                     >
                       <X size={18} />
@@ -226,7 +226,7 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
               </div>
 
               {/* Footer actions */}
-              <div className="border-t border-[color:var(--border)] bg-white/70 p-4">
+              <div className="border-t border-[color:var(--border)] bg-[color:var(--surface-glass)] p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   {detail.stage === "POST_CONSULT" && (
                     <button
@@ -240,14 +240,14 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
                   <button
                     type="button"
                     onClick={() => setFuOpen(true)}
-                    className="rounded-md border border-[color:var(--border)] bg-white/80 px-4 py-2 text-sm text-text-primary hover:bg-white"
+                    className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-glass)] px-4 py-2 text-sm text-[color:var(--text-primary)] hover:bg-[color:var(--accent-light)]"
                   >
                     → Follow-up
                   </button>
                   <button
                     type="button"
                     onClick={() => setNqOpen(true)}
-                    className="rounded-md border border-[color:var(--border)] bg-white/80 px-4 py-2 text-sm text-text-primary hover:bg-white"
+                    className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface-glass)] px-4 py-2 text-sm text-[color:var(--text-primary)] hover:bg-[color:var(--accent-light)]"
                   >
                     → Non qualifie
                   </button>

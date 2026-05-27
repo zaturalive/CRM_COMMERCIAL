@@ -80,7 +80,7 @@ export function ProcessCard({ process, onOpen, onArchive, draggable = true }: Pr
       {...(draggable ? listeners : {})}
       onClick={() => onOpen(process.id)}
       className={cn(
-        "group cursor-pointer rounded-lg border border-white/80 bg-white/75 p-3 shadow-sm backdrop-blur-md transition-all",
+        "group cursor-pointer rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-sm backdrop-blur-md transition-all",
         "hover:-translate-y-0.5 hover:shadow-md hover:ring-1 hover:ring-accent/20",
         isDragging && "opacity-50"
       )}
@@ -240,7 +240,7 @@ export function ProcessCard({ process, onOpen, onArchive, draggable = true }: Pr
           <button
             type="button"
             onClick={() => onArchive(process.id)}
-            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-text-secondary transition-colors hover:bg-white/80 hover:text-text-primary"
+            className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] text-[color:var(--text-secondary)] transition-colors hover:bg-[color:var(--surface-glass)] hover:text-[color:var(--text-primary)]"
             title="Archiver"
           >
             <Archive size={11} />

@@ -59,7 +59,7 @@ export function DashboardView() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <KpiCard
           icon={<Users size={16} />}
-          label="Total patients"
+          label="Total clients"
           value={kpis?.totalPatients ?? null}
           loading={loading}
         />

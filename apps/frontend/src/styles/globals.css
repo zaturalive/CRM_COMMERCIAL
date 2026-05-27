@@ -177,6 +177,50 @@ body.theme-vencor [class*="bg-gray-200"] {
   background-color: var(--vc-glass) !important;
 }
 
+/* React-big-calendar override pour theme Vencor.
+   Le calendar utilise ses propres classes rbc-* avec styles inline blanc
+   par defaut, donc on force le theme Vencor sur la grille complete. */
+body.theme-vencor .rbc-calendar,
+body.theme-vencor .rbc-month-view,
+body.theme-vencor .rbc-time-view,
+body.theme-vencor .rbc-month-row,
+body.theme-vencor .rbc-row-bg,
+body.theme-vencor .rbc-day-bg,
+body.theme-vencor .rbc-time-content,
+body.theme-vencor .rbc-time-header,
+body.theme-vencor .rbc-header,
+body.theme-vencor .rbc-time-slot,
+body.theme-vencor .rbc-timeslot-group,
+body.theme-vencor .rbc-allday-cell {
+  background-color: transparent !important;
+  color: var(--vc-text) !important;
+  border-color: var(--vc-hair) !important;
+}
+body.theme-vencor .rbc-today {
+  background-color: rgba(181, 191, 199, 0.06) !important;
+}
+body.theme-vencor .rbc-off-range-bg {
+  background-color: rgba(0, 0, 0, 0.20) !important;
+}
+body.theme-vencor .rbc-event {
+  background-color: var(--vc-platine) !important;
+  color: var(--vc-onyx) !important;
+  border-color: var(--vc-pearl) !important;
+}
+body.theme-vencor .rbc-toolbar button {
+  color: var(--vc-text-dim) !important;
+  background-color: transparent !important;
+  border-color: var(--vc-hair) !important;
+}
+body.theme-vencor .rbc-toolbar button.rbc-active,
+body.theme-vencor .rbc-toolbar button:hover {
+  background-color: var(--vc-glass-hi) !important;
+  color: var(--vc-text) !important;
+}
+body.theme-vencor .rbc-current-time-indicator {
+  background-color: var(--vc-platine) !important;
+}
+
 /* Badges chauds Tailwind (red/amber/green) — neutraliser vers nuances platine */
 body.theme-vencor .bg-red-100,
 body.theme-vencor .bg-amber-100,

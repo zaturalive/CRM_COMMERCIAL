@@ -127,7 +127,7 @@ export function AgendaView() {
                   "rounded-md px-3 py-1 text-xs font-semibold transition",
                   view === viewValue
                     ? "bg-accent text-white"
-                    : "bg-white/60 text-text-secondary hover:bg-white"
+                    : "bg-[color:var(--surface-glass)] text-[color:var(--text-secondary)] hover:bg-[color:var(--accent-light)] hover:text-[color:var(--text-primary)]"
                 )}
               >
                 {v === "day" ? "Jour" : v === "week" ? "Semaine" : "Mois"}
@@ -138,7 +138,7 @@ export function AgendaView() {
       </div>
 
       {/* Calendar */}
-      <div className="crm-agenda flex-1 overflow-hidden rounded-lg border border-white/60 bg-white/80 p-2 shadow-sm">
+      <div className="crm-agenda flex-1 overflow-hidden rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-2 shadow-sm">
         <BigCalendar
           localizer={localizer}
           events={rbcEvents}

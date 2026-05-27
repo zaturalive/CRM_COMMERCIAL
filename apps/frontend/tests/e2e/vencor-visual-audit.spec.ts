@@ -127,13 +127,34 @@ test.describe("Vencor visual audit", () => {
     });
   });
 
-  test("v10 - settings cabinet (Vencor)", async ({ page }) => {
+  test("v10 - config cabinet (Vencor)", async ({ page }) => {
     await setVencorTheme(page);
     await loginAs(page, "florian@cabinet-delobaux.fr");
-    await page.goto("/settings");
+    await page.goto("/config/cabinet");
     await page.waitForTimeout(1500);
     await page.screenshot({
-      path: "test-results/vencor/v10-settings.png",
+      path: "test-results/vencor/v10-config-cabinet.png",
+      fullPage: true,
+    });
+  });
+
+  test("v12 - devis builder (Vencor)", async ({ page }) => {
+    await setVencorTheme(page);
+    await loginAs(page, "julie@cabinet-delobaux.fr");
+    // Trouver un devis existant via API
+    const sessionResp = await page.request.get("/api/auth/session");
+    const { jwt } = (await sessionResp.json()) as { jwt?: string };
+    if (!jwt) return;
+    const listResp = await page.request.get("http://localhost:4100/api/devis", {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    const { data } = (await listResp.json()) as { data?: Array<{ id: string }> };
+    const devisId = data?.[0]?.id;
+    if (!devisId) return;
+    await page.goto(`/devis/${devisId}`);
+    await page.waitForTimeout(1500);
+    await page.screenshot({
+      path: "test-results/vencor/v12-devis-builder.png",
       fullPage: true,
     });
   });
