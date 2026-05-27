@@ -282,7 +282,7 @@ export function DocumentsTab({ processId, clientFirstName, onChanged }: Document
         </h3>
         <div className="flex gap-2">
           <Button size="sm" variant="primary" onClick={() => setSendOpen(true)}>
-            <Send size={14} /> Envoyer au patient
+            <Send size={14} /> Envoyer au client
           </Button>
           <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
             <Plus size={14} /> Ajouter un document
@@ -437,7 +437,7 @@ function RelevantDocumentTemplates({ processId }: { processId: string }) {
     <section>
       <h3 className="mb-2 flex items-center gap-1.5 font-display text-sm font-bold text-text-primary">
         <FileText size={14} className="text-accent" strokeWidth={1.75} />
-        Templates a envoyer au patient ({templates.length})
+        Templates a envoyer au client ({templates.length})
       </h3>
       <ul className="space-y-1.5">
         {templates.map((t) => (

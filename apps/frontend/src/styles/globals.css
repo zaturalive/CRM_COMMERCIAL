@@ -196,11 +196,26 @@ body.theme-vencor .rbc-allday-cell {
   color: var(--vc-text) !important;
   border-color: var(--vc-hair) !important;
 }
-body.theme-vencor .rbc-today {
-  background-color: rgba(181, 191, 199, 0.06) !important;
+/* Today : selecteurs plus precis pour battre la feuille react-big-calendar */
+body.theme-vencor .rbc-day-bg.rbc-today,
+body.theme-vencor .rbc-day-slot.rbc-today,
+body.theme-vencor .rbc-today,
+body.theme-vencor td.rbc-today,
+body.theme-vencor .rbc-month-view .rbc-row-bg .rbc-day-bg.rbc-today {
+  background-color: rgba(181, 191, 199, 0.12) !important;
 }
 body.theme-vencor .rbc-off-range-bg {
-  background-color: rgba(0, 0, 0, 0.20) !important;
+  background-color: rgba(0, 0, 0, 0.30) !important;
+}
+body.theme-vencor .rbc-off-range {
+  color: var(--vc-text-faint) !important;
+}
+/* Default rbc cells (non-today) en theme Vencor : forcer fond transparent */
+body.theme-vencor .rbc-day-bg,
+body.theme-vencor .rbc-time-content > * + * > *,
+body.theme-vencor .rbc-day-slot .rbc-time-slot {
+  background-color: transparent !important;
+  border-color: var(--vc-hair) !important;
 }
 body.theme-vencor .rbc-event {
   background-color: var(--vc-platine) !important;
@@ -219,6 +234,139 @@ body.theme-vencor .rbc-toolbar button:hover {
 }
 body.theme-vencor .rbc-current-time-indicator {
   background-color: var(--vc-platine) !important;
+}
+
+/* ============================================================================
+   Composants protec dans theme Vencor (gardent leur theme original).
+   Le widget WhatsApp doit garder ses couleurs officielles WhatsApp
+   (header #075E54, bulle bot blanc, bulle user #DCF8C6) DANS TOUS LES CAS,
+   meme en theme Vencor.
+   ============================================================================ */
+body.theme-vencor .whatsapp-preview-protected {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.6) !important;
+}
+body.theme-vencor .whatsapp-preview-protected * {
+  border-color: rgba(229, 231, 235, 0.6) !important;
+}
+body.theme-vencor .whatsapp-preview-protected [class*="bg-white"],
+body.theme-vencor .whatsapp-preview-protected .bg-white {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+body.theme-vencor .whatsapp-preview-protected [class*="text-text-primary"],
+body.theme-vencor .whatsapp-preview-protected [class*="text-gray-"] {
+  color: #111827 !important;
+}
+body.theme-vencor .whatsapp-preview-protected [class*="text-text-secondary"] {
+  color: #6b7280 !important;
+}
+/* Bot bubble : reste WhatsApp green #DCF8C6 */
+body.theme-vencor .whatsapp-preview-protected [style*="DCF8C6"],
+body.theme-vencor .whatsapp-preview-protected [class*="DCF8C6"] {
+  background-color: #DCF8C6 !important;
+}
+/* Header bandeau WhatsApp : reste vert officiel #075E54 */
+body.theme-vencor .whatsapp-preview-protected [style*="075E54"],
+body.theme-vencor .whatsapp-preview-protected [class*="075E54"] {
+  background-color: #075E54 !important;
+  color: #ffffff !important;
+}
+/* Header bandeau via class explicite bg-[#075E54] */
+body.theme-vencor .whatsapp-preview-protected header {
+  background-color: #075E54 !important;
+  color: #ffffff !important;
+}
+body.theme-vencor .whatsapp-preview-protected header * {
+  color: #ffffff !important;
+}
+/* Inputs WhatsApp : fond blanc, texte sombre */
+body.theme-vencor .whatsapp-preview-protected input,
+body.theme-vencor .whatsapp-preview-protected textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* ============================================================================
+   Boutons primary en Vencor : platine #B5BFC7 (clair) sur fond onyx demande
+   un text ONYX (sombre) pour contraste maximum. Sinon white-on-platine
+   donne du blanc sur blanc-gris = illisible.
+   ============================================================================ */
+body.theme-vencor button.bg-accent,
+body.theme-vencor [class*="bg-accent"]:not([class*="bg-accent-light"]):not([class*="bg-accent-lighter"]),
+body.theme-vencor button[type="submit"]:not([class*="bg-white"]):not([class*="bg-glass"]) {
+  color: var(--vc-onyx) !important;
+  font-weight: 600;
+}
+body.theme-vencor button.bg-accent:hover,
+body.theme-vencor [class*="bg-accent"]:not([class*="bg-accent-light"]):not([class*="bg-accent-lighter"]):hover {
+  background-color: var(--vc-pearl) !important;
+  color: var(--vc-onyx) !important;
+}
+/* Bouton primary text-white explicite : override en onyx en Vencor */
+body.theme-vencor button[class*="bg-accent"][class*="text-white"],
+body.theme-vencor [class*="bg-accent"][class*="text-white"] {
+  color: var(--vc-onyx) !important;
+}
+
+/* ============================================================================
+   Dialog overlay (modal) : plus sombre + flou plus prononce en Vencor
+   pour eviter l'effet "vitre claire" sur fond Vencor.
+   ============================================================================ */
+body.theme-vencor [data-state="open"][class*="bg-black"] {
+  background-color: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* ============================================================================
+   Tabs visibility : assurer un contraste minimum en Vencor pour les onglets
+   (Vue ensemble / Notes / Documents / Devis dans ProcessPanel).
+   ============================================================================ */
+body.theme-vencor [role="tablist"] button,
+body.theme-vencor [role="tablist"] a {
+  color: var(--vc-text-dim) !important;
+}
+body.theme-vencor [role="tablist"] button[aria-selected="true"],
+body.theme-vencor [role="tablist"] button[data-state="active"],
+body.theme-vencor [role="tablist"] a[aria-current="page"] {
+  color: var(--vc-text) !important;
+  border-color: var(--vc-platine) !important;
+}
+
+/* ============================================================================
+   Process panel pills : Follow-up et Non qualifie (bg-amber-50 + bg-red-50)
+   doivent rester lisibles en Vencor.
+   ============================================================================ */
+body.theme-vencor [class*="bg-amber-50"] {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: rgb(252, 211, 77) !important;
+}
+body.theme-vencor [class*="bg-red-50"] {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: rgb(252, 165, 165) !important;
+}
+
+/* ============================================================================
+   Aucun dossier placeholders : forcer un fond glass + texte plus visible.
+   ============================================================================ */
+body.theme-vencor [class*="bg-emerald-50"],
+body.theme-vencor [class*="bg-blue-50"],
+body.theme-vencor [class*="bg-purple-50"],
+body.theme-vencor [class*="bg-violet-50"],
+body.theme-vencor [class*="bg-indigo-50"] {
+  background-color: var(--vc-glass) !important;
+  color: var(--vc-text-dim) !important;
+}
+
+/* ============================================================================
+   Follow-up sub-pipeline : neutraliser les couleurs hardcoded des colonnes
+   (vert J0, jaune J1, beige J3, marron J7, etc.) vers une nuance glass.
+   ============================================================================ */
+body.theme-vencor [data-followup-substage] {
+  background-color: var(--vc-glass) !important;
+  border-color: var(--vc-hair) !important;
 }
 
 /* Badges chauds Tailwind (red/amber/green) — neutraliser vers nuances platine */

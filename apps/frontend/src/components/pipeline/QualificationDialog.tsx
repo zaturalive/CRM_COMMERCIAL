@@ -84,7 +84,7 @@ export function QualificationDialog({
         <DialogHeader>
           <DialogTitle>Qualifier le dossier</DialogTitle>
           <DialogDescription>
-            Evalue la pertinence et la motivation du patient avant consultation.
+            Evalue la pertinence et la motivation du client avant consultation.
           </DialogDescription>
         </DialogHeader>
 

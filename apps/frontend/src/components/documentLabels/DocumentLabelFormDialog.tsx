@@ -117,7 +117,7 @@ export function DocumentLabelFormDialog({ open, onOpenChange, existing, onSucces
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="label-template">Template PDF a envoyer au patient (optionnel)</Label>
+            <Label htmlFor="label-template">Template PDF a envoyer au client (optionnel)</Label>
             <select
               id="label-template"
               value={documentTemplateId}
@@ -132,7 +132,7 @@ export function DocumentLabelFormDialog({ open, onOpenChange, existing, onSucces
               ))}
             </select>
             <p className="text-[11px] text-text-secondary">
-              Le commercial pourra envoyer ce PDF au patient depuis l'onglet Documents
+              Le commercial pourra envoyer ce PDF au client depuis l'onglet Documents
               du dossier.
             </p>
           </div>

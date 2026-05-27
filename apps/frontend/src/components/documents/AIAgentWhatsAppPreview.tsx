@@ -109,7 +109,7 @@ export function AIAgentWhatsAppPreview({ patientFirstName }: AIAgentWhatsAppPrev
         <Sparkles size={11} strokeWidth={2} /> V1 — Apercu
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-white/60 bg-white shadow-lg">
+      <div className="whatsapp-preview-protected overflow-hidden rounded-2xl border border-white/60 bg-white shadow-lg">
         <header className="flex items-center gap-3 bg-[#075E54] px-4 py-3 text-white">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20">
             <Bot size={18} strokeWidth={2} />

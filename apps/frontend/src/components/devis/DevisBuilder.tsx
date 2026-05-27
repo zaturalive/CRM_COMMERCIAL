@@ -461,7 +461,7 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
       </header>
 
       <p className="mb-6 text-sm text-[color:var(--text-secondary)]">
-        Patient : <strong>{devis.process.client.firstName} {devis.process.client.lastName}</strong>
+        Client : <strong>{devis.process.client.firstName} {devis.process.client.lastName}</strong>
         {saving && <span className="ml-2 text-xs">· Enregistrement…</span>}
       </p>
 

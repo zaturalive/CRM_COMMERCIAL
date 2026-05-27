@@ -40,7 +40,11 @@ export async function apiFetch<T = unknown>(
     headers.set("Authorization", `Bearer ${session.jwt}`);
   }
 
-  const res = await fetch(`${resolveBase()}${path}`, { ...init, headers });
+  // cache: 'no-store' force la lecture fraiche cote backend a chaque appel.
+  // Sans ca, Next.js peut mettre en cache les GET et le user voit un etat
+  // stale apres une mutation (typique : creation client/process puis listing
+  // pipeline qui ne montre pas le nouveau dossier sans F5).
+  const res = await fetch(`${resolveBase()}${path}`, { ...init, headers, cache: "no-store" });
 
   if (res.status === 401) {
     // callbackUrl absolu : cf Header.tsx (sans NEXTAUTH_URL en multi-tenant,

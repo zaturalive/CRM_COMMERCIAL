@@ -34,7 +34,7 @@ const CONTEXT: Record<
   POST_CONSULT: {
     icon: FileText,
     title: "Priorite : devis",
-    message: "Completer le devis commercial pour envoi au patient.",
+    message: "Completer le devis commercial pour envoi au client.",
     bg: "#F5F3FF",
     color: "#5B21B6",
     iconColor: "#6C63FF",
@@ -74,7 +74,7 @@ const CONTEXT: Record<
   FOLLOWUP: {
     icon: Clock,
     title: "En Follow-up",
-    message: "Relancer le patient au bon moment. Retour en Post-consult possible.",
+    message: "Relancer le client au bon moment. Retour en Post-consult possible.",
     bg: "#FFFBEB",
     color: "#92400E",
     iconColor: "#F59E0B",

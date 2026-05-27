@@ -79,7 +79,7 @@ export function FollowupTransitionDialog({
           </DialogTitle>
           <DialogDescription>
             Ajoute une observation pour garder une trace du dialogue avec le
-            patient. Tu peux passer cette etape avec "Sauter".
+            client. Tu peux passer cette etape avec "Sauter".
           </DialogDescription>
         </DialogHeader>
 

@@ -93,9 +93,9 @@ export function DocumentTemplatesAdmin() {
       </div>
 
       <div className="rounded-md border border-blue-200/60 bg-blue-50/40 p-3 text-xs text-blue-900">
-        Upload un PDF a envoyer au patient (lettre pre-op, ordonnance vierge, formulaire de
-        consentement, etc.). Le commercial le telecharge depuis le dossier patient et l'envoie
-        hors-CRM. Le patient le remplit et le retourne, on l'attache ensuite via le tab Documents.
+        Upload un PDF a envoyer au client (lettre pre-op, ordonnance vierge, formulaire de
+        consentement, etc.). Le commercial le telecharge depuis le dossier client et l'envoie
+        hors-CRM. Le client le remplit et le retourne, on l'attache ensuite via le tab Documents.
       </div>
 
       {loading ? (
