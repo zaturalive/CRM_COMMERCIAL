@@ -7,12 +7,54 @@
 
 ---
 
-## 0. Ce qui est deja sur stark
+## 0. ATTENTION — stark est un serveur de demo ET de prod multi-app
 
-- Repo complet (14 MB) sans `node_modules`, `.next`, `.git`, `test-results`
+### Inventory courant stark (verifie 2026-05-27 16h)
+
+**Apps deja en prod** (a NE PAS casser) :
+- `crm-chirurgien-frontend` + `crm-chirurgien-backend` + `crm-chirurgien-postgres` (Up 6 days, intact)
+- `bitwarden-acadenice` (Up 6 days)
+- `byan-api` (Up 29 hours)
+- `acadenice-authentik-outpost`
+- `formation-hub-*` (4 containers)
+- `wakdo-*` + `wacdo-*` + `wacdo_b1/b2/b3-*` (15+ containers)
+- `wacdo-quentin-*`, `wacdo-lynna-*`
+- `resume_app` + `resume_postgres`
+- `framework-wacdo`, `webdb`
+
+**Ports occupes sur l'host stark** :
+- `80`, `443` (reverse proxy probable)
+- `3000` (resume_app)
+- `5432` (postgres host install)
+- `8080`
+
+**Ports libres confirmes** :
+- `3301`, `3302`, `4100`, `4101` (utilisables pour crm-commercial)
+- Tous les ports > 5000 sauf `5432`
+
+### Garde-fous OBLIGATOIRES avant docker compose up
+
+1. **Verifier que les ports choisis sont libres** AVANT chaque commande :
+   ```bash
+   ss -tlnp 2>/dev/null | grep -E ':(3301|3302|4100|4101)\s'   # doit etre vide
+   ```
+2. **Verifier qu'il n'y a pas deja un container `crm-commercial-*`** (sauf si tu veux le redemarrer) :
+   ```bash
+   docker ps -a --format '{{.Names}}' | grep crm-commercial
+   ```
+3. **A eviter absolument** : `docker compose down --volumes`, `docker volume prune`, `docker system prune` sur stark — ca peut tuer les volumes des autres apps.
+4. **A eviter absolument** : `--remove-orphans` avec docker compose — ca peut supprimer des containers d'autres apps qui partagent le meme network ou nom de service.
+5. **Specifier systematiquement** `-f docker/docker-compose.yml` explicitement, plutot que juste `docker compose ...` (qui pourrait piocher un fichier d'un autre repo).
+6. **Le network Docker par defaut** `crm-network` (defini dans `docker-compose.yml`) est ISOLE par projet docker compose. Tant qu'on ne fait pas `--network host`, pas de risque.
+
+### Ce qui a ete transfere via rsync (sans toucher au reste de /home/dimitry)
+
+- Repo complet (14 MB) dans `/home/dimitry/crm_commercial/` sans `node_modules`, `.next`, `.git`, `test-results`
 - Dump BDD `/home/dimitry/crm_commercial/db-dump-demo.sql` (199 KB)
 - Tenant `demo` charge avec 30 clients + 30 process + 17 devis (repartis sur tous les stages)
 - `.env`, `.env.prod`, `.env.example` transferes
+
+> **Note** : le `rsync --delete` a ete utilise sur le repertoire `/home/dimitry/crm_commercial/` UNIQUEMENT. Aucun autre repertoire n'a ete touche. Les containers existants (crm-chirurgien, etc.) sont intacts.
 
 ---
 
