@@ -50,10 +50,18 @@ services:
 
 ---
 
-## 2. Demarrer la stack
+## 2. Demarrer la stack (avec garde-fous)
+
+> Toutes les commandes ci-dessous sont **explicites** sur le compose file (`-f docker/docker-compose.yml`) et le `.env` pour eviter toute confusion avec d'autres apps sur stark.
 
 ```bash
 cd /home/dimitry/crm_commercial
+
+# GARDE-FOU 1 : verifier qu'aucun port choisi n'est deja occupe
+ss -tlnp 2>/dev/null | grep -E ':(3302|4101)\s' && echo "ERREUR : port deja occupe, change .env" && exit 1
+
+# GARDE-FOU 2 : verifier qu'il n'y a pas deja des containers crm-commercial qui tournent
+docker ps --format '{{.Names}}' | grep '^crm-commercial-' && echo "INFO : containers crm-commercial deja presents, docker compose va les recreer" || echo "OK : aucun container crm-commercial existant"
 
 # Etape 1 : remonter postgres + attendre qu'il soit ready
 docker compose --env-file .env -f docker/docker-compose.yml up -d postgres
@@ -68,6 +76,17 @@ docker compose -f docker/docker-compose.yml exec backend npx prisma migrate depl
 
 # Etape 4 : restore le dump BDD (drop+recreate tables grace au --clean --if-exists)
 cat db-dump-demo.sql | docker compose -f docker/docker-compose.yml exec -T postgres psql -U postgres -d crm_commercial
+```
+
+### En cas de probleme — rollback safe
+
+Si la stack crm-commercial bug ou plante, **uniquement** stopper les containers crm-commercial sans toucher au reste :
+
+```bash
+docker compose -f docker/docker-compose.yml stop      # stop SANS supprimer
+# ou
+docker compose -f docker/docker-compose.yml down      # stop + supprime containers crm-commercial UNIQUEMENT (pas les volumes)
+# NE PAS faire `docker compose down --volumes` -> ca supprimerait crm-commercial_postgres_data + crm-commercial_backend_uploads (BDD demo perdue)
 ```
 
 ---
