@@ -9,7 +9,7 @@ export function Header() {
   const tCommon = useTranslations("Common");
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[color:var(--border)] bg-white/60 px-6 backdrop-blur">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[color:var(--border)] bg-[color:var(--surface-glass)] px-6 backdrop-blur">
       <div className="flex flex-1 items-center gap-4">
         <div className="relative flex max-w-sm flex-1 items-center">
           <Search
@@ -38,7 +38,7 @@ export function Header() {
             // build qui est localhost:3000 si on passe un path relatif.
             signOut({ callbackUrl: `${window.location.origin}/login` })
           }
-          className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border)] px-3 py-1.5 text-sm text-text-primary hover:bg-white/80"
+          className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border)] px-3 py-1.5 text-sm text-[color:var(--text-primary)] hover:bg-[color:var(--surface-glass)]"
           aria-label={tCommon("logout")}
         >
           <LogOut size={14} strokeWidth={1.75} />

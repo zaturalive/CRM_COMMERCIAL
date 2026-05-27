@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   Vencor brand (Florian) — direction obsidienne, dark Apple-grade premium.
+   Fonts importees via Google Fonts. Active via body.theme-vencor (toggle UI).
+   Source : florian_tool/README.md Handoff Vencor v2026-05-27.
+   ============================================================================ */
+@import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&family=Inter+Tight:wght@300;400;500;600;700&display=swap");
+
+:root {
+  /* Vencor design tokens — disponibles globalement, actives par .theme-vencor.
+     NB : onyx adouci (vs #0A0B0E du spec original) — teinte carbon-grey
+     legerement bleutee, plus chaude qu un noir pur, evite l effet ecran eteint
+     tout en gardant la coherence dark-Apple-grade. */
+  --vc-onyx: #15171D;
+  --vc-onyx-soft: #1B1D24;
+  --vc-glass: rgba(255, 255, 255, 0.05);
+  --vc-glass-hi: rgba(255, 255, 255, 0.09);
+  --vc-platine: #B5BFC7;
+  --vc-pearl: #E8ECF0;
+  --vc-text: #F0F2F5;
+  --vc-text-dim: rgba(240, 242, 245, 0.65);
+  --vc-text-faint: rgba(240, 242, 245, 0.42);
+  --vc-hair: rgba(240, 242, 245, 0.12);
+  --vc-hair-strong: rgba(240, 242, 245, 0.20);
+}
+
 /* Design tokens — source spec-design-figma-v1_3.md §1.7 */
 :root {
   --accent: #6c63ff;
@@ -35,4 +60,143 @@ body {
   background: var(--page-bg);
   font-family: Inter, system-ui, sans-serif;
   min-height: 100vh;
+}
+
+/* ============================================================================
+   THEME VENCOR — override non destructif des vars globales.
+   Active via <body class="theme-vencor"> (toggle UI dans Sidebar footer).
+   Aucun composant ne change ; seules les CSS vars sont overridees.
+   ============================================================================ */
+body.theme-vencor {
+  --accent: var(--vc-platine);
+  --accent-light: rgba(181, 191, 199, 0.18);
+  --accent-lighter: rgba(181, 191, 199, 0.08);
+  --sidebar-bg: var(--vc-onyx-soft);
+  --sidebar-hover: var(--vc-glass-hi);
+  --surface: var(--vc-onyx-soft);
+  --surface-glass: var(--vc-glass);
+  --surface-glass-border: var(--vc-hair);
+  --page-bg: var(--vc-onyx);
+  --text-primary: var(--vc-text);
+  --text-secondary: var(--vc-text-dim);
+  --border: var(--vc-hair);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.8);
+  --blur: blur(40px);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Tight", "Inter", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+body.theme-vencor h1,
+body.theme-vencor h2,
+body.theme-vencor h3 {
+  letter-spacing: -0.025em;
+  font-weight: 500;
+}
+
+/* Wordmark utility — pour afficher "Vencor." avec point en accent platine */
+.vc-wordmark {
+  font-family: "Newsreader", serif;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  color: var(--vc-text);
+}
+.vc-wordmark__dot {
+  color: var(--vc-platine);
+}
+body:not(.theme-vencor) .vc-wordmark {
+  color: var(--text-primary);
+}
+body:not(.theme-vencor) .vc-wordmark__dot {
+  color: var(--accent);
+}
+
+/* Affichage conditionnel du wordmark selon theme */
+.vc-wordmark-only-vencor { display: none; }
+.vc-wordmark-only-classic { display: inline; }
+body.theme-vencor .vc-wordmark-only-vencor { display: inline; }
+body.theme-vencor .vc-wordmark-only-classic { display: none; }
+
+/* Login panneau marque — gradient theme-aware */
+.login-brand-panel {
+  background: linear-gradient(135deg, #1A1A2E 0%, #252540 50%, #2D1F6E 100%);
+}
+body.theme-vencor .login-brand-panel {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(181, 191, 199, 0.10) 0%, transparent 50%),
+    linear-gradient(135deg, var(--vc-onyx) 0%, var(--vc-onyx-soft) 100%);
+  border-right: 1px solid var(--vc-hair);
+}
+body.theme-vencor .login-brand-mark {
+  background: var(--vc-glass);
+  color: var(--vc-platine);
+  border: 1px solid var(--vc-hair);
+  backdrop-filter: blur(40px);
+}
+
+/* Focus ring Vencor : remplace le bleu Tailwind par platine doux */
+body.theme-vencor input:focus,
+body.theme-vencor textarea:focus,
+body.theme-vencor select:focus,
+body.theme-vencor button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(181, 191, 199, 0.30);
+}
+
+/* Cartes / surfaces — adoucissement en Vencor pour eviter le blanc translucide
+   sur fond noir qui ressemble a un bug de rendu. Override toutes les variantes
+   Tailwind bg-white, bg-white/40, /60, /70, /80, /90, /95. */
+body.theme-vencor [class*="bg-white"] {
+  background-color: var(--vc-glass) !important;
+  color: var(--vc-text);
+}
+body.theme-vencor [class*="border-white"] {
+  border-color: var(--vc-hair) !important;
+}
+body.theme-vencor [class*="hover:bg-white"]:hover {
+  background-color: var(--vc-glass-hi) !important;
+}
+/* Text colors hardcoded gray → text vencor */
+body.theme-vencor [class*="text-gray-"],
+body.theme-vencor [class*="text-text-primary"] {
+  color: var(--vc-text) !important;
+}
+body.theme-vencor [class*="text-text-secondary"] {
+  color: var(--vc-text-dim) !important;
+}
+/* Border gray hardcoded */
+body.theme-vencor [class*="border-gray-"] {
+  border-color: var(--vc-hair) !important;
+}
+/* Backgrounds gray hardcoded (gray-50 / gray-100 / gray-200) */
+body.theme-vencor [class*="bg-gray-50"],
+body.theme-vencor [class*="bg-gray-100"],
+body.theme-vencor [class*="bg-gray-200"] {
+  background-color: var(--vc-glass) !important;
+}
+
+/* Badges chauds Tailwind (red/amber/green) — neutraliser vers nuances platine */
+body.theme-vencor .bg-red-100,
+body.theme-vencor .bg-amber-100,
+body.theme-vencor .bg-yellow-100,
+body.theme-vencor .bg-green-100,
+body.theme-vencor .bg-emerald-100,
+body.theme-vencor .bg-blue-100 {
+  background-color: rgba(181, 191, 199, 0.12) !important;
+  color: var(--vc-pearl) !important;
+}
+body.theme-vencor .text-red-700,
+body.theme-vencor .text-red-800,
+body.theme-vencor .text-amber-700,
+body.theme-vencor .text-amber-800,
+body.theme-vencor .text-yellow-700,
+body.theme-vencor .text-yellow-800,
+body.theme-vencor .text-green-700,
+body.theme-vencor .text-green-800,
+body.theme-vencor .text-emerald-700,
+body.theme-vencor .text-blue-700,
+body.theme-vencor .text-blue-800 {
+  color: var(--vc-pearl) !important;
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { ThemeSwitcher } from "@/components/layout/ThemeSwitcher";
 
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT ?? "demo";
 const TENANT_STORAGE_KEY = "crm-chirurgie:last-cabinet";
@@ -60,17 +61,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen">
-      {/* Gauche : panneau marque */}
-      <div
-        className="hidden w-1/2 flex-col items-center justify-center p-16 md:flex"
-        style={{ background: "linear-gradient(135deg, #1A1A2E 0%, #252540 50%, #2D1F6E 100%)" }}
-      >
+    <main className="relative flex min-h-screen">
+      {/* Theme switcher floating top-right (visible avant connexion) */}
+      <div className="absolute right-4 top-4 z-50 rounded-lg border border-white/10 bg-black/40 p-2 backdrop-blur-md">
+        <ThemeSwitcher />
+      </div>
+      {/* Gauche : panneau marque (gradient classique en Classic, onyx + glow platine en Vencor) */}
+      <div className="login-brand-panel hidden w-1/2 flex-col items-center justify-center p-16 md:flex">
         <div className="max-w-sm text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent font-display text-3xl font-bold text-white shadow-lg">
+          <div className="login-brand-mark mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent font-display text-3xl font-bold text-white shadow-lg">
             C
           </div>
-          <h1 className="font-display text-3xl font-bold text-white">{tCommon("appName")}</h1>
+          <h1 className="font-display text-3xl font-bold text-white">
+            <span className="vc-wordmark vc-wordmark-only-vencor">Vencor<span className="vc-wordmark__dot">.</span></span>
+            <span className="vc-wordmark-only-classic">{tCommon("appName")}</span>
+          </h1>
           <p className="mt-2 text-sm text-white/60">
             {tCommon("appTagline")}
           </p>
@@ -107,7 +112,7 @@ export default function LoginPage() {
                 required
                 placeholder={t("cabinetPlaceholder")}
                 autoComplete="organization"
-                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 text-sm outline-none focus:border-accent"
+                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
               />
             </div>
             <div>
@@ -120,7 +125,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 text-sm outline-none focus:border-accent"
+                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
               />
             </div>
             <div>
@@ -133,7 +138,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-white/90 px-3 py-2 text-sm outline-none focus:border-accent"
+                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
               />
             </div>
             {error && <p className="text-sm text-danger">{error}</p>}

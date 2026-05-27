@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 type UserRole = "ADMIN" | "COMMERCIAL";
 
@@ -165,6 +166,7 @@ export function Sidebar() {
         </div>
         <RoleSwitcher />
         <LanguageSwitcher />
+        <ThemeSwitcher />
       </div>
     </aside>
   );
