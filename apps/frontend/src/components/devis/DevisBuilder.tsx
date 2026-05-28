@@ -466,8 +466,8 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
       </p>
 
       {/* Section Technique */}
-      <GlassCard className="mb-6 border-l-4 border-l-[color:var(--info)] p-5">
-        <h2 className="mb-3 text-lg font-semibold text-[color:var(--info)]">
+      <GlassCard className="mb-6 border-l-4 border-l-[color:var(--accent)] p-5">
+        <h2 className="mb-3 text-lg font-semibold text-[color:var(--text-primary)]">
           Partie technique
         </h2>
         <div className="space-y-3">
@@ -1052,15 +1052,16 @@ function StayCard({
           Sejour du {formatDateShort(stay.date)} — {stay.clinique?.name ?? "—"}
         </div>
       </div>
-      <div className="flex overflow-hidden rounded border border-[color:var(--border)]">
+      <div className="vc-segmented flex overflow-hidden rounded-md border border-[color:var(--border)]">
         <button
           type="button"
           disabled={disabled}
           onClick={() => onPatch({ mode: "AMBULATOIRE" })}
-          className={`px-3 py-1 text-xs ${
+          aria-pressed={stay.mode === "AMBULATOIRE"}
+          className={`px-3 py-1 text-xs font-medium transition ${
             stay.mode === "AMBULATOIRE"
-              ? "bg-[color:var(--accent)] text-white"
-              : "bg-white"
+              ? "bg-[color:var(--accent)] text-[color:var(--surface)]"
+              : "bg-[color:var(--surface-glass)] text-[color:var(--text-secondary)] hover:bg-[color:var(--accent-light)] hover:text-[color:var(--text-primary)]"
           }`}
         >
           Ambulatoire
@@ -1069,10 +1070,11 @@ function StayCard({
           type="button"
           disabled={disabled}
           onClick={() => onPatch({ mode: "NUIT" })}
-          className={`px-3 py-1 text-xs ${
+          aria-pressed={stay.mode === "NUIT"}
+          className={`px-3 py-1 text-xs font-medium transition ${
             stay.mode === "NUIT"
-              ? "bg-[color:var(--accent)] text-white"
-              : "bg-white"
+              ? "bg-[color:var(--accent)] text-[color:var(--surface)]"
+              : "bg-[color:var(--surface-glass)] text-[color:var(--text-secondary)] hover:bg-[color:var(--accent-light)] hover:text-[color:var(--text-primary)]"
           }`}
         >
           Nuit(s)

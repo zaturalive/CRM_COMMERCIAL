@@ -37,7 +37,7 @@ export function FollowupKanbanColumn({ column, onOpen }: FollowupKanbanColumnPro
     >
       {/* Header : titre + count + 3 stats */}
       <div
-        className="rounded-t-lg border border-white/70 bg-white/60 px-3.5 py-2.5 backdrop-blur-md"
+        className="rounded-t-lg border border-[color:var(--border)] bg-[color:var(--surface-glass)] px-3.5 py-2.5 backdrop-blur-md"
         style={{ borderBottom: `3px solid ${colors.bar}` }}
       >
         <div className="mb-1.5 flex items-center justify-between">
@@ -76,16 +76,15 @@ export function FollowupKanbanColumn({ column, onOpen }: FollowupKanbanColumnPro
         </div>
       </div>
 
-      {/* Zone drop — ProcessCard standard, le "Xj" apparait integre dans
-          la ligne "raison follow-up" du card (cf ProcessCard) pour ne pas
-          se superposer aux badges qualification + intensite. */}
+      {/* Zone drop — fond glass theme-aware. La couleur sub-stage `colors.bg`
+          n'est plus utilisee comme bg (ressort en beige clair sur dark). On
+          garde le hint visuel via le borderBottom du header uniquement. */}
       <div
         ref={setNodeRef}
         className={cn(
-          "flex min-h-[120px] flex-1 flex-col gap-2 rounded-b-lg border border-t-0 border-white/50 p-2 transition-colors",
+          "kanban-drop-zone flex min-h-[120px] flex-1 flex-col gap-2 rounded-b-lg border border-t-0 border-[color:var(--border)] p-2 transition-colors",
           isOver && "ring-2 ring-accent/40"
         )}
-        style={{ background: `${colors.bg}AA` }}
       >
         {column.processes.map((p) => (
           <div key={p.id} data-followup-substage={column.subStage}>
@@ -93,7 +92,7 @@ export function FollowupKanbanColumn({ column, onOpen }: FollowupKanbanColumnPro
           </div>
         ))}
         {column.processes.length === 0 && (
-          <div className="py-4 text-center text-[13px] text-gray-300">Aucun dossier</div>
+          <div className="py-4 text-center text-[13px] text-[color:var(--text-secondary)]">Aucun dossier</div>
         )}
       </div>
     </div>
