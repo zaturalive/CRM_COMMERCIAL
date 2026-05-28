@@ -43,14 +43,15 @@
 }
 
 /* ============================================================================
-   Defaut = Vencor Dark. Accent VIOLET (pointes de violet), platine en
-   secondaire pour le wordmark + hairlines + accents tres subtils.
-   Le toggle UI bascule en mode Light via body.theme-light.
+   Defaut = Vencor Dark — BRAND PUR.
+   Accent PLATINE (#B5BFC7) comme specifie dans florian_tool/README.md.
+   Aucune pointe de violet en Dark : c'est le brand Vencor monochrome.
+   Le mode Light (body.theme-light) utilise le violet pour les CTA.
    ============================================================================ */
 :root {
-  --accent: var(--vc-violet);
-  --accent-light: rgba(108, 99, 255, 0.18);
-  --accent-lighter: rgba(108, 99, 255, 0.08);
+  --accent: var(--vc-platine);
+  --accent-light: rgba(181, 191, 199, 0.18);
+  --accent-lighter: rgba(181, 191, 199, 0.08);
   --sidebar-bg: var(--vc-onyx-soft);
   --sidebar-hover: var(--vc-glass-hi);
   --surface: var(--vc-onyx-soft);
@@ -147,10 +148,11 @@ body.theme-light .sidebar-brand-mark {
   border: 1px solid rgba(108, 99, 255, 0.18);
 }
 
-/* Login panneau marque — radial glow violet+onyx en dark, violet doux en light */
+/* Login panneau marque — radial glow PLATINE en dark (brand pur),
+   gradient violet en light. */
 .login-brand-panel {
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(108, 99, 255, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse at 30% 20%, rgba(181, 191, 199, 0.12) 0%, transparent 55%),
     linear-gradient(135deg, var(--vc-onyx) 0%, var(--vc-onyx-soft) 100%);
   border-right: 1px solid var(--vc-hair);
 }
