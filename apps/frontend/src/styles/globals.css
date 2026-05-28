@@ -412,6 +412,93 @@ body.theme-vencor .kanban-drop-zone {
 }
 
 /* ============================================================================
+   Bandeau "CA en attente — Follow-up" sur le dashboard : amber-50/amber-200/
+   amber-700 hardcode rend illisible en theme Vencor. On force un look
+   coherent : fond amber translucide + texte amber clair.
+   ============================================================================ */
+body.theme-vencor [class*="border-amber-200"] {
+  border-color: rgba(245, 158, 11, 0.40) !important;
+}
+body.theme-vencor [class*="border-amber-300"] {
+  border-color: rgba(245, 158, 11, 0.55) !important;
+}
+body.theme-vencor [class*="bg-amber-50"] {
+  background-color: rgba(245, 158, 11, 0.10) !important;
+}
+body.theme-vencor [class*="bg-amber-50"][class*="hover:bg-amber-100"]:hover {
+  background-color: rgba(245, 158, 11, 0.20) !important;
+}
+body.theme-vencor [class*="text-amber-700"],
+body.theme-vencor [class*="text-amber-800"],
+body.theme-vencor [class*="text-amber-900"] {
+  color: rgb(252, 211, 77) !important;
+}
+
+/* Inputs number : styler les fleches spinner natives webkit pour theme Vencor.
+   Les fleches natives sont blanches/grises sur fond dark = quasi invisibles.
+   On les rend plus visibles avec un fond glass + accent platine. */
+body.theme-vencor input[type="number"] {
+  color-scheme: dark;
+}
+body.theme-vencor input[type="number"]::-webkit-inner-spin-button,
+body.theme-vencor input[type="number"]::-webkit-outer-spin-button {
+  background-color: var(--vc-glass-hi) !important;
+  border-radius: 2px;
+  opacity: 1;
+}
+body.theme-vencor input[type="number"]::-webkit-inner-spin-button:hover,
+body.theme-vencor input[type="number"]::-webkit-outer-spin-button:hover {
+  background-color: var(--vc-platine) !important;
+}
+
+/* Inputs date / time : forcer color-scheme dark pour que les icones natives
+   (calendar / clock picker) suivent le theme. */
+body.theme-vencor input[type="date"],
+body.theme-vencor input[type="time"],
+body.theme-vencor input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* DevisBuilder + autres inputs/selects hardcoded bg-white/95 / bg-white/80
+   couverts par l override generique [class*="bg-white"]. On force aussi le
+   text color pour eviter les noir-sur-noir des selects. */
+body.theme-vencor select,
+body.theme-vencor input[type="text"],
+body.theme-vencor input[type="email"],
+body.theme-vencor input[type="password"],
+body.theme-vencor input[type="number"],
+body.theme-vencor input[type="search"],
+body.theme-vencor input[type="date"],
+body.theme-vencor input[type="time"],
+body.theme-vencor input[type="tel"],
+body.theme-vencor input[type="url"],
+body.theme-vencor textarea {
+  color: var(--vc-text) !important;
+}
+body.theme-vencor select option {
+  background-color: var(--vc-onyx-soft) !important;
+  color: var(--vc-text) !important;
+}
+
+/* Agenda RBC : la cellule today peut etre rendue via 2 mecanismes (month-view
+   uses .rbc-day-bg.rbc-today; week-view/time-view uses .rbc-day-slot.rbc-today
+   PLUS le bg du time-content > *). On ratisse plus large pour eviter le blanc
+   sur la colonne du jour en vue Semaine. */
+body.theme-vencor .rbc-day-slot.rbc-today,
+body.theme-vencor .rbc-time-content .rbc-day-slot.rbc-today,
+body.theme-vencor .rbc-time-header-content .rbc-today,
+body.theme-vencor .rbc-time-content > * > .rbc-today,
+body.theme-vencor .rbc-month-row .rbc-row-bg .rbc-day-bg.rbc-today {
+  background-color: rgba(181, 191, 199, 0.10) !important;
+  background-image: none !important;
+}
+/* Specifique: assurer que tous les enfants direct de .rbc-today sont transparents */
+body.theme-vencor .rbc-today > *,
+body.theme-vencor .rbc-day-slot.rbc-today > * {
+  background-color: transparent !important;
+}
+
+/* ============================================================================
    Follow-up sub-pipeline : neutraliser les couleurs hardcoded des colonnes
    (vert J0, jaune J1, beige J3, marron J7, etc.) vers une nuance glass.
    ============================================================================ */
