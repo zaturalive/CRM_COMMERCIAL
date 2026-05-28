@@ -430,6 +430,65 @@ Devis final livre apres benchmark effectif.
 
 ---
 
+### 4.5. Retour commercial (cabinet pilote) — brief 2026-05-27
+
+> Source : commercial(e) du cabinet, relais Florian. Document complet :
+> `docs/product/RETOUR-COMMERCIAL-2026-05-27.md`. **Positionnement valide** :
+> on complete Doctolib + Qualimed cote commercial, on remplace pas.
+
+#### V1.1 (juin 2026) — priorite haute, post-deadline 29 mai
+
+| Demande commercial | Priorite | Estim JH | Notes |
+|--------------------|----------|----------|-------|
+| **Date de naissance** sur fiche client | HAUTE | 0.5 j | Beaucoup d'homonymes en pratique. Quick win. |
+| **Acompte paye / pas paye** dans UI | HAUTE | 0.5 j | Champ `acomptePaidAt` existe deja, exposer dans badges UI |
+| **Lien visio** dans agenda (Process / Event) | HAUTE | 0.5 j | Champ `meetingUrl` simple texte |
+| **Champ reduction sur devis** (au lieu de frais negatif) | HAUTE | 1 j | Refactor calcul total + UI DevisBuilder |
+| **Vue PDF live du devis** (preview iframe en edition) | HAUTE | 1 j | Render React PDF aside du DevisBuilder |
+| **Previsionnel PDF du devis** | HAUTE | 0.5 j | Snapshot PDF avant signature pour envoi prealable |
+| **Lien paiement acompte** (Stripe Checkout) | HAUTE | 3 j | Lien magique `/pay/<token>` + webhook update status |
+| **Templates auto par sub-stage** follow-up (J+1, J+3, J+7) | HAUTE | 1 j | Mapping sub-stage to template + envoi auto |
+| **Refonte UX devis** (mode brouillon + wizard 3 etapes) | HAUTE | 2-3 j | Pre-remplissage avance, simplification champs |
+
+**Total V1.1 (sans Google Cal) : ~10-12 jours-homme.**
+
+#### V1.2 (juillet 2026)
+
+| Demande commercial | Priorite | Estim JH | Notes |
+|--------------------|----------|----------|-------|
+| **Sync Google Calendar** bidirectionnelle | HAUTE | 4-5 j | OAuth Google + creneaux libres + import events tiers + webhook |
+| **Multi-provider paiement** (GoCardless SEPA + Klarna) | MEDIUM | 4-5 j | Apres Stripe, ajout SEPA et BNPL |
+| **Signature electronique avancee** (DocuSign / Yousign) | MEDIUM | 4-5 j | Cf §4.4 ligne dediee |
+
+#### V2 — agents IA (deja prevu PD2 + complement)
+
+| Demande commercial | Priorite | Estim JH | Notes |
+|--------------------|----------|----------|-------|
+| **IA WhatsApp** (deja prevu §4.2 PD2) | HAUTE V2 | 5-7 j | Stack Anthropic + WhatsApp Business API |
+| Agent IA Q&A interne (RAG sur prestations + process) | MEDIUM V2 | 5 j | "Va chercher des reponses" |
+| Agent IA proactif (relances automatiques selon heuristiques) | MEDIUM V2 | 7-10 j | "Contacter les clients" + cron + decision IA |
+
+#### Hors scope explicite (positionnement)
+
+| Demande exclue | Raison |
+|----------------|--------|
+| Qualimed (DPI medical) | HDS, hors notre scope (ADR-0003) |
+| Doctolib synchro full | On complete, on remplace pas. Eventuellement read-only V1.2 (§4.4) |
+| Donnees medicales patient | ADR-0002 + ADR-0003 = interdiction structurelle |
+
+#### Questions ouvertes a poser au commercial (cf §5 du retour)
+
+1. Quels sont les 5 champs devis les plus critiques (vs rarement modifies) ?
+2. Pre-remplissage : a partir de quoi (template par prestation ? par praticien ?)
+3. Signature mail : electronique legale ou juste visuelle ?
+4. Templates par J+1/J+3/J+7 : combien par jour ? Differents selon stage ?
+5. Lien visio : sur RDV (Process.dateRendezVous) ou prestation (DevisIntervention) ?
+6. Stripe ou GoCardless en premier ? Compte marchand existant ?
+7. Acompte montant : fixe par cabinet ou variable par client ?
+8. Google Calendar : 1 par praticien ou 1 partage cabinet ?
+
+---
+
 ## 5. Backlog V2 (non-estimable / sans date)
 
 Features identifiees mais non estimees a ce stade. Elles seront cadrees apres retour terrain V1.
