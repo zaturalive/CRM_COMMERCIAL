@@ -43,6 +43,11 @@ apps/backend/prisma/migrations/dev.db
 apps/backend/prisma/migrations/dev.db-journal
 .prisma/
 
+# SQL dumps / backups (peuvent contenir donnees clients — jamais commit)
+*.sql
+!apps/backend/prisma/migrations/**/*.sql
+!apps/backend/scripts/*.sql
+
 # seed.local.ts : variante locale avec vraies donnees client (jamais commit).
 # seed.ts est desormais committable et ne contient que tenants + catalogues.
 apps/backend/prisma/seed.local.ts

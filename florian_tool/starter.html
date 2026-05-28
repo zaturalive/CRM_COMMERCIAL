@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<!--
+  Vencor · starter example
+  A minimal HTML page using the tokens.css system.
+  Open this directly in a browser to see the wordmark + a few components in context.
+-->
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vencor — starter</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&family=Inter+Tight:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="tokens.css">
+
+<style>
+  body { margin: 0; padding: 64px; min-height: 100vh; box-sizing: border-box; }
+  .row { display: flex; gap: 48px; align-items: flex-start; flex-wrap: wrap; }
+  .stack { display: flex; flex-direction: column; gap: 16px; }
+  .demo-card { padding: 32px; min-width: 320px; }
+  .demo-label { color: var(--vc-text-faint); font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 12px; }
+  hr { border: none; border-top: 1px solid var(--vc-hair); margin: 48px 0; }
+</style>
+</head>
+<body>
+
+<!-- WORDMARK -->
+<div class="demo-label">Wordmark</div>
+<div class="row" style="align-items: baseline; margin-bottom: 48px;">
+  <span class="vc-wordmark vc-wordmark--xl">Vencor<span class="vc-wordmark__dot">.</span></span>
+  <span class="vc-wordmark vc-wordmark--md">Vencor<span class="vc-wordmark__dot">.</span></span>
+  <span class="vc-wordmark vc-wordmark--sm">Vencor<span class="vc-wordmark__dot">.</span></span>
+</div>
+
+<hr>
+
+<!-- HEADLINES -->
+<div class="demo-label">Display type</div>
+<div style="margin-bottom: 48px;">
+  <h1 class="vc-display" style="font-size: 72px; margin: 0;">
+    L'intérêt patient,<br>
+    <span class="vc-display--italic-accent">maîtrisé.</span>
+  </h1>
+</div>
+
+<hr>
+
+<!-- BUTTONS -->
+<div class="demo-label">Buttons</div>
+<div class="row" style="margin-bottom: 48px;">
+  <button class="vc-btn vc-btn--primary">Se connecter</button>
+  <button class="vc-btn vc-btn--secondary">Annuler</button>
+  <button class="vc-btn vc-btn--ghost">Mot de passe oublié ?</button>
+  <button class="vc-btn vc-btn--primary vc-btn--pill">Rejoindre →</button>
+</div>
+
+<hr>
+
+<!-- INPUTS -->
+<div class="demo-label">Inputs</div>
+<div class="stack" style="max-width: 380px; margin-bottom: 48px;">
+  <input class="vc-input" type="email" placeholder="vous@cabinet.fr">
+  <input class="vc-input" type="password" placeholder="Mot de passe">
+</div>
+
+<hr>
+
+<!-- CARDS -->
+<div class="demo-label">Cards</div>
+<div class="row">
+  <!-- Glass card -->
+  <div class="vc-glass demo-card">
+    <div class="vc-eyebrow" style="margin-bottom: 8px;">Glass card</div>
+    <h2 class="vc-display" style="font-size: 28px; margin: 0 0 12px;">
+      <span class="vc-display--italic-accent">Vendredi</span> 23 mai
+    </h2>
+    <p style="color: var(--vc-text-dim); font-size: 13px; line-height: 1.6; margin: 0 0 20px;">
+      Appel de suivi mensuel avec votre référent.
+    </p>
+    <button class="vc-btn vc-btn--primary vc-btn--pill">Rejoindre →</button>
+  </div>
+
+  <!-- Solid card with stepper dots -->
+  <div class="vc-card demo-card">
+    <div class="vc-eyebrow" style="margin-bottom: 8px;">Card</div>
+    <h2 class="vc-display" style="font-size: 28px; margin: 0 0 4px;">Accompagnement</h2>
+    <p style="color: var(--vc-text-dim); font-size: 13px; margin: 0 0 24px;">
+      Phase 2 sur 3 · 68% accompli
+    </p>
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <div class="vc-dot vc-dot--done"></div>
+      <div class="vc-dot vc-dot--done"></div>
+      <div class="vc-dot vc-dot--active"></div>
+      <div class="vc-dot vc-dot--pending"></div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- PHOTO PLACEHOLDER -->
+<div class="demo-label">Photographic placeholder (use until real photos)</div>
+<div class="vc-photo vc-photo--candle" style="width: 600px; height: 280px;">
+  <div class="vc-photo__grain"></div>
+  <div class="vc-photo__highlight"></div>
+</div>
+
+</body>
+</html>
