@@ -1,40 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Palette } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
- * Selector de theme place dans le footer Sidebar.
- * 2 themes : "classic" (UI initiale) et "vencor" (rebrand Florian, direction obsidienne).
+ * Toggle Dark / Light pour le theme Vencor (unique theme du projet).
  *
- * Persistance localStorage cle `crm-commercial:theme`.
- * Set la class `theme-vencor` sur <body> via effect.
+ * Defaut = Dark (Vencor onyx + accent violet).
+ * Light = fond clair + meme accent violet + design language Vencor preserve.
  *
- * Strategie : non destructive. Aucun composant n'est modifie ; seules les
- * CSS variables sont overridees dans globals.css par le selector body.theme-vencor.
+ * Persistance : localStorage cle `crm-commercial:theme` (valeurs "dark" / "light").
+ * Application : ajoute / retire la class `theme-light` sur <body>.
  */
 
 const THEME_STORAGE_KEY = "crm-commercial:theme";
-type Theme = "classic" | "vencor";
-
-const LABELS: Record<Theme, string> = {
-  classic: "Classic",
-  vencor: "Vencor",
-};
+type Theme = "dark" | "light";
 
 function applyTheme(theme: Theme) {
   if (typeof document === "undefined") return;
-  document.body.classList.toggle("theme-vencor", theme === "vencor");
+  document.body.classList.toggle("theme-light", theme === "light");
+  // Compat : remove anciens noms de class si presents (post-refonte D15.5)
+  document.body.classList.remove("theme-vencor", "theme-classic");
 }
 
 export function ThemeSwitcher() {
-  const [theme, setThemeState] = useState<Theme>("classic");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   useEffect(() => {
-    const stored = (localStorage.getItem(THEME_STORAGE_KEY) as Theme | null) ?? "classic";
-    setThemeState(stored);
-    applyTheme(stored);
+    const stored = (localStorage.getItem(THEME_STORAGE_KEY) as Theme | null);
+    // Compat : migrer les anciennes valeurs "vencor" / "classic" vers "dark"
+    const safe: Theme =
+      stored === "light" ? "light" :
+      stored === "dark" ? "dark" :
+      "dark";
+    setThemeState(safe);
+    applyTheme(safe);
+    if (stored !== safe) localStorage.setItem(THEME_STORAGE_KEY, safe);
   }, []);
 
   const handleChange = (next: Theme) => {
@@ -46,30 +48,38 @@ export function ThemeSwitcher() {
   return (
     <div data-testid="theme-switcher" className="mt-3">
       <div className="mb-1.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-white/50">
-        <Palette size={11} />
+        <Moon size={11} />
         Theme
       </div>
       <div className="grid grid-cols-2 gap-1">
-        {(["classic", "vencor"] as Theme[]).map((t) => {
-          const isActive = t === theme;
-          return (
-            <button
-              key={t}
-              type="button"
-              disabled={isActive}
-              onClick={() => handleChange(t)}
-              data-testid={`theme-${t}`}
-              className={cn(
-                "rounded px-1.5 py-1 text-[10px] font-medium transition-colors",
-                isActive
-                  ? "bg-accent text-white"
-                  : "bg-white/5 text-white/70 hover:bg-white/15 hover:text-white"
-              )}
-            >
-              {LABELS[t]}
-            </button>
-          );
-        })}
+        <button
+          type="button"
+          disabled={theme === "dark"}
+          onClick={() => handleChange("dark")}
+          data-testid="theme-dark"
+          className={cn(
+            "inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium transition-colors",
+            theme === "dark"
+              ? "bg-accent text-white"
+              : "bg-white/5 text-white/70 hover:bg-white/15 hover:text-white"
+          )}
+        >
+          <Moon size={10} /> Dark
+        </button>
+        <button
+          type="button"
+          disabled={theme === "light"}
+          onClick={() => handleChange("light")}
+          data-testid="theme-light"
+          className={cn(
+            "inline-flex items-center justify-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium transition-colors",
+            theme === "light"
+              ? "bg-accent text-white"
+              : "bg-white/5 text-white/70 hover:bg-white/15 hover:text-white"
+          )}
+        >
+          <Sun size={10} /> Light
+        </button>
       </div>
     </div>
   );

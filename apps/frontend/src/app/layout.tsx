@@ -25,11 +25,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     >
       <body className="font-sans">
         {/* Boot-time theme application before React hydrate.
-            Lit localStorage `crm-commercial:theme` et applique `theme-vencor`
-            sur body avant le first paint (evite le flash classic->vencor). */}
+            Lit localStorage `crm-commercial:theme` et applique `theme-light`
+            sur body avant le first paint si valeur "light". Defaut = dark.
+            Compat : migre anciennes valeurs "vencor" / "classic" -> "dark". */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('crm-commercial:theme');if(t==='vencor'){document.body.classList.add('theme-vencor');}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('crm-commercial:theme');if(t==='light'){document.body.classList.add('theme-light');}if(t==='vencor'||t==='classic'){localStorage.setItem('crm-commercial:theme','dark');}}catch(e){}})();`,
           }}
         />
         <NextIntlClientProvider locale={locale} messages={messages}>

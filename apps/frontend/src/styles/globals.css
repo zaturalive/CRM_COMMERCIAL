@@ -4,73 +4,53 @@
 
 /* ============================================================================
    Vencor brand (Florian) — direction obsidienne, dark Apple-grade premium.
-   Fonts importees via Google Fonts. Active via body.theme-vencor (toggle UI).
+   Fonts importees via Google Fonts. Active via body:not(.theme-light) (toggle UI).
    Source : florian_tool/README.md Handoff Vencor v2026-05-27.
    ============================================================================ */
 @import url("https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@1,6..72,300;1,6..72,400&family=Inter+Tight:wght@300;400;500;600;700&display=swap");
 
+/* ============================================================================
+   Vencor brand tokens — toujours disponibles globalement.
+   Direction obsidienne adoucie, accent violet (pointes de violet du Classic).
+   ============================================================================ */
 :root {
-  /* Vencor design tokens — disponibles globalement, actives par .theme-vencor.
-     NB : onyx adouci (vs #0A0B0E du spec original) — teinte carbon-grey
-     legerement bleutee, plus chaude qu un noir pur, evite l effet ecran eteint
-     tout en gardant la coherence dark-Apple-grade. */
-  --vc-onyx: #15171D;
-  --vc-onyx-soft: #1B1D24;
-  --vc-glass: rgba(255, 255, 255, 0.05);
-  --vc-glass-hi: rgba(255, 255, 255, 0.09);
+  /* Onyx adouci (vs #15171D precedent) — moins agressif, plus profond.
+     Plus de bleu pour reduire l'effet "ecran eteint". */
+  --vc-onyx: #0F1117;
+  --vc-onyx-soft: #161922;
+  --vc-glass: rgba(255, 255, 255, 0.045);
+  --vc-glass-hi: rgba(255, 255, 255, 0.08);
   --vc-platine: #B5BFC7;
   --vc-pearl: #E8ECF0;
+  --vc-violet: #6c63ff;
+  --vc-violet-light: #8b85ff;
   --vc-text: #F0F2F5;
   --vc-text-dim: rgba(240, 242, 245, 0.65);
   --vc-text-faint: rgba(240, 242, 245, 0.42);
-  --vc-hair: rgba(240, 242, 245, 0.12);
-  --vc-hair-strong: rgba(240, 242, 245, 0.20);
-}
+  --vc-hair: rgba(240, 242, 245, 0.10);
+  --vc-hair-strong: rgba(240, 242, 245, 0.18);
 
-/* Design tokens — source spec-design-figma-v1_3.md §1.7 */
-:root {
-  --accent: #6c63ff;
-  --accent-light: #ede9fe;
-  --accent-lighter: #f5f3ff;
-  --sidebar-bg: #1a1a2e;
-  --sidebar-hover: #252540;
-  --surface: #ffffff;
-  --surface-glass: rgba(255, 255, 255, 0.72);
-  --surface-glass-border: rgba(255, 255, 255, 0.8);
-  --page-bg: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 50%, #f9fafb 100%);
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #3b82f6;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --border: #e5e7eb;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
-  --blur: blur(20px);
-}
-
-html,
-body {
-  color: var(--text-primary);
-  background: var(--page-bg);
-  font-family: Inter, system-ui, sans-serif;
-  min-height: 100vh;
+  /* Tokens light mode (utilises par body.theme-light) */
+  --vc-light-bg: #F5F5F8;
+  --vc-light-surface: #FFFFFF;
+  --vc-light-glass: rgba(108, 99, 255, 0.04);
+  --vc-light-glass-hi: rgba(108, 99, 255, 0.08);
+  --vc-light-text: #1A1A2E;
+  --vc-light-text-dim: rgba(26, 26, 46, 0.65);
+  --vc-light-text-faint: rgba(26, 26, 46, 0.42);
+  --vc-light-hair: rgba(26, 26, 46, 0.10);
+  --vc-light-hair-strong: rgba(26, 26, 46, 0.18);
 }
 
 /* ============================================================================
-   THEME VENCOR — override non destructif des vars globales.
-   Active via <body class="theme-vencor"> (toggle UI dans Sidebar footer).
-   Aucun composant ne change ; seules les CSS vars sont overridees.
+   Defaut = Vencor Dark. Accent VIOLET (pointes de violet), platine en
+   secondaire pour le wordmark + hairlines + accents tres subtils.
+   Le toggle UI bascule en mode Light via body.theme-light.
    ============================================================================ */
-body.theme-vencor {
-  --accent: var(--vc-platine);
-  --accent-light: rgba(181, 191, 199, 0.18);
-  --accent-lighter: rgba(181, 191, 199, 0.08);
+:root {
+  --accent: var(--vc-violet);
+  --accent-light: rgba(108, 99, 255, 0.18);
+  --accent-lighter: rgba(108, 99, 255, 0.08);
   --sidebar-bg: var(--vc-onyx-soft);
   --sidebar-hover: var(--vc-glass-hi);
   --surface: var(--vc-onyx-soft);
@@ -80,17 +60,58 @@ body.theme-vencor {
   --text-primary: var(--vc-text);
   --text-secondary: var(--vc-text-dim);
   --border: var(--vc-hair);
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.8);
   --blur: blur(40px);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Tight", "Inter", sans-serif;
-  letter-spacing: -0.01em;
 }
 
-body.theme-vencor h1,
-body.theme-vencor h2,
-body.theme-vencor h3 {
+html,
+body {
+  color: var(--text-primary);
+  background: var(--page-bg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Tight", "Inter", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  min-height: 100vh;
+}
+
+/* ============================================================================
+   THEME LIGHT — override pour passer en mode clair.
+   Active via <body class="theme-light"> (toggle UI dans Sidebar footer).
+   Accent violet reste, fond clair adouci, hairlines violet translucides.
+   ============================================================================ */
+body.theme-light {
+  --accent: var(--vc-violet);
+  --accent-light: rgba(108, 99, 255, 0.10);
+  --accent-lighter: rgba(108, 99, 255, 0.05);
+  --sidebar-bg: #1a1a2e;
+  --sidebar-hover: #252540;
+  --surface: var(--vc-light-surface);
+  --surface-glass: var(--vc-light-glass);
+  --surface-glass-border: var(--vc-light-hair);
+  --page-bg: var(--vc-light-bg);
+  --text-primary: var(--vc-light-text);
+  --text-secondary: var(--vc-light-text-dim);
+  --border: var(--vc-light-hair);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
+  --blur: blur(24px);
+}
+
+/* Compat : ancien selecteur .theme-vencor reste valide en alias du defaut */
+body:not(.theme-light) { /* no-op : c'est deja le defaut */ }
+
+body:not(.theme-light) h1,
+body:not(.theme-light) h2,
+body:not(.theme-light) h3 {
   letter-spacing: -0.025em;
   font-weight: 500;
 }
@@ -106,49 +127,56 @@ body.theme-vencor h3 {
 .vc-wordmark__dot {
   color: var(--vc-platine);
 }
-body:not(.theme-vencor) .vc-wordmark {
-  color: var(--text-primary);
+body.theme-light .vc-wordmark {
+  color: var(--vc-light-text);
 }
-body:not(.theme-vencor) .vc-wordmark__dot {
-  color: var(--accent);
+body.theme-light .vc-wordmark__dot {
+  color: var(--vc-violet);
 }
 
-/* Affichage conditionnel du wordmark selon theme */
-.vc-wordmark-only-vencor { display: none; }
-.vc-wordmark-only-classic { display: inline; }
-body.theme-vencor .vc-wordmark-only-vencor { display: inline; }
-body.theme-vencor .vc-wordmark-only-classic { display: none; }
-
-/* Sidebar brand mark : carre "C" en Classic, glass + point platine en Vencor */
-body.theme-vencor .sidebar-brand-mark {
+/* Sidebar brand mark : glass + point platine (en dark) ou violet (en light) */
+.sidebar-brand-mark {
   background: var(--vc-glass) !important;
   color: var(--vc-platine) !important;
   border: 1px solid var(--vc-hair);
   backdrop-filter: blur(40px);
 }
-
-/* Login panneau marque — gradient theme-aware */
-.login-brand-panel {
-  background: linear-gradient(135deg, #1A1A2E 0%, #252540 50%, #2D1F6E 100%);
+body.theme-light .sidebar-brand-mark {
+  background: rgba(108, 99, 255, 0.06) !important;
+  color: var(--vc-violet) !important;
+  border: 1px solid rgba(108, 99, 255, 0.18);
 }
-body.theme-vencor .login-brand-panel {
+
+/* Login panneau marque — radial glow violet+onyx en dark, violet doux en light */
+.login-brand-panel {
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(181, 191, 199, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 30% 20%, rgba(108, 99, 255, 0.18) 0%, transparent 60%),
     linear-gradient(135deg, var(--vc-onyx) 0%, var(--vc-onyx-soft) 100%);
   border-right: 1px solid var(--vc-hair);
 }
-body.theme-vencor .login-brand-mark {
+body.theme-light .login-brand-panel {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(108, 99, 255, 0.12) 0%, transparent 60%),
+    linear-gradient(135deg, #1A1A2E 0%, #252540 50%, #2D1F6E 100%);
+  border-right: 1px solid rgba(108, 99, 255, 0.18);
+}
+.login-brand-mark {
   background: var(--vc-glass);
   color: var(--vc-platine);
   border: 1px solid var(--vc-hair);
   backdrop-filter: blur(40px);
 }
+body.theme-light .login-brand-mark {
+  background: rgba(108, 99, 255, 0.12);
+  color: var(--vc-violet-light);
+  border: 1px solid rgba(108, 99, 255, 0.25);
+}
 
 /* Focus ring Vencor : remplace le bleu Tailwind par platine doux */
-body.theme-vencor input:focus,
-body.theme-vencor textarea:focus,
-body.theme-vencor select:focus,
-body.theme-vencor button:focus-visible {
+body:not(.theme-light) input:focus,
+body:not(.theme-light) textarea:focus,
+body:not(.theme-light) select:focus,
+body:not(.theme-light) button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(181, 191, 199, 0.30);
 }
@@ -156,91 +184,91 @@ body.theme-vencor button:focus-visible {
 /* Cartes / surfaces — adoucissement en Vencor pour eviter le blanc translucide
    sur fond noir qui ressemble a un bug de rendu. Override toutes les variantes
    Tailwind bg-white, bg-white/40, /60, /70, /80, /90, /95. */
-body.theme-vencor [class*="bg-white"] {
+body:not(.theme-light) [class*="bg-white"] {
   background-color: var(--vc-glass) !important;
   color: var(--vc-text);
 }
-body.theme-vencor [class*="border-white"] {
+body:not(.theme-light) [class*="border-white"] {
   border-color: var(--vc-hair) !important;
 }
-body.theme-vencor [class*="hover:bg-white"]:hover {
+body:not(.theme-light) [class*="hover:bg-white"]:hover {
   background-color: var(--vc-glass-hi) !important;
 }
 /* Text colors hardcoded gray → text vencor */
-body.theme-vencor [class*="text-gray-"],
-body.theme-vencor [class*="text-text-primary"] {
+body:not(.theme-light) [class*="text-gray-"],
+body:not(.theme-light) [class*="text-text-primary"] {
   color: var(--vc-text) !important;
 }
-body.theme-vencor [class*="text-text-secondary"] {
+body:not(.theme-light) [class*="text-text-secondary"] {
   color: var(--vc-text-dim) !important;
 }
 /* Border gray hardcoded */
-body.theme-vencor [class*="border-gray-"] {
+body:not(.theme-light) [class*="border-gray-"] {
   border-color: var(--vc-hair) !important;
 }
 /* Backgrounds gray hardcoded (gray-50 / gray-100 / gray-200) */
-body.theme-vencor [class*="bg-gray-50"],
-body.theme-vencor [class*="bg-gray-100"],
-body.theme-vencor [class*="bg-gray-200"] {
+body:not(.theme-light) [class*="bg-gray-50"],
+body:not(.theme-light) [class*="bg-gray-100"],
+body:not(.theme-light) [class*="bg-gray-200"] {
   background-color: var(--vc-glass) !important;
 }
 
 /* React-big-calendar override pour theme Vencor.
    Le calendar utilise ses propres classes rbc-* avec styles inline blanc
    par defaut, donc on force le theme Vencor sur la grille complete. */
-body.theme-vencor .rbc-calendar,
-body.theme-vencor .rbc-month-view,
-body.theme-vencor .rbc-time-view,
-body.theme-vencor .rbc-month-row,
-body.theme-vencor .rbc-row-bg,
-body.theme-vencor .rbc-day-bg,
-body.theme-vencor .rbc-time-content,
-body.theme-vencor .rbc-time-header,
-body.theme-vencor .rbc-header,
-body.theme-vencor .rbc-time-slot,
-body.theme-vencor .rbc-timeslot-group,
-body.theme-vencor .rbc-allday-cell {
+body:not(.theme-light) .rbc-calendar,
+body:not(.theme-light) .rbc-month-view,
+body:not(.theme-light) .rbc-time-view,
+body:not(.theme-light) .rbc-month-row,
+body:not(.theme-light) .rbc-row-bg,
+body:not(.theme-light) .rbc-day-bg,
+body:not(.theme-light) .rbc-time-content,
+body:not(.theme-light) .rbc-time-header,
+body:not(.theme-light) .rbc-header,
+body:not(.theme-light) .rbc-time-slot,
+body:not(.theme-light) .rbc-timeslot-group,
+body:not(.theme-light) .rbc-allday-cell {
   background-color: transparent !important;
   color: var(--vc-text) !important;
   border-color: var(--vc-hair) !important;
 }
 /* Today : selecteurs plus precis pour battre la feuille react-big-calendar */
-body.theme-vencor .rbc-day-bg.rbc-today,
-body.theme-vencor .rbc-day-slot.rbc-today,
-body.theme-vencor .rbc-today,
-body.theme-vencor td.rbc-today,
-body.theme-vencor .rbc-month-view .rbc-row-bg .rbc-day-bg.rbc-today {
+body:not(.theme-light) .rbc-day-bg.rbc-today,
+body:not(.theme-light) .rbc-day-slot.rbc-today,
+body:not(.theme-light) .rbc-today,
+body:not(.theme-light) td.rbc-today,
+body:not(.theme-light) .rbc-month-view .rbc-row-bg .rbc-day-bg.rbc-today {
   background-color: rgba(181, 191, 199, 0.12) !important;
 }
-body.theme-vencor .rbc-off-range-bg {
+body:not(.theme-light) .rbc-off-range-bg {
   background-color: rgba(0, 0, 0, 0.30) !important;
 }
-body.theme-vencor .rbc-off-range {
+body:not(.theme-light) .rbc-off-range {
   color: var(--vc-text-faint) !important;
 }
 /* Default rbc cells (non-today) en theme Vencor : forcer fond transparent */
-body.theme-vencor .rbc-day-bg,
-body.theme-vencor .rbc-time-content > * + * > *,
-body.theme-vencor .rbc-day-slot .rbc-time-slot {
+body:not(.theme-light) .rbc-day-bg,
+body:not(.theme-light) .rbc-time-content > * + * > *,
+body:not(.theme-light) .rbc-day-slot .rbc-time-slot {
   background-color: transparent !important;
   border-color: var(--vc-hair) !important;
 }
-body.theme-vencor .rbc-event {
+body:not(.theme-light) .rbc-event {
   background-color: var(--vc-platine) !important;
   color: var(--vc-onyx) !important;
   border-color: var(--vc-pearl) !important;
 }
-body.theme-vencor .rbc-toolbar button {
+body:not(.theme-light) .rbc-toolbar button {
   color: var(--vc-text-dim) !important;
   background-color: transparent !important;
   border-color: var(--vc-hair) !important;
 }
-body.theme-vencor .rbc-toolbar button.rbc-active,
-body.theme-vencor .rbc-toolbar button:hover {
+body:not(.theme-light) .rbc-toolbar button.rbc-active,
+body:not(.theme-light) .rbc-toolbar button:hover {
   background-color: var(--vc-glass-hi) !important;
   color: var(--vc-text) !important;
 }
-body.theme-vencor .rbc-current-time-indicator {
+body:not(.theme-light) .rbc-current-time-indicator {
   background-color: var(--vc-platine) !important;
 }
 
@@ -250,48 +278,48 @@ body.theme-vencor .rbc-current-time-indicator {
    (header #075E54, bulle bot blanc, bulle user #DCF8C6) DANS TOUS LES CAS,
    meme en theme Vencor.
    ============================================================================ */
-body.theme-vencor .whatsapp-preview-protected {
+body:not(.theme-light) .whatsapp-preview-protected {
   background-color: #ffffff !important;
   color: #111827 !important;
   border-color: rgba(255, 255, 255, 0.6) !important;
 }
-body.theme-vencor .whatsapp-preview-protected * {
+body:not(.theme-light) .whatsapp-preview-protected * {
   border-color: rgba(229, 231, 235, 0.6) !important;
 }
-body.theme-vencor .whatsapp-preview-protected [class*="bg-white"],
-body.theme-vencor .whatsapp-preview-protected .bg-white {
+body:not(.theme-light) .whatsapp-preview-protected [class*="bg-white"],
+body:not(.theme-light) .whatsapp-preview-protected .bg-white {
   background-color: #ffffff !important;
   color: #111827 !important;
 }
-body.theme-vencor .whatsapp-preview-protected [class*="text-text-primary"],
-body.theme-vencor .whatsapp-preview-protected [class*="text-gray-"] {
+body:not(.theme-light) .whatsapp-preview-protected [class*="text-text-primary"],
+body:not(.theme-light) .whatsapp-preview-protected [class*="text-gray-"] {
   color: #111827 !important;
 }
-body.theme-vencor .whatsapp-preview-protected [class*="text-text-secondary"] {
+body:not(.theme-light) .whatsapp-preview-protected [class*="text-text-secondary"] {
   color: #6b7280 !important;
 }
 /* Bot bubble : reste WhatsApp green #DCF8C6 */
-body.theme-vencor .whatsapp-preview-protected [style*="DCF8C6"],
-body.theme-vencor .whatsapp-preview-protected [class*="DCF8C6"] {
+body:not(.theme-light) .whatsapp-preview-protected [style*="DCF8C6"],
+body:not(.theme-light) .whatsapp-preview-protected [class*="DCF8C6"] {
   background-color: #DCF8C6 !important;
 }
 /* Header bandeau WhatsApp : reste vert officiel #075E54 */
-body.theme-vencor .whatsapp-preview-protected [style*="075E54"],
-body.theme-vencor .whatsapp-preview-protected [class*="075E54"] {
+body:not(.theme-light) .whatsapp-preview-protected [style*="075E54"],
+body:not(.theme-light) .whatsapp-preview-protected [class*="075E54"] {
   background-color: #075E54 !important;
   color: #ffffff !important;
 }
 /* Header bandeau via class explicite bg-[#075E54] */
-body.theme-vencor .whatsapp-preview-protected header {
+body:not(.theme-light) .whatsapp-preview-protected header {
   background-color: #075E54 !important;
   color: #ffffff !important;
 }
-body.theme-vencor .whatsapp-preview-protected header * {
+body:not(.theme-light) .whatsapp-preview-protected header * {
   color: #ffffff !important;
 }
 /* Inputs WhatsApp : fond blanc, texte sombre */
-body.theme-vencor .whatsapp-preview-protected input,
-body.theme-vencor .whatsapp-preview-protected textarea {
+body:not(.theme-light) .whatsapp-preview-protected input,
+body:not(.theme-light) .whatsapp-preview-protected textarea {
   background-color: #ffffff !important;
   color: #111827 !important;
   border-color: #e5e7eb !important;
@@ -302,43 +330,58 @@ body.theme-vencor .whatsapp-preview-protected textarea {
    un text ONYX (sombre) pour contraste maximum. Sinon white-on-platine
    donne du blanc sur blanc-gris = illisible.
    ============================================================================ */
-body.theme-vencor button.bg-accent,
-body.theme-vencor [class*="bg-accent"]:not([class*="bg-accent-light"]):not([class*="bg-accent-lighter"]),
-body.theme-vencor button[type="submit"]:not([class*="bg-white"]):not([class*="bg-glass"]) {
+body:not(.theme-light) button.bg-accent,
+body:not(.theme-light) [class*="bg-accent"]:not([class*="bg-accent-light"]):not([class*="bg-accent-lighter"]),
+body:not(.theme-light) button[type="submit"]:not([class*="bg-white"]):not([class*="bg-glass"]) {
   color: var(--vc-onyx) !important;
   font-weight: 600;
 }
-body.theme-vencor button.bg-accent:hover,
-body.theme-vencor [class*="bg-accent"]:not([class*="bg-accent-light"]):not([class*="bg-accent-lighter"]):hover {
+body:not(.theme-light) button.bg-accent:hover,
+body:not(.theme-light) [class*="bg-accent"]:not([class*="bg-accent-light"]):not([class*="bg-accent-lighter"]):hover {
   background-color: var(--vc-pearl) !important;
   color: var(--vc-onyx) !important;
 }
 /* Bouton primary text-white explicite : override en onyx en Vencor */
-body.theme-vencor button[class*="bg-accent"][class*="text-white"],
-body.theme-vencor [class*="bg-accent"][class*="text-white"] {
+body:not(.theme-light) button[class*="bg-accent"][class*="text-white"],
+body:not(.theme-light) [class*="bg-accent"][class*="text-white"] {
   color: var(--vc-onyx) !important;
 }
 
 /* ============================================================================
-   Dialog overlay (modal) : plus sombre + flou plus prononce en Vencor
-   pour eviter l'effet "vitre claire" sur fond Vencor.
+   Dialog overlay (modal + sheet) : assombrissement plus prononce + blur fort
+   pour eviter l'effet "vitre claire" sur fond Vencor en dark.
+   En light mode : overlay plus subtil mais avec blur conserve.
    ============================================================================ */
-body.theme-vencor [data-state="open"][class*="bg-black"] {
-  background-color: rgba(0, 0, 0, 0.72) !important;
+body:not(.theme-light) [data-state="open"][class*="bg-black"],
+body:not(.theme-light) [data-radix-dialog-overlay],
+body:not(.theme-light) [data-radix-sheet-overlay] {
+  background-color: rgba(0, 0, 0, 0.78) !important;
+  backdrop-filter: blur(12px) !important;
+}
+body.theme-light [data-state="open"][class*="bg-black"],
+body.theme-light [data-radix-dialog-overlay],
+body.theme-light [data-radix-sheet-overlay] {
+  background-color: rgba(26, 26, 46, 0.45) !important;
   backdrop-filter: blur(8px) !important;
+}
+/* EventSheet et autres sheets fixed positioned : forcer surface opaque + ring
+   pour eviter la confusion visuelle avec le fond derriere */
+body:not(.theme-light) .fixed[class*="bg-[color:var(--surface)]"],
+body:not(.theme-light) .fixed[class*="bg-white"] {
+  box-shadow: -20px 0 60px -20px rgba(0, 0, 0, 0.8), -4px 0 0 0 var(--vc-hair) !important;
 }
 
 /* ============================================================================
    Tabs visibility : assurer un contraste minimum en Vencor pour les onglets
    (Vue ensemble / Notes / Documents / Devis dans ProcessPanel).
    ============================================================================ */
-body.theme-vencor [role="tablist"] button,
-body.theme-vencor [role="tablist"] a {
+body:not(.theme-light) [role="tablist"] button,
+body:not(.theme-light) [role="tablist"] a {
   color: var(--vc-text-dim) !important;
 }
-body.theme-vencor [role="tablist"] button[aria-selected="true"],
-body.theme-vencor [role="tablist"] button[data-state="active"],
-body.theme-vencor [role="tablist"] a[aria-current="page"] {
+body:not(.theme-light) [role="tablist"] button[aria-selected="true"],
+body:not(.theme-light) [role="tablist"] button[data-state="active"],
+body:not(.theme-light) [role="tablist"] a[aria-current="page"] {
   color: var(--vc-text) !important;
   border-color: var(--vc-platine) !important;
 }
@@ -347,11 +390,11 @@ body.theme-vencor [role="tablist"] a[aria-current="page"] {
    Process panel pills : Follow-up et Non qualifie (bg-amber-50 + bg-red-50)
    doivent rester lisibles en Vencor.
    ============================================================================ */
-body.theme-vencor [class*="bg-amber-50"] {
+body:not(.theme-light) [class*="bg-amber-50"] {
   background-color: rgba(245, 158, 11, 0.15) !important;
   color: rgb(252, 211, 77) !important;
 }
-body.theme-vencor [class*="bg-red-50"] {
+body:not(.theme-light) [class*="bg-red-50"] {
   background-color: rgba(239, 68, 68, 0.15) !important;
   color: rgb(252, 165, 165) !important;
 }
@@ -361,17 +404,17 @@ body.theme-vencor [class*="bg-red-50"] {
    pour que ca se voit bien sur fond onyx mais reste discret.
    Aussi : .text-gray-300 (utilise dans KanbanColumn / FollowupKanbanColumn)
    ============================================================================ */
-body.theme-vencor [class*="bg-emerald-50"],
-body.theme-vencor [class*="bg-blue-50"],
-body.theme-vencor [class*="bg-purple-50"],
-body.theme-vencor [class*="bg-violet-50"],
-body.theme-vencor [class*="bg-indigo-50"] {
+body:not(.theme-light) [class*="bg-emerald-50"],
+body:not(.theme-light) [class*="bg-blue-50"],
+body:not(.theme-light) [class*="bg-purple-50"],
+body:not(.theme-light) [class*="bg-violet-50"],
+body:not(.theme-light) [class*="bg-indigo-50"] {
   background-color: rgba(0, 0, 0, 0.30) !important;
   color: var(--vc-text) !important;
   border-color: var(--vc-hair) !important;
 }
 /* "Aucun dossier" texte (gris-300) -> blanc plus visible en Vencor */
-body.theme-vencor .text-gray-300 {
+body:not(.theme-light) .text-gray-300 {
   color: var(--vc-text-dim) !important;
 }
 
@@ -379,25 +422,25 @@ body.theme-vencor .text-gray-300 {
    Badges status document (En attente / Recu / Valide) : 3 couleurs distinctes
    muted en theme Vencor (avant tous neutralises vers platine = indistinguables).
    ============================================================================ */
-body.theme-vencor .doc-status-badge--en-attente {
+body:not(.theme-light) .doc-status-badge--en-attente {
   background-color: rgba(251, 191, 36, 0.20) !important;
   color: rgb(252, 211, 77) !important;
 }
-body.theme-vencor .doc-status-badge--en-attente:hover {
+body:not(.theme-light) .doc-status-badge--en-attente:hover {
   background-color: rgba(251, 191, 36, 0.30) !important;
 }
-body.theme-vencor .doc-status-badge--recu {
+body:not(.theme-light) .doc-status-badge--recu {
   background-color: rgba(59, 130, 246, 0.20) !important;
   color: rgb(147, 197, 253) !important;
 }
-body.theme-vencor .doc-status-badge--recu:hover {
+body:not(.theme-light) .doc-status-badge--recu:hover {
   background-color: rgba(59, 130, 246, 0.30) !important;
 }
-body.theme-vencor .doc-status-badge--valide {
+body:not(.theme-light) .doc-status-badge--valide {
   background-color: rgba(16, 185, 129, 0.20) !important;
   color: rgb(110, 231, 183) !important;
 }
-body.theme-vencor .doc-status-badge--valide:hover {
+body:not(.theme-light) .doc-status-badge--valide:hover {
   background-color: rgba(16, 185, 129, 0.30) !important;
 }
 
@@ -406,7 +449,7 @@ body.theme-vencor .doc-status-badge--valide:hover {
    par stage (colors.bg + alpha). En Vencor on override avec un fond sombre
    semi-transparent + border hairlines.
    ============================================================================ */
-body.theme-vencor .kanban-drop-zone {
+body:not(.theme-light) .kanban-drop-zone {
   background: rgba(0, 0, 0, 0.25) !important;
   border-color: var(--vc-hair) !important;
 }
@@ -416,66 +459,66 @@ body.theme-vencor .kanban-drop-zone {
    amber-700 hardcode rend illisible en theme Vencor. On force un look
    coherent : fond amber translucide + texte amber clair.
    ============================================================================ */
-body.theme-vencor [class*="border-amber-200"] {
+body:not(.theme-light) [class*="border-amber-200"] {
   border-color: rgba(245, 158, 11, 0.40) !important;
 }
-body.theme-vencor [class*="border-amber-300"] {
+body:not(.theme-light) [class*="border-amber-300"] {
   border-color: rgba(245, 158, 11, 0.55) !important;
 }
-body.theme-vencor [class*="bg-amber-50"] {
+body:not(.theme-light) [class*="bg-amber-50"] {
   background-color: rgba(245, 158, 11, 0.10) !important;
 }
-body.theme-vencor [class*="bg-amber-50"][class*="hover:bg-amber-100"]:hover {
+body:not(.theme-light) [class*="bg-amber-50"][class*="hover:bg-amber-100"]:hover {
   background-color: rgba(245, 158, 11, 0.20) !important;
 }
-body.theme-vencor [class*="text-amber-700"],
-body.theme-vencor [class*="text-amber-800"],
-body.theme-vencor [class*="text-amber-900"] {
+body:not(.theme-light) [class*="text-amber-700"],
+body:not(.theme-light) [class*="text-amber-800"],
+body:not(.theme-light) [class*="text-amber-900"] {
   color: rgb(252, 211, 77) !important;
 }
 
 /* Inputs number : styler les fleches spinner natives webkit pour theme Vencor.
    Les fleches natives sont blanches/grises sur fond dark = quasi invisibles.
    On les rend plus visibles avec un fond glass + accent platine. */
-body.theme-vencor input[type="number"] {
+body:not(.theme-light) input[type="number"] {
   color-scheme: dark;
 }
-body.theme-vencor input[type="number"]::-webkit-inner-spin-button,
-body.theme-vencor input[type="number"]::-webkit-outer-spin-button {
+body:not(.theme-light) input[type="number"]::-webkit-inner-spin-button,
+body:not(.theme-light) input[type="number"]::-webkit-outer-spin-button {
   background-color: var(--vc-glass-hi) !important;
   border-radius: 2px;
   opacity: 1;
 }
-body.theme-vencor input[type="number"]::-webkit-inner-spin-button:hover,
-body.theme-vencor input[type="number"]::-webkit-outer-spin-button:hover {
+body:not(.theme-light) input[type="number"]::-webkit-inner-spin-button:hover,
+body:not(.theme-light) input[type="number"]::-webkit-outer-spin-button:hover {
   background-color: var(--vc-platine) !important;
 }
 
 /* Inputs date / time : forcer color-scheme dark pour que les icones natives
    (calendar / clock picker) suivent le theme. */
-body.theme-vencor input[type="date"],
-body.theme-vencor input[type="time"],
-body.theme-vencor input[type="datetime-local"] {
+body:not(.theme-light) input[type="date"],
+body:not(.theme-light) input[type="time"],
+body:not(.theme-light) input[type="datetime-local"] {
   color-scheme: dark;
 }
 
 /* DevisBuilder + autres inputs/selects hardcoded bg-white/95 / bg-white/80
    couverts par l override generique [class*="bg-white"]. On force aussi le
    text color pour eviter les noir-sur-noir des selects. */
-body.theme-vencor select,
-body.theme-vencor input[type="text"],
-body.theme-vencor input[type="email"],
-body.theme-vencor input[type="password"],
-body.theme-vencor input[type="number"],
-body.theme-vencor input[type="search"],
-body.theme-vencor input[type="date"],
-body.theme-vencor input[type="time"],
-body.theme-vencor input[type="tel"],
-body.theme-vencor input[type="url"],
-body.theme-vencor textarea {
+body:not(.theme-light) select,
+body:not(.theme-light) input[type="text"],
+body:not(.theme-light) input[type="email"],
+body:not(.theme-light) input[type="password"],
+body:not(.theme-light) input[type="number"],
+body:not(.theme-light) input[type="search"],
+body:not(.theme-light) input[type="date"],
+body:not(.theme-light) input[type="time"],
+body:not(.theme-light) input[type="tel"],
+body:not(.theme-light) input[type="url"],
+body:not(.theme-light) textarea {
   color: var(--vc-text) !important;
 }
-body.theme-vencor select option {
+body:not(.theme-light) select option {
   background-color: var(--vc-onyx-soft) !important;
   color: var(--vc-text) !important;
 }
@@ -484,17 +527,17 @@ body.theme-vencor select option {
    uses .rbc-day-bg.rbc-today; week-view/time-view uses .rbc-day-slot.rbc-today
    PLUS le bg du time-content > *). On ratisse plus large pour eviter le blanc
    sur la colonne du jour en vue Semaine. */
-body.theme-vencor .rbc-day-slot.rbc-today,
-body.theme-vencor .rbc-time-content .rbc-day-slot.rbc-today,
-body.theme-vencor .rbc-time-header-content .rbc-today,
-body.theme-vencor .rbc-time-content > * > .rbc-today,
-body.theme-vencor .rbc-month-row .rbc-row-bg .rbc-day-bg.rbc-today {
+body:not(.theme-light) .rbc-day-slot.rbc-today,
+body:not(.theme-light) .rbc-time-content .rbc-day-slot.rbc-today,
+body:not(.theme-light) .rbc-time-header-content .rbc-today,
+body:not(.theme-light) .rbc-time-content > * > .rbc-today,
+body:not(.theme-light) .rbc-month-row .rbc-row-bg .rbc-day-bg.rbc-today {
   background-color: rgba(181, 191, 199, 0.10) !important;
   background-image: none !important;
 }
 /* Specifique: assurer que tous les enfants direct de .rbc-today sont transparents */
-body.theme-vencor .rbc-today > *,
-body.theme-vencor .rbc-day-slot.rbc-today > * {
+body:not(.theme-light) .rbc-today > *,
+body:not(.theme-light) .rbc-day-slot.rbc-today > * {
   background-color: transparent !important;
 }
 
@@ -502,31 +545,31 @@ body.theme-vencor .rbc-day-slot.rbc-today > * {
    Follow-up sub-pipeline : neutraliser les couleurs hardcoded des colonnes
    (vert J0, jaune J1, beige J3, marron J7, etc.) vers une nuance glass.
    ============================================================================ */
-body.theme-vencor [data-followup-substage] {
+body:not(.theme-light) [data-followup-substage] {
   background-color: var(--vc-glass) !important;
   border-color: var(--vc-hair) !important;
 }
 
 /* Badges chauds Tailwind (red/amber/green) — neutraliser vers nuances platine */
-body.theme-vencor .bg-red-100,
-body.theme-vencor .bg-amber-100,
-body.theme-vencor .bg-yellow-100,
-body.theme-vencor .bg-green-100,
-body.theme-vencor .bg-emerald-100,
-body.theme-vencor .bg-blue-100 {
+body:not(.theme-light) .bg-red-100,
+body:not(.theme-light) .bg-amber-100,
+body:not(.theme-light) .bg-yellow-100,
+body:not(.theme-light) .bg-green-100,
+body:not(.theme-light) .bg-emerald-100,
+body:not(.theme-light) .bg-blue-100 {
   background-color: rgba(181, 191, 199, 0.12) !important;
   color: var(--vc-pearl) !important;
 }
-body.theme-vencor .text-red-700,
-body.theme-vencor .text-red-800,
-body.theme-vencor .text-amber-700,
-body.theme-vencor .text-amber-800,
-body.theme-vencor .text-yellow-700,
-body.theme-vencor .text-yellow-800,
-body.theme-vencor .text-green-700,
-body.theme-vencor .text-green-800,
-body.theme-vencor .text-emerald-700,
-body.theme-vencor .text-blue-700,
-body.theme-vencor .text-blue-800 {
+body:not(.theme-light) .text-red-700,
+body:not(.theme-light) .text-red-800,
+body:not(.theme-light) .text-amber-700,
+body:not(.theme-light) .text-amber-800,
+body:not(.theme-light) .text-yellow-700,
+body:not(.theme-light) .text-yellow-800,
+body:not(.theme-light) .text-green-700,
+body:not(.theme-light) .text-green-800,
+body:not(.theme-light) .text-emerald-700,
+body:not(.theme-light) .text-blue-700,
+body:not(.theme-light) .text-blue-800 {
   color: var(--vc-pearl) !important;
 }

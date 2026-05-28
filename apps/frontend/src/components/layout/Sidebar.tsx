@@ -66,16 +66,15 @@ export function Sidebar() {
       className="flex w-60 shrink-0 flex-col"
       style={{ background: "var(--sidebar-bg)" }}
     >
-      {/* Logo / nom cabinet — wordmark theme-aware (Vencor. en theme-vencor, C en Classic) */}
+      {/* Logo / nom cabinet — wordmark Vencor unique (post-refonte D15.5) */}
       <div className="px-5 py-6">
         <div className="flex items-center gap-3">
-          <div className="sidebar-brand-mark flex h-9 w-9 items-center justify-center rounded-lg bg-accent font-display text-lg font-bold text-white">
-            C
+          <div className="sidebar-brand-mark flex h-9 w-9 items-center justify-center rounded-lg font-display text-lg font-bold">
+            V
           </div>
           <div className="min-w-0 flex-1">
             <div className="font-display text-sm font-semibold text-white">
-              <span className="vc-wordmark-only-classic">{tCommon("appName")}</span>
-              <span className="vc-wordmark-only-vencor vc-wordmark">
+              <span className="vc-wordmark">
                 Vencor<span className="vc-wordmark__dot">.</span>
               </span>
             </div>

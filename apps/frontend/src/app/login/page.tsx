@@ -66,15 +66,14 @@ export default function LoginPage() {
       <div className="absolute right-4 top-4 z-50 rounded-lg border border-white/10 bg-black/40 p-2 backdrop-blur-md">
         <ThemeSwitcher />
       </div>
-      {/* Gauche : panneau marque (gradient classique en Classic, onyx + glow platine en Vencor) */}
+      {/* Gauche : panneau marque Vencor (radial glow violet + onyx) */}
       <div className="login-brand-panel hidden w-1/2 flex-col items-center justify-center p-16 md:flex">
         <div className="max-w-sm text-center">
-          <div className="login-brand-mark mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent font-display text-3xl font-bold text-white shadow-lg">
-            C
+          <div className="login-brand-mark mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl font-display text-3xl font-bold shadow-lg">
+            V
           </div>
           <h1 className="font-display text-3xl font-bold text-white">
-            <span className="vc-wordmark vc-wordmark-only-vencor">Vencor<span className="vc-wordmark__dot">.</span></span>
-            <span className="vc-wordmark-only-classic">{tCommon("appName")}</span>
+            <span className="vc-wordmark">Vencor<span className="vc-wordmark__dot">.</span></span>
           </h1>
           <p className="mt-2 text-sm text-white/60">
             {tCommon("appTagline")}
