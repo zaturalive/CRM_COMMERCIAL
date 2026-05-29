@@ -1,0 +1,150 @@
+# Z3-MVP + Z5-C fusionne (sprint vencor-hardening-zero-trust V1.2)
+# Pipeline SAST/SCA + test de regression Dockerfile USER non-root
+#
+# Pourquoi :
+#   - Z3-MVP : aucun scan SAST/SCA automatique avant ce workflow.
+#     Quinn vague 1+2 ont fait du SAST manuel. CI = repetable.
+#   - Z5-C : Z5-A (Dockerfile USER nodejs/nextjs) doit pas regresser.
+#     hadolint DL3002 + docker run id -u en CI bloquent la regression.
+#
+# Modes :
+#   - trivy fs : strict (HIGH+CRITICAL block sur PR)
+#   - hadolint : strict (DL3002 block, autres warnings remontes)
+#   - gitleaks : strict (secret detecte = block)
+#   - docker-user-check : strict (UID 0 sur prod image = block)
+#
+# Outputs : SARIF upload vers GitHub Security tab pour visibilite.
+
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  trivy-fs:
+    name: trivy fs scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-fs.sarif"
+          severity: "HIGH,CRITICAL"
+          ignore-unfixed: true
+          scanners: "vuln,secret,misconfig"
+          exit-code: "1"
+
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+  hadolint:
+    name: hadolint Dockerfile lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile:
+          - apps/backend/Dockerfile
+          - apps/frontend/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ matrix.dockerfile }}
+          format: sarif
+          output-file: hadolint-${{ strategy.job-index }}.sarif
+          no-fail: false
+          failure-threshold: error
+
+      - name: Upload Hadolint SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: hadolint-${{ strategy.job-index }}.sarif
+          category: hadolint-${{ strategy.job-index }}
+
+  gitleaks:
+    name: gitleaks secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-user-check:
+    name: docker run id -u != 0 (regression Z5-A)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            context: .
+            dockerfile: apps/backend/Dockerfile
+            target: prod
+          - name: frontend
+            context: .
+            dockerfile: apps/frontend/Dockerfile
+            target: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build prod target image
+        run: |
+          docker build \
+            --target ${{ matrix.target }} \
+            -f ${{ matrix.dockerfile }} \
+            -t crm-${{ matrix.name }}:ci-test \
+            ${{ matrix.context }}
+
+      - name: Verify USER directive present in Dockerfile
+        run: |
+          if ! grep -E "^USER " ${{ matrix.dockerfile }}; then
+            echo "::error file=${{ matrix.dockerfile }}::Missing USER directive (Z5-A regression). Hadolint DL3002 should also catch this."
+            exit 1
+          fi
+
+      - name: Runtime UID check
+        run: |
+          UID_RESULT=$(docker run --rm crm-${{ matrix.name }}:ci-test id -u)
+          echo "Container UID: $UID_RESULT"
+          if [ "$UID_RESULT" = "0" ]; then
+            echo "::error::Container ${{ matrix.name }} runs as root (UID 0). Z5-A regression detected."
+            exit 1
+          fi
+          echo "OK: ${{ matrix.name }} runs as non-root UID $UID_RESULT"
+
+      - name: Runtime user check
+        run: |
+          USER_RESULT=$(docker run --rm crm-${{ matrix.name }}:ci-test whoami)
+          echo "Container user: $USER_RESULT"
+          if [ "$USER_RESULT" = "root" ]; then
+            echo "::error::Container ${{ matrix.name }} runs as user 'root'."
+            exit 1
+          fi
