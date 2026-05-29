@@ -196,7 +196,22 @@ router.get(
       return res.status(404).json({ success: false, error: "Template sans fichier" });
     }
 
-    const absPath = path.join(UPLOADS_DIR, template.fileUrl);
+    // SEC-FIX 2026-05-29 (Quinn audit) : path traversal CWE-22.
+    // path.join(UPLOADS_DIR, '../../etc/passwd') resoud vers /etc/passwd —
+    // un attaquant qui controle fileUrl (via POST metadata accepte string
+    // libre sans validation `../`) peut stream n'importe quel fichier
+    // accessible au process node. On valide :
+    //   1. Le path resolu (apres path.resolve) doit commencer par
+    //      UPLOADS_DIR resolu.
+    //   2. fileUrl ne doit pas commencer par `/` (path absolu).
+    // En cas de violation : 400 (refus, pas 404 — pas un oracle, c'est
+    // une intention d'attaque).
+    const uploadsRoot = path.resolve(UPLOADS_DIR);
+    const absPath = path.resolve(uploadsRoot, template.fileUrl);
+    if (!absPath.startsWith(uploadsRoot + path.sep) && absPath !== uploadsRoot) {
+      return res.status(400).json({ success: false, error: "Chemin de fichier invalide" });
+    }
+
     try {
       await fs.access(absPath);
     } catch {

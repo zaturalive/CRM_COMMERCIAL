@@ -162,6 +162,19 @@ processBlockingPointsRouter.patch(
   "/:bpId",
   asyncHandler(async (req, res) => {
     const body = updateBlockingPointSchema.parse(req.body);
+    // SEC-FIX 2026-05-29 (Quinn audit) : verifier que le process parent
+    // appartient au tenant courant AVANT de toucher au blocking point.
+    // ProcessBlockingPoint n'a pas de tenantId direct (depend du parent),
+    // donc findFirst({id, processId}) seul est insuffisant et un user du
+    // tenant B peut PATCH le BP d'un process du tenant A. Voir
+    // tests/security/blockingPoints.test.ts (VULN-BP-1).
+    const process = await req.prisma!.process.findUnique({
+      where: { id: req.params.processId },
+      select: { id: true },
+    });
+    if (!process) {
+      return res.status(404).json({ success: false, error: "Process introuvable" });
+    }
     const existing = await req.prisma!.processBlockingPoint.findFirst({
       where: { id: req.params.bpId, processId: req.params.processId },
     });
@@ -187,6 +200,15 @@ processBlockingPointsRouter.patch(
 processBlockingPointsRouter.delete(
   "/:bpId",
   asyncHandler(async (req, res) => {
+    // SEC-FIX 2026-05-29 (Quinn audit) : verifier le process parent avant
+    // de delete. Cf PATCH ci-dessus.
+    const process = await req.prisma!.process.findUnique({
+      where: { id: req.params.processId },
+      select: { id: true },
+    });
+    if (!process) {
+      return res.status(404).json({ success: false, error: "Process introuvable" });
+    }
     const existing = await req.prisma!.processBlockingPoint.findFirst({
       where: { id: req.params.bpId, processId: req.params.processId },
     });

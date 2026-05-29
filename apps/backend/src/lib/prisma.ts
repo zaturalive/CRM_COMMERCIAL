@@ -27,6 +27,15 @@ export const basePrisma = new PrismaClient();
  * l'appartenance du parent au tenant (ex: loadOwnedClinique() avant
  * cliniqueTarif.findMany).
  */
+/**
+ * SEC-FIX 2026-05-29 (Quinn audit) : ajout de MessageTemplate, DocumentTemplate
+ * et TrackingEvent. Ces trois modeles ont un champ `tenantId` direct dans le
+ * schema Prisma mais avaient ete oublies de TENANT_BOUND_MODELS lors de
+ * l'introduction des EP09/EP10/EP11. Sans filtrage, un user du tenant B
+ * pouvait LIRE, MODIFIER ou SUPPRIMER les MessageTemplate/DocumentTemplate/
+ * TrackingEvent du tenant A via leur id (IDOR cross-tenant CWE-639).
+ * Voir tests/security/{messageTemplates,documentTemplates,trackingEvents}.test.ts.
+ */
 const TENANT_BOUND_MODELS = new Set([
   "User",
   "Client",
@@ -36,6 +45,9 @@ const TENANT_BOUND_MODELS = new Set([
   "DocumentLabel",
   "Devis",
   "BlockingPointTag",
+  "MessageTemplate",
+  "DocumentTemplate",
+  "TrackingEvent",
 ]);
 
 export function getTenantPrisma(tenantId: string) {
