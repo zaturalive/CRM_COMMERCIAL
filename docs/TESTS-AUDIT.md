@@ -307,7 +307,112 @@ A ajouter dans `apps/backend/package.json` :
    jusqu'a expiration. Risque tolere par design (stateless) mais a
    documenter dans SECURITY.md.
 
+## 6. Vulnerabilites trouvees et fixees (2026-05-29)
+
+L'execution des tests multi-tenant nouvellement ecrits a expose **4
+vulnerabilites de severite haute** dans le code de production. Toutes ont
+ete fixees dans le meme commit, avec le test correspondant en regression.
+
+### 6.1 VULN-MT-1 : IDOR cross-tenant sur MessageTemplate / DocumentTemplate / TrackingEvent (CWE-639)
+
+**Severite** : Haute (lecture/ecriture cross-tenant de donnees commerciales).
+
+**Description** : `apps/backend/src/lib/prisma.ts` definit la liste
+`TENANT_BOUND_MODELS` qui declenche l'injection automatique du filtre
+`{tenantId}` via l'extension Prisma. Les modeles `MessageTemplate`,
+`DocumentTemplate` et `TrackingEvent`, introduits par EP09/EP10/EP11,
+ont bien un champ `tenantId` dans le schema mais ont ete oublies de cette
+liste. Resultat : un user du tenant B pouvait, en connaissant un id de
+ressource (uuid), lire/modifier/supprimer les MessageTemplate,
+DocumentTemplate, et TrackingEvent du tenant A.
+
+**Tests qui ont expose la vuln** :
+- `tests/security/messageTemplates.test.ts > Tenant isolation > adminB ...`
+- `tests/security/documentTemplates.test.ts > Tenant isolation > adminB ...`
+- `tests/security/trackingEvents.test.ts > Tenant isolation > adminB ...`
+
+**Fix** : ajout des 3 modeles a `TENANT_BOUND_MODELS` (commentaire SEC-FIX
+2026-05-29 inline). Pas de migration DB necessaire.
+
+### 6.2 VULN-MT-2 : isolation cassee sur ProcessBlockingPoint (CWE-639)
+
+**Severite** : Moyenne (CRUD cross-tenant sur des metadata clinique).
+
+**Description** : `apps/backend/src/routes/blockingPoints.ts` route
+PATCH/DELETE sur `/:bpId`. Le code lit via
+`req.prisma!.processBlockingPoint.findFirst({where: {id, processId}})`.
+Mais `ProcessBlockingPoint` n'a pas de `tenantId` direct (depend du
+parent Process) — donc pas filtre par l'extension. Et le processId
+present dans l'URL n'etait pas verifie en amont contre le tenant. Un
+user du tenant B pouvait PATCH/DELETE un BP du tenant A en connaissant
+processId et bpId.
+
+**Tests qui ont expose la vuln** :
+- `tests/security/blockingPoints.test.ts > ProcessBlockingPoint — Auth + Tenant isolation > adminB PATCH/DELETE blocking-point du processA → 404`
+
+**Fix** : ajout d'un lookup `req.prisma!.process.findUnique({where: {id:
+processId}})` avant chaque PATCH/DELETE. Si null → 404 (tenant
+extension filtre Process). Le BP n'est touche que si le parent existe
+dans le tenant.
+
+### 6.3 VULN-PT-1 : Path traversal sur GET /api/document-templates/:id/download (CWE-22)
+
+**Severite** : Critique (fuite de fichiers systeme arbitraires).
+
+**Description** : `apps/backend/src/routes/documentTemplates.ts` route
+GET `/:id/download` fait `path.join(UPLOADS_DIR, template.fileUrl)` puis
+`createReadStream(absPath).pipe(res)`. Sans assertion `startsWith`,
+`path.join('/app/uploads', '../../../../etc/passwd')` resoud vers
+`/etc/passwd`, qui existe dans le conteneur Linux. Le POST metadata
+accepte un `fileUrl` libre (zod min 1 max 500) sans pattern, donc un
+commercial authentifie peut crafter un template dont le download stream
+n'importe quel fichier lisible par le process node : `.env`, secrets,
+`/etc/passwd`, fichiers d'autres tenants, etc.
+
+**Verifie** : le test `tests/security/documentTemplates.test.ts > Path
+traversal (CWE-22)` a montre un 200 avec le contenu de `/etc/passwd`
+streame (avant fix).
+
+**Fix** : ajout de validation `path.resolve(uploadsRoot, fileUrl)`
+puis assertion `absPath.startsWith(uploadsRoot + path.sep)`. Si non
+respecte → 400 (intention d'attaque, pas 404 pour ne pas masquer le
+signal).
+
+### 6.4 Recapitulatif fixes
+
+| ID | Fichier modifie | Type fix | Test regression |
+|----|-----------------|----------|-----------------|
+| VULN-MT-1 | `apps/backend/src/lib/prisma.ts` | Ajout 3 modeles a TENANT_BOUND_MODELS | messageTemplates/documentTemplates/trackingEvents.test.ts |
+| VULN-MT-2 | `apps/backend/src/routes/blockingPoints.ts` | Process lookup en amont PATCH/DELETE | blockingPoints.test.ts |
+| VULN-PT-1 | `apps/backend/src/routes/documentTemplates.ts` | Assertion startsWith UPLOADS_DIR sur download | documentTemplates.test.ts + injections.test.ts |
+
+**A faire suite** :
+- Validation amont du `fileUrl` au POST metadata (pattern
+  `^[a-z0-9-]+/document-templates/[a-z0-9-]+\.pdf$`) — defense en profondeur.
+- Auditer toutes les routes pour s'assurer qu'aucune ne fait
+  `prisma.$queryRaw` sans tenant filter explicite (grep deja fait, aucun
+  trouve, mais regle a graver).
+- Ajouter au lint un check `path.resolve` doit etre suivi d'une assertion
+  `startsWith` quand il combine input utilisateur (custom rule eslint).
+
+## 7. Resultats finaux
+
+```
+npm run test:security              28 fichiers   345 tests   0 fail
+npm run test:security:multi-tenant 14 fichiers   242 tests   0 fail
+npm run test:security:injections    5 fichiers    51 tests   0 fail
+npm run test:security:auth          5 fichiers    33 tests   0 fail
+```
+
+Delta vs baseline (avant audit Quinn) :
+- +7 nouveaux fichiers de tests (messageTemplates, documentTemplates,
+  trackingEvents, followup, blockingPoints, injections, auth-edge).
+- +115 nouveaux tests (de 230 a 345).
+- +3 vulnerabilites de production fixees.
+- +3 scripts npm pour pouvoir cibler par categorie.
+
 ---
 
-> Audit etabli le 2026-05-29. Baseline `npm run test:security` : 230 tests
-> passants. Voir suite (§6, §7 ajoutes dans la PR de mise a jour).
+> Audit etabli et conclu le 2026-05-29 par Quinn (QA engineer BYAN/BMM).
+> Pattern reutilisable : `setupTestTenant(app, slug)` + 2 tenants A/B +
+> tests d'isolation cross-tenant pour chaque route protegee.
