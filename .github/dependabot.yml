@@ -1,0 +1,72 @@
+# Z2 sprint vencor-hardening-zero-trust V1.2
+# Dependabot security updates pour deps npm prod
+#
+# Pourquoi : complement du workflow audit-prod-cve.yml. Audit le detecte,
+# Dependabot ouvre la PR de fix automatiquement.
+#
+# Strategie :
+#   - security-only au depart (pas de bombardement de PR sur minor/patch)
+#   - hebdo, groupe les PR par ecosystem
+#   - target main directement (pas de branche dev)
+
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directory: "/apps/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    versioning-strategy: "increase"
+    labels:
+      - "dependencies"
+      - "backend"
+      - "security"
+    commit-message:
+      prefix: "fix(deps-backend)"
+      include: "scope"
+    groups:
+      backend-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    target-branch: "main"
+
+  - package-ecosystem: "npm"
+    directory: "/apps/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 5
+    versioning-strategy: "increase"
+    labels:
+      - "dependencies"
+      - "frontend"
+      - "security"
+    commit-message:
+      prefix: "fix(deps-frontend)"
+      include: "scope"
+    groups:
+      frontend-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    target-branch: "main"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Paris"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "fix(deps-actions)"
+      include: "scope"

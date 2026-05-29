@@ -1,0 +1,93 @@
+# Z2 sprint vencor-hardening-zero-trust V1.2
+# Audit npm prod CVE hebdo + sur chaque PR
+#
+# Pourquoi : Quinn vague 2 (commit a6203e2) a remonte 6 CVE prod (1 high
+# basic-ftp DoS GHSA-rpmf-866q-6p89, 5 moderate qs/express/ws/ip-address/
+# body-parser) qui auraient pu rester invisibles sans audit automatique.
+# Ce workflow empeche la regression : toute nouvelle CVE high/critical sur
+# les deps PRODUCTION fait echouer la PR.
+#
+# Les CVE dev-deps (vitest/vite/esbuild) sont tolerees car non-shippe
+# (cf TESTS-AUDIT.md sect. 6.3).
+
+name: audit-prod-cve
+
+on:
+  pull_request:
+    paths:
+      - "apps/backend/package.json"
+      - "apps/backend/package-lock.json"
+      - "apps/frontend/package.json"
+      - "apps/frontend/package-lock.json"
+      - ".github/workflows/audit-prod-cve.yml"
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-backend:
+    name: npm audit backend (prod only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/backend/package-lock.json
+
+      - name: npm audit --omit=dev --audit-level=high
+        working-directory: apps/backend
+        run: |
+          npm audit --omit=dev --audit-level=high --json > audit.json || AUDIT_EXIT=$?
+          jq -r '.metadata.vulnerabilities' audit.json
+          if [ "${AUDIT_EXIT:-0}" -ne 0 ]; then
+            echo "::error::Production CVE high/critical detected. Fix with: npm audit fix --omit=dev"
+            jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "high" or .value.severity == "critical") | "\(.key): \(.value.severity)"' audit.json
+            exit 1
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-npm-audit
+          path: apps/backend/audit.json
+          retention-days: 30
+
+  audit-frontend:
+    name: npm audit frontend (prod only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - name: npm audit --omit=dev --audit-level=high
+        working-directory: apps/frontend
+        run: |
+          npm audit --omit=dev --audit-level=high --json > audit.json || AUDIT_EXIT=$?
+          jq -r '.metadata.vulnerabilities' audit.json
+          if [ "${AUDIT_EXIT:-0}" -ne 0 ]; then
+            echo "::error::Production CVE high/critical detected. Fix with: npm audit fix --omit=dev"
+            jq -r '.vulnerabilities | to_entries[] | select(.value.severity == "high" or .value.severity == "critical") | "\(.key): \(.value.severity)"' audit.json
+            exit 1
+          fi
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-npm-audit
+          path: apps/frontend/audit.json
+          retention-days: 30
