@@ -395,7 +395,7 @@ signal).
 - Ajouter au lint un check `path.resolve` doit etre suivi d'une assertion
   `startsWith` quand il combine input utilisateur (custom rule eslint).
 
-## 7. Resultats finaux
+## 7. Resultats vague 1 (multi-tenant + injections + auth-edge)
 
 ```
 npm run test:security              28 fichiers   345 tests   0 fail
@@ -404,15 +404,209 @@ npm run test:security:injections    5 fichiers    51 tests   0 fail
 npm run test:security:auth          5 fichiers    33 tests   0 fail
 ```
 
-Delta vs baseline (avant audit Quinn) :
+Delta vague 1 vs baseline :
 - +7 nouveaux fichiers de tests (messageTemplates, documentTemplates,
   trackingEvents, followup, blockingPoints, injections, auth-edge).
 - +115 nouveaux tests (de 230 a 345).
 - +3 vulnerabilites de production fixees.
 - +3 scripts npm pour pouvoir cibler par categorie.
 
+## 8. OWASP Top 10 2021 — coverage (vague 2, 2026-05-29)
+
+Audit complet de la couverture OWASP 2021 categorie par categorie. Chaque
+categorie est soit testee (avec fichier dedie), soit documentee N/A avec
+justification.
+
+### 8.1 Tableau de coverage
+
+| OWASP | Categorie | Statut | Tests | Fichiers |
+|-------|-----------|--------|-------|----------|
+| A01 | Broken Access Control | OK couvert | 280+ | multi-tenant suite (vague 1) + auth-edge + mass-assignment |
+| A02 | Cryptographic Failures | OK couvert | 13 | crypto.test.ts (+ jwt-hardening + timing-attack existants) |
+| A03 | Injection | OK couvert | 51 | injections.test.ts + body-size + cors + helmet + advanced-angles (vague 1) |
+| A04 | Insecure Design | OK couvert (avec limites V1 documentees) | 10 | design.test.ts |
+| A05 | Security Misconfiguration | OK couvert | 15 | misconfig.test.ts (+ helmet-headers + demo-route-prod) |
+| A06 | Vulnerable Components | OK couvert + audit fix | 1 + audit report | npm-audit.test.ts |
+| A07 | Authentication Failures | OK couvert | 11 + 33 vague 1 | auth-full.test.ts + auth + jwt-hardening + auth-edge + timing-attack + rate-limit-prod |
+| A08 | Data Integrity | OK couvert (static) | 12 | integrity.test.ts |
+| A09 | Security Logging | Partiel — gaps V1.2 documentes | 9 | logging.test.ts |
+| A10 | SSRF | N/A en V1 (audit static) | 9 | ssrf.test.ts |
+
+### 8.2 Notes par categorie
+
+#### A01 Broken Access Control (deja couvert vague 1)
+Tests multi-tenant existants (clients, processes, devis, agenda, settings,
+messageTemplates, documentTemplates, trackingEvents, followup,
+blockingPoints, dashboard, etc.) + auth-edge + mass-assignment couvrent
+la totalite du surface attack. Vulnerabilites VULN-MT-1, VULN-MT-2,
+VULN-PT-1 trouvees+fixees vague 1.
+
+#### A02 Cryptographic Failures
+`crypto.test.ts` — 13 tests :
+- JWT signature tampering : 1 char modifie, payload swap, alg=none avec
+  signature bidon, signature signee avec secret 1-byte different.
+- Password storage : passwordHash bcrypt `$2a$/$2b$` >= 50 chars, cost >= 10,
+  filtree des responses API (verifie sur /auth/me).
+- JWT_SECRET >= 32 bytes (force par env zod), pas de valeur faible
+  triviale, entropie de la signature HS256 (43+ chars b64url).
+- Pino redact : passwordHash, password, JWT_SECRET, header Authorization
+  remplaces par `[Redacted]`.
+- CSPRNG `crypto.randomBytes` non-deterministe.
+
+#### A03 Injection (deja couvert vague 1)
+`injections.test.ts` (51 tests) + body-size + helmet + cors + advanced-angles
++ documents-upload couvrent SQL, XSS storage, path traversal upload+download,
+header injection CRLF, NoSQL injection, prototype pollution.
+
+#### A04 Insecure Design
+`design.test.ts` — 10 tests qui documentent les decisions d'architecture :
+- POST /devis non-idempotent (limite known design V1).
+- Mass assignment sur id/isAdmin/superuser/role : strip Zod silencieux.
+- PATCH /settings ne touche pas `slug` (champ immuable).
+- AUCUNE route /api/users CRUD (defense by design — pas d'inscription
+  publique, pas de privilege escalation possible).
+- Stage transitions avec `force: true` autorisees (escape hatch admin
+  documente).
+- Race conditions PATCH concurrents : last-write-wins (no etag versioning),
+  pas de crash.
+- 2 POST /devis concurrents : DB unique constraint sur `reference`
+  protege (P2002 -> 409, pas de doublon).
+
+#### A05 Security Misconfiguration
+`misconfig.test.ts` — 15 tests :
+- X-Powered-By absent sur 401/404/health (helmet OK partout).
+- Endpoints debug/admin/swagger/.env/.git/actuator/metrics : 4xx (pas 200).
+- HTTP TRACE/CONNECT : pas 200 (no XST).
+- CORS : aucune reponse ne porte `Access-Control-Allow-Origin: *`.
+- JSON malforme -> 400 sans stack trace ni leak `node_modules`.
+- Helmet headers presents aussi sur 400/401/404 (pas que /health).
+- NODE_ENV=production : `/api/health` expose env=production, `/api/demo`
+  bloque par auth (pas mounte sans DEMO_MODE).
+- Content-Type application/json strict.
+- JWT_SECRET pas un default trivial, >= 32 bytes.
+
+#### A06 Vulnerable & Outdated Components
+**Audit npm prod** (2026-05-29) :
+- Avant : 6 vulnerabilites (1 high `basic-ftp` DoS [CLAIM L2 — GHSA-rpmf-866q-6p89],
+  5 moderate `qs`, `express`, `ws`, `ip-address`, `body-parser`).
+- `npm audit fix` (non-breaking) : 0 vulnerabilites prod restantes.
+- Dev deps : 4 moderate restantes (`esbuild`/`vite`/`vite-node`/`vitest`)
+  necessitent breaking change (vitest@4) — tolere car non-runtime.
+
+`npm-audit.test.ts` — 1 test garde-fou CI : echoue si critical+high prod
+remontent (regression). `package-lock.json` mis a jour committed.
+
+#### A07 Authentication Failures
+`auth-full.test.ts` — 11 tests (complement de auth.test.ts + jwt-hardening
++ auth-edge + timing-attack + rate-limit-prod) :
+- Pas de route d'inscription publique en V1 (`/api/auth/register`,
+  `/signup`, `/api/users` repondent 401/404 — verifie sur 3 endpoints).
+- JWT_EXPIRES_IN defini ('7d'), exp-iat >= 1h, iat dans le passe proche
+  (clock-skew tolerable).
+- Logout est stateless : JWT reste valide apres POST /logout (trade-off
+  documente, mitigation par TTL court).
+- Anti-enumeration : tenant inconnu / user inconnu / mauvais password -> 401
+  + meme message `Invalid credentials`.
+- Replay : meme JWT 3x -> 3x 200 (par design stateless).
+- Sessions paralleles : 2 logins memes credentials = 2 JWT valides
+  independants.
+- /api/clients write : pas de rate-limit (limit known V1, login uniquement).
+- iat sanity : pas dans le futur, pas trop dans le passe.
+
+#### A08 Software & Data Integrity
+`integrity.test.ts` — 12 tests static + supply chain :
+- src/ : aucun `eval()`, `new Function()`, import `vm/vm2`, `child_process`,
+  `require(variable)` (verifie via scan recursif des `.ts`).
+- Aucune route ne fait `JSON.parse(req.body)` (Express + Zod chain).
+- Aucune route webhook (Stripe etc.) en V1 — N/A documente.
+- `package-lock.json` present, lockfileVersion >= 2, integrity SHA-512 sur
+  prisma/express/bcryptjs.
+- `npm ls --omit=dev` passe.
+- Pas de TODO/FIXME securite accumules (< 5 dans src/).
+
+#### A09 Security Logging & Monitoring — GAP V1.2 DOCUMENTE
+`logging.test.ts` — 9 tests, etat actuel + gaps :
+- OK : Pino structure JSON, redact `passwordHash`/`password`/`JWT_SECRET`/
+  `authorization`.
+- OK : Password POST /login ne fuit dans les logs observes (regression guard).
+- OK : `errorHandler` log `Unhandled request error` sur exceptions.
+- GAP V1.2 : JWT verify fail log a `debug` (invisible en prod LOG_LEVEL=info).
+  Recommandation : passer a `info`/`warn` pour SIEM/alerting.
+- GAP V1.2 : AUCUN audit log explicit sur DELETE/PATCH critiques
+  (clients/devis/processes). Tout middleware d'audit a implementer en V1.2 :
+  `{event, userId, tenantId, ip, ts, target}`.
+- GAP V1.2 : AUCUN log d'incident sur 404 cross-tenant (potentielle
+  tentative IDOR silencieuse).
+
+#### A10 Server-Side Request Forgery — N/A en V1
+`ssrf.test.ts` — 9 tests :
+- Static : aucun `fetch()`, `axios`, `got`, `node-fetch`, `http.request`,
+  `puppeteer page.goto()` dans `src/`. Le seul outbound est Puppeteer
+  `page.setContent(html)` (HTML server-side, pas URL user).
+- `doctolibUrl` stocke verbatim (meme avec URL AWS IMDS `169.254.169.254`
+  ou `file:///etc/passwd`) — aucun fetch declenche dans les tests observes.
+- Adresses contenant des URLs internes (localhost:9090, 10.x, 127.x) :
+  stockees verbatim.
+- `/api/track/redirect/*` : 501 NOT_IMPLEMENTED en V1 (pas de proxy actif).
+- Aucune route `/api/proxy`, `/api/fetch`, `/api/import-url` : 4xx partout.
+
+Si V2 ajoute un proxy outbound (Stripe webhook, image fetcher, OAuth
+callback), ces statics se declencheront et forceront l'implementation
+d'une whitelist + bloc CIDR prive/metadata.
+
+### 8.3 Vulnerabilites trouvees vague 2
+
+Aucune nouvelle vulnerabilite critique decouverte par les tests vague 2 —
+les decouvertes vague 1 (VULN-MT-1, VULN-MT-2, VULN-PT-1) etaient deja
+fixees.
+
+**Finding constructif** : `npm audit` prod avait 6 CVE (1 high) avant
+audit Quinn vague 2 -> 0 apres `npm audit fix`. Ce n'est pas une vuln de
+code, c'est de la dette de supply chain.
+
+### 8.4 GAPS A ADRESSER EN V1.2
+
+| Gap | Categorie | Priorite | Action |
+|-----|-----------|----------|--------|
+| Audit log middleware | A09 | P1 | Middleware structure sur tout POST/PATCH/DELETE : `{event, userId, tenantId, ip, ts, target}` |
+| Niveau log JWT fail | A09 | P2 | `requireJWT.ts` : passer le log de `debug` a `warn` |
+| Log incident cross-tenant | A09 | P2 | Wrapper sur les 404 venant du tenant extension qui log si l'id existe en DB hors tenant |
+| Idempotency-Key POST /devis | A04 | P3 | Header `Idempotency-Key` + cache 24h des requestId |
+| Rate limit write endpoints | A07 | P3 | `express-rate-limit` 60 req/min sur /api/* mutations |
+| Password policy si registration | A07 | P3 (V2) | Si on ajoute /api/auth/register : zxcvbn cote backend |
+| CSP nonces Next.js | A08 | P1 | Headers Content-Security-Policy avec nonce per-request sur le frontend |
+
+## 9. Resultats finaux (apres vague 2)
+
+```
+npm run test:security              36 fichiers   425 tests   0 fail
+npm run test:owasp                  8 fichiers    80 tests   0 fail
+npm run test:owasp:a02              1 fichier     13 tests   0 fail
+npm run test:owasp:a04              1 fichier     10 tests   0 fail
+npm run test:owasp:a05              1 fichier     15 tests   0 fail
+npm run test:owasp:a06              1 fichier      1 test    0 fail
+npm run test:owasp:a07              1 fichier     11 tests   0 fail
+npm run test:owasp:a08              1 fichier     12 tests   0 fail
+npm run test:owasp:a09              1 fichier      9 tests   0 fail
+npm run test:owasp:a10              1 fichier      9 tests   0 fail
+```
+
+Delta vague 2 vs vague 1 :
+- +8 nouveaux fichiers de tests (crypto, design, misconfig, npm-audit,
+  auth-full, integrity, logging, ssrf).
+- +80 nouveaux tests (de 345 a 425).
+- +9 scripts npm OWASP (test:owasp + per-category).
+- +6 CVE prod fixees via npm audit fix (basic-ftp high + 5 moderate).
+- 0 nouvelle vulnerabilite critique decouverte (les fix vague 1 tiennent).
+
+**Coverage vague 2** : 10/10 categories OWASP avec couverture explicit
+(8 testees, 1 partiellement avec gaps documentes, 1 N/A justifie static).
+
 ---
 
 > Audit etabli et conclu le 2026-05-29 par Quinn (QA engineer BYAN/BMM).
-> Pattern reutilisable : `setupTestTenant(app, slug)` + 2 tenants A/B +
-> tests d'isolation cross-tenant pour chaque route protegee.
+> Pattern reutilisable vague 1 : `setupTestTenant(app, slug)` + 2 tenants A/B
+> + tests d'isolation cross-tenant pour chaque route protegee.
+> Pattern vague 2 (OWASP) : 1 fichier par categorie, tests focused on
+> design smells + statics + integration. Honnetete : N/A documente
+> uniquement si le static check le confirme.
