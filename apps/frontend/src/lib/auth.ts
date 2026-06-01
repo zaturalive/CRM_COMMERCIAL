@@ -47,6 +47,7 @@ export const authOptions: NextAuthOptions = {
           tenantId: d.tenantId,
           tenantSlug: d.tenantSlug,
           jwt: d.jwt,
+          mustChangePassword: d.mustChangePassword === true,
         };
       },
     }),
@@ -61,11 +62,15 @@ export const authOptions: NextAuthOptions = {
         token.firstName = user.firstName;
         token.lastName = user.lastName;
         token.jwt = user.jwt;
+        token.mustChangePassword = user.mustChangePassword === true;
       }
       // Update trigger (useSession().update) pour rafraichir apres switch-role
+      // ou apres un changement de mot de passe reussi (leve la gate force-change
+      // sans imposer un re-login, EP15-S04).
       if (trigger === "update" && session) {
         if (session.role) token.role = session.role;
         if (session.jwt) token.jwt = session.jwt;
+        if (session.mustChangePassword === false) token.mustChangePassword = false;
       }
       return token;
     },
@@ -77,6 +82,7 @@ export const authOptions: NextAuthOptions = {
       session.tenantSlug = token.tenantSlug;
       session.role = token.role;
       session.jwt = token.jwt;
+      session.mustChangePassword = token.mustChangePassword === true;
       return session;
     },
   },

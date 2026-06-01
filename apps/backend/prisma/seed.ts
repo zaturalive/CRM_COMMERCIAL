@@ -23,6 +23,7 @@
 
 import { PrismaClient, type UserRole } from "@prisma/client";
 import { hashSync } from "bcryptjs";
+import { mustChangePasswordForSeed } from "../src/lib/passwordPolicy";
 
 const prisma = new PrismaClient();
 
@@ -67,6 +68,12 @@ const TENANTS: TenantSpec[] = [
     cliniques: CLINIQUES_BASE(),
   },
 ];
+
+// EP15-S04 / ADR-0009 D5 AC5 : tenants de demo (vitrine) qui conservent le
+// comportement de demo (mot de passe "demo", pas de gate force-change). Tout
+// autre tenant est traite comme un vrai cabinet (mustChangePassword=true).
+// Source de verite consommee par mustChangePasswordForSeed (lib partagee D5).
+const DEMO_SLUGS = ["demo", "cabinet-test"];
 
 function CLINIQUES_BASE() {
   return [
@@ -195,10 +202,17 @@ async function main() {
           role: u.role,
           firstName: u.firstName,
           lastName: u.lastName,
+          // AC5 : les comptes de demo gardent le comportement de demo (false) ;
+          // les comptes d'un vrai cabinet sont forces a changer le mot de passe
+          // initial au premier login (true). Decision factorisee dans la lib
+          // partagee passwordPolicy (D5).
+          mustChangePassword: mustChangePasswordForSeed(tSpec.slug, DEMO_SLUGS),
         },
       });
     }
-    console.log(`    Users : ${tSpec.users.length} (mdp : demo)`);
+    const forced = mustChangePasswordForSeed(tSpec.slug, DEMO_SLUGS);
+    const pwNote = forced ? "mdp : demo, mustChangePassword=true" : "mdp : demo";
+    console.log(`    Users : ${tSpec.users.length} (${pwNote})`);
 
     // Document labels (besoin pour les interventions ensuite)
     const labelByslug = new Map<string, string>();

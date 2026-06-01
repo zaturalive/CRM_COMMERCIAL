@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { compare, hashSync } from "bcryptjs";
 import { basePrisma } from "../lib/prisma";
-import { loginSchema } from "../schemas/auth";
+import { loginSchema, changePasswordSchema } from "../schemas/auth";
+import { validatePassword } from "../lib/passwordPolicy";
 import { signJWT, requireJWT } from "../middleware/requireJWT";
 import { loginLimiter } from "../middleware/rateLimit";
 import { asyncHandler } from "../middleware/errorHandler";
@@ -79,6 +80,9 @@ router.post(
         role: user.role,
         firstName: user.firstName,
         lastName: user.lastName,
+        // EP15-S04 / ADR-0009 D5 AC3 : le front pose la gate force-change des le
+        // login a partir de ce flag (redirection /account/change-password).
+        mustChangePassword: user.mustChangePassword,
         jwt,
       },
     });
@@ -111,6 +115,7 @@ router.get(
         lastName: true,
         role: true,
         tenantId: true,
+        mustChangePassword: true,
         tenant: { select: { slug: true, name: true } },
       },
     });
@@ -126,10 +131,70 @@ router.get(
         lastName: user.lastName,
         role: user.role,
         tenantId: user.tenantId,
+        // EP15-S04 / ADR-0009 D5 AC3 : le front pilote la gate force-change a
+        // partir de ce flag (redirection vers /account/change-password).
+        mustChangePassword: user.mustChangePassword,
         tenantSlug: user.tenant.slug,
         tenantName: user.tenant.name,
       },
     });
+  })
+);
+
+/**
+ * POST /api/auth/change-password (authentifie)
+ * body : { currentPassword, newPassword }
+ *
+ * EP15-S04 / ADR-0009 D5. Agit UNIQUEMENT sur le compte du token
+ * (req.user.userId) : aucun identifiant de cible n'est lu dans le corps, donc
+ * pas de prise de controle d'un autre compte (anti-mass-assignment, pas
+ * d'acces cross-tenant).
+ *
+ * Sequence :
+ *   1. verifie l'ancien mot de passe (401 si faux, sans muter),
+ *   2. applique passwordPolicy au nouveau (400 si trop faible, sans muter),
+ *   3. set le nouveau hash bcrypt et passe mustChangePassword = false.
+ *
+ * Monte sur le router /api/auth qui est declare AVANT le requireJWT global
+ * (app.ts), donc la route porte requireJWT elle-meme (comme /me). Elle reste
+ * accessible meme quand mustChangePassword = true (exemption de la gate, AC3).
+ */
+router.post(
+  "/change-password",
+  requireJWT,
+  asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+
+    const user = await basePrisma.user.findUnique({
+      where: { id: req.user!.userId },
+      select: { id: true, passwordHash: true },
+    });
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    const currentValid = await compare(currentPassword, user.passwordHash);
+    if (!currentValid) {
+      return res
+        .status(401)
+        .json({ success: false, error: "Current password is incorrect" });
+    }
+
+    const policy = validatePassword(newPassword);
+    if (!policy.valid) {
+      return res.status(400).json({
+        success: false,
+        error: "Password does not meet the policy",
+        details: policy.errors,
+      });
+    }
+
+    await basePrisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: hashSync(newPassword, 10), mustChangePassword: false },
+    });
+
+    return res.json({ success: true, data: { message: "Password changed" } });
   })
 );
 

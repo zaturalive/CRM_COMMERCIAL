@@ -163,6 +163,11 @@ model User {
   role         UserRole
   firstName    String
   lastName     String
+  // EP15-S04 / ADR-0009 D5 : force le changement de mot de passe au prochain
+  // login tant que true (provisioning et seed des comptes reels le posent a
+  // true ; change-password le repasse a false). Defaut false pour ne pas
+  // bloquer les comptes de demo existants.
+  mustChangePassword Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

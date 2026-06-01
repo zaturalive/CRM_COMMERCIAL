@@ -18,6 +18,9 @@ declare module "next-auth" {
     // EP17-S01 : flag editeur plateforme. Pose au login editeur (EP17-S02).
     // Absent / false pour les sessions de cabinet.
     isEditor?: boolean;
+    // EP15-S04 / ADR-0009 D5 : gate force-change. Tant que true, l'app redirige
+    // vers /account/change-password (cf. middleware.ts).
+    mustChangePassword?: boolean;
   }
 
   interface User extends DefaultUser {
@@ -29,6 +32,7 @@ declare module "next-auth" {
     firstName: string;
     lastName: string;
     jwt: string;
+    mustChangePassword?: boolean;
   }
 }
 
@@ -44,5 +48,7 @@ declare module "next-auth/jwt" {
     jwt: string;
     // EP17-S01 : flag editeur plateforme (cf. types Session/User).
     isEditor?: boolean;
+    // EP15-S04 / ADR-0009 D5 : gate force-change (cf. types Session/User).
+    mustChangePassword?: boolean;
   }
 }
