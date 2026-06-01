@@ -26,3 +26,28 @@ export const changePasswordSchema = z.object({
 });
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+/**
+ * EP15-S03 : demande de reset de mot de passe oublie.
+ * tenantSlug est requis : un email peut exister dans plusieurs cabinets (User
+ * est @@unique([tenantId, email]), pas unique globalement). On resout l'user par
+ * (tenant, email). La reponse reste identique que le compte existe ou non (AC2).
+ */
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+  tenantSlug: z.string().min(1),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+/**
+ * EP15-S03 : consommation du token de reset. La robustesse de newPassword est
+ * verifiee par passwordPolicy dans la route (pas ici), pour renvoyer un message
+ * d'erreur clair (AC3) et ne pas consommer le token sur un echec de policy.
+ */
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(1),
+});
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

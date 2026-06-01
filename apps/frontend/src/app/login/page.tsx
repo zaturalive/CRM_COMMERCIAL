@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ThemeSwitcher } from "@/components/layout/ThemeSwitcher";
 
@@ -148,6 +149,16 @@ export default function LoginPage() {
             >
               {loading ? t("submitting") : t("submit")}
             </button>
+            {/* EP15-S03 : entree du flux reset mot de passe oublie. On propage le
+                cabinet saisi pour pre-remplir la page forgot-password. */}
+            <p className="text-center text-xs text-text-secondary">
+              <Link
+                href={`/forgot-password?cabinet=${encodeURIComponent(tenantSlug)}`}
+                className="underline"
+              >
+                Mot de passe oublie ?
+              </Link>
+            </p>
           </form>
 
           <div className="mt-6 space-y-1.5 text-xs text-text-secondary">

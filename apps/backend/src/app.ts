@@ -8,7 +8,8 @@ import { requireJWT } from "./middleware/requireJWT";
 import { requireTenant } from "./middleware/requireTenant";
 import { requireEditor } from "./middleware/requireEditor";
 import { auditLog } from "./middleware/auditLog";
-import authRoutes from "./routes/auth";
+import { createAuthRouter } from "./routes/auth";
+import { NoopEmailSender, type EmailSender } from "./lib/email/EmailSender";
 import adminRoutes from "./routes/admin";
 import usersRoutes from "./routes/users";
 import demoRoutes from "./routes/demo";
@@ -33,9 +34,21 @@ import {
 } from "./routes/blockingPoints";
 
 /**
+ * Options de construction de l'app.
+ *
+ * EP15-S03 / ADR-0009 D7 : emailSender est injectable (port branchable). Par
+ * defaut, NoopEmailSender (aucun envoi reel) ; les tests injectent un
+ * enregistreur, et la prod branchera SMTP/Brevo quand l'email sera active.
+ */
+export interface BuildAppOptions {
+  emailSender?: EmailSender;
+}
+
+/**
  * Construit l'app Express sans ecouter — utilise par index.ts (prod) et les tests Supertest.
  */
-export function buildApp(): Express {
+export function buildApp(options: BuildAppOptions = {}): Express {
+  const emailSender = options.emailSender ?? new NoopEmailSender();
   const app = express();
 
   // SEC-04 : helmet pose les headers securite (X-Content-Type-Options, HSTS,
@@ -77,8 +90,9 @@ export function buildApp(): Express {
     });
   });
 
-  // Routes auth (public + /me protege)
-  app.use("/api/auth", authRoutes);
+  // Routes auth (public + /me protege). EP15-S03 / D7 : l'EmailSender est injecte
+  // dans le router (forgot-password l'utilise) ; NoopEmailSender par defaut.
+  app.use("/api/auth", createAuthRouter(emailSender));
 
   // Routes demo — activees hors prod OU si DEMO_MODE=true en prod.
   // Utile pour garder une demo vitrine sur Scaleway sans passer toute

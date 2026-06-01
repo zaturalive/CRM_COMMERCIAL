@@ -58,5 +58,10 @@ export default withAuth(
 );
 
 export const config = {
-  matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // EP15-S03 : forgot-password et reset-password sont PUBLIQUES (l'utilisateur a
+  // oublie son mot de passe, il n'a pas de session). On les exclut du guard
+  // withAuth, comme /login, sinon withAuth redirige vers /login et casse le flux.
+  matcher: [
+    "/((?!login|forgot-password|reset-password|api/auth|_next/static|_next/image|favicon.ico).*)",
+  ],
 };

@@ -190,6 +190,7 @@ model User {
   followupStepLogs FollowupStepLog[]
   messageSendLogs  MessageSendLog[]
   trackingEvents   TrackingEvent[]
+  passwordResetTokens PasswordResetToken[] // EP15-S03 : reset self-service par email
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -243,6 +244,28 @@ model AuditLog {
   @@index([tenantId, occurredAt])
   @@index([userId, occurredAt])
   @@index([actorId, occurredAt])
+}
+
+// ─── PASSWORD RESET TOKEN (EP15-S03) ───────────────────────────────────────────
+// Reset self-service par email (actif uniquement quand un EmailSender est branche,
+// ADR-0009 D7). Le secret transmis a l'utilisateur n'est jamais stocke en clair :
+// seul tokenHash (SHA-256, cf. src/lib/passwordResetToken.ts) est conserve. TTL
+// court (expiresAt) et one-shot (usedAt) materialisent l'AC4. Tenant-bound :
+// chaque token est lie a SON user (FK userId, onDelete Cascade), donc le filtre
+// d'isolation s'applique via le user (un token du tenant A ne reinitialise pas un
+// compte du tenant B). Hors TENANT_BOUND_MODELS : le lookup par tokenHash se fait
+// via basePrisma (la route reset-password est publique, sans contexte tenant) ;
+// l'isolation est portee par la FK userId, pas par l'extension tenant.
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique // SHA-256 du secret ; lookup par hash, jamais le clair
+  expiresAt  DateTime
+  usedAt     DateTime? // one-shot : non null une fois consomme (AC4)
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
 }
 
 // ─── CLIENT + PROCESS ────────────────────────────────────────────────────────
