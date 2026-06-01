@@ -7,6 +7,7 @@ import { errorHandler } from "./middleware/errorHandler";
 import { requireJWT } from "./middleware/requireJWT";
 import { requireTenant } from "./middleware/requireTenant";
 import { requireEditor } from "./middleware/requireEditor";
+import { auditLog } from "./middleware/auditLog";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
 import demoRoutes from "./routes/demo";
@@ -94,10 +95,17 @@ export function buildApp(): Express {
   // l'editeur n'a pas de contexte tenant (ADR-0009 D1). Le placer ici evite que
   // le requireTenant global ci-dessous rejette le jeton editeur en 401 avant
   // d'atteindre requireEditor.
-  app.use("/api/admin", requireJWT, requireEditor, adminRoutes);
+  // EP14-S04 / ADR-0009 D3 : l'audit est monte sur la chaine admin apres
+  // requireJWT + requireEditor (req.editor peuple), avant le router admin.
+  app.use("/api/admin", requireJWT, requireEditor, auditLog, adminRoutes);
 
   // Routes protegees (JWT + tenant isolation)
   app.use("/api", requireJWT, requireTenant);
+
+  // EP14-S04 / ADR-0009 D3 : middleware d'audit global, monte apres requireJWT
+  // + requireTenant (req.user / req.editor deja peuples) et avant la declaration
+  // des routers tenant, de sorte qu'il couvre toutes les routes mutantes /api/*.
+  app.use("/api", auditLog);
 
   // EP02
   app.use("/api/cliniques", cliniquesRoutes);

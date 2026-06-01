@@ -192,6 +192,36 @@ model PlatformAdmin {
   mustChangePassword Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  auditLogs    AuditLog[] // EP14-S04 / ADR-0009 D3 : tracabilite des actions editeur
+}
+
+// ─── AUDIT LOG (EP14-S04) ──────────────────────────────────────────────────────
+// ADR-0009 D3 : journal append-only de qui/quoi/ou/comment/quand sur les routes
+// mutantes. Hors TENANT_BOUND_MODELS (l'editeur lit cross-tenant ; le filtre par
+// tenant pour un ADMIN est applique a la route de consultation EP17-S05). Aucune
+// route ni service ne fait update/delete dessus (append-only par convention,
+// verifie par test ; pas de trigger SQL au socle, Mantra #37). Le corps des
+// requetes n'est jamais stocke en clair : seul bodyHash (SHA-256 du body
+// sanitize) est conserve, garantissant l'absence de donnee personnelle.
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String? // user tenant (null si editeur ou route publique)
+  actorId     String? // PlatformAdmin (editeur / impersonation), null sinon
+  actor       PlatformAdmin? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  tenantId    String? // tenant concerne (null si route plateforme pure)
+  method      String
+  path        String
+  action      String? // derive : ex "process.stage_change"
+  statusCode  Int
+  ip          String? // X-Forwarded-For derriere reverse proxy
+  userAgent   String?
+  bodyHash    String? // SHA-256 du body sanitize ; corps non stocke en clair
+  occurredAt  DateTime @default(now())
+
+  @@index([tenantId, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([actorId, occurredAt])
 }
 
 // ─── CLIENT + PROCESS ────────────────────────────────────────────────────────
