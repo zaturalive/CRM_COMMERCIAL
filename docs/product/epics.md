@@ -5,6 +5,8 @@
 > Ajouts post-MVP issus du brief Florian 2026-04-26 (cf. CHANGELOG-2026-04-28.md) et brief utilisateur 2026-04-29 (cf. CHANGELOG-2026-04-29.md).
 >
 > **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN. Les mentions "chirurgien" dans les valeurs metier sont a lire comme COMMERCIAL pour le fork commercial.
+>
+> **MAJ 2026-06-01 (vague pre-prod)** : ajout de EP14 (Securite & conformite — etait deja sur disque mais absent de cet index), EP15 (Provisioning & cycle de vie des comptes) et EP16 (Devis/PDF utilisable). Ces 3 epics constituent la "base avant prod" (app uniquement). Voir `docs/product/ETAT-PRE-PROD-2026-06-01.md`.
 
 ---
 
@@ -25,7 +27,10 @@
 | EP11 | Click tracking demo | — | — | 2 |
 | EP12 | UI performance optimistic | — | — | 3 |
 | EP13 | Polish suivi + auto-advance + tags blocages + bug fix devis | F65, F66, F67 | — | 9 |
-| **Total** | | **37 + 7 ajouts post-MVP** | **16** | **59** |
+| EP14 | Securite & conformite (prod) | 2FA, CGU, AuditLog, at-rest, RGPD | — | 6 |
+| EP15 | Provisioning & cycle de vie des comptes | creation cabinet, gestion users, reset/change pwd, demo-off | — | 5 |
+| EP16 | Devis/PDF commercial utilisable | PDF legal, remise | — | 2 |
+| **Total** | | | | **72** |
 
 ---
 
@@ -321,6 +326,64 @@ regression (208 security + 18 unit).
 **Livraison** : voir CHANGELOG-2026-04-29.md pour le detail commit-par-commit + etat de maturite (TESTE / DEMO / NON-TESTE) par story. 7 livraisons en DEMO, 2 en TESTE (F9 + F8).
 
 **Migration Prisma** : `20260429092729_add_blocking_points_and_auto_advance` (ALTER Tenant + CREATE BlockingPointTag + CREATE ProcessBlockingPoint).
+
+---
+
+## EP14 — Securite & conformite (prod)
+
+**Valeur metier** : durcir l'app au niveau **applicatif** avant le premier client payant et tenir la posture non-HDS promise par ADR-0003. Distinct du durcissement serveur/infra (FD `vencor-hardening-zero-trust` + `vencor-infra`).
+
+**Scope** :
+- 2FA admin TOTP (login 2 etapes)
+- Gate CGU non-HDS + onboarding
+- Audit log append-only via middleware global sur toutes les routes (qui / quoi / ou / comment / quand)
+- Chiffrement at-rest (pgcrypto ou app-level)
+- RGPD self-service (export + suppression/anonymisation)
+
+**Stories** :
+- EP14-S01 : 2FA TOTP admin — P1 (risque lockout admin si le flux 2FA bugue)
+- EP14-S02 : Acceptance CGU + gate onboarding — **P0 go-live** (bouclier juridique)
+- EP14-S03 : Resolution tenant par sous-domaine — Could-have (depend infra D6)
+- EP14-S04 : Audit log append-only (middleware global toutes routes) — P1 fast-follow
+- EP14-S05 : Chiffrement at-rest (pgcrypto / app-level) — P1 fast-follow
+- EP14-S06 : RGPD self-service (export + suppression) — P0/P1
+
+---
+
+## EP15 — Provisioning & cycle de vie des comptes
+
+**Valeur metier** : pouvoir onboarder un vrai cabinet (creer le tenant + les comptes) et permettre a un client de gerer/securiser son mot de passe, sans dependre du seed "demo". Bloquant go-live.
+
+**Scope** :
+- Creation de cabinet par l'editeur (cross-tenant, niveau au-dessus d'ADMIN)
+- Gestion des users intra-cabinet par l'admin (CRUD + desactivation)
+- Reset mot de passe oublie (email + token)
+- Changer son mot de passe + force au 1er login
+- Desactivation DEMO_MODE + retrait du role switcher en prod
+
+**Stories** :
+- EP15-S01 : Provisioning cabinet par l'editeur (tenant + 1er admin) — **P0**
+- EP15-S02 : Gestion des comptes users intra-cabinet (admin CRUD) — **P0**
+- EP15-S03 : Reset mot de passe oublie (email + token) — **P0**
+- EP15-S04 : Changer son mot de passe + force au 1er login — **P0**
+- EP15-S05 : Desactivation DEMO_MODE + retrait role switcher en prod — **P0**
+
+---
+
+## EP16 — Devis/PDF commercial utilisable
+
+**Valeur metier** : le devis est l'outil de vente ; son PDF est juge "nul" (mentions legales manquantes, mise en page, pas de remise). Le rendre presentable a un client. **Versant commercial uniquement.**
+
+**Scope** :
+- Refonte du rendu PDF (mentions legales commerciales + mise en page propre)
+- Champ remise dedie (sur honoraires/total, pas via frais negatif)
+- Hors vague (V1.1) : preview PDF live, mode brouillon, wizard 3 etapes
+
+> **Garde-fou HDS** : les elements medicaux du PDF historique (consentement libre et eclaire, frais anesthesiste, separation frais cliniques medicaux, 2 signatures legales) restent **BLOCKED / hors-scope non-HDS** (ADR-0002/0003).
+
+**Stories** :
+- EP16-S01 : Refonte rendu PDF devis (mentions legales commerciales + mise en page) — **P0**
+- EP16-S02 : Champ remise dedie (sur honoraires/total) — P0/P1
 
 ---
 

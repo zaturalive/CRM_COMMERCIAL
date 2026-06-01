@@ -365,3 +365,50 @@ pour decider lesquelles meritent une section 7.x detaillee.
 - **Desactivation de `DEMO_MODE` en prod reelle** : le switcher de role (boutons ADMI/COMM) est visible en sidebar tant que `NEXT_PUBLIC_DEMO_MODE=true`. A passer a `false` en prod reelle. (ADR-0002 : le bouton CHIR n'existe plus dans le fork commercial.)
 - **Cleanup prefixe `cabinet-` du tenant slug** : `cabinet-delobaux` -> `delobaux` (migration SQL + update seed). Plus simple a retenir / taper. Affecte juste l'UX login et l'email format.
 
+---
+
+## 10. Vague pre-prod (base avant prod) — 2026-06-01
+
+> Cadree avec Dimitry le 2026-06-01. Objet : poser la **base** pour mettre l'app en prod
+> chez un premier cabinet payant. **Ce n'est pas la V1** (Stripe, Yousign, WhatsApp/IA,
+> sync Google Calendar restent V1.x). Detail + etat verifie du code : `ETAT-PRE-PROD-2026-06-01.md`.
+
+**Perimetre : app uniquement.** L'infra/serveur (TLS edge, DNS, Traefik, SSH, firewall,
+backup DB, monitoring) est portee par le FD `vencor-hardening-zero-trust` + le repo
+`vencor-infra`, pas ici.
+
+### Epics de la vague
+
+| Epic | Stories | Theme |
+|---|---|---|
+| EP14 | S01 2FA, S02 CGU, S04 AuditLog (middleware global), S05 chiffrement at-rest, S06 RGPD self-service | Securite & conformite |
+| EP15 | S01 provisioning cabinet, S02 gestion users, S03 reset mdp, S04 change mdp + force 1er login, S05 demo off | Provisioning & comptes |
+| EP16 | S01 PDF devis utilisable, S02 remise | Devis commercial |
+
+### Priorisation
+
+- **P0 go-live** : EP15-S01..S05, EP14-S02 (CGU), EP16-S01 (PDF).
+- **P1 fast-follow** : EP14-S01 (2FA), EP14-S04 (AuditLog), EP14-S05 (at-rest), EP14-S06 (RGPD), EP16-S02 (remise).
+- **Non-code (Florian / DPO)** : registre traitements (checklist S11), procedure violation <72h (S12), pentest externe (S10).
+
+### Items du §9 desormais storifies
+
+- "Mot de passe oublie" -> EP15-S03
+- "Changer mon mot de passe" -> EP15-S04
+- "Desactivation de DEMO_MODE en prod reelle" -> EP15-S05
+- 2FA ADMIN (§7.5) -> EP14-S01
+- Audit logs + RGPD (§7.4) -> EP14-S04 + EP14-S06
+- "Templates email" -> pre-requis de EP15-S03 (provider a choisir)
+
+### Dependances bloquantes
+
+- Validation juriste du texte CGU (EP14-S02)
+- Choix d'un provider email Brevo / Resend / SES (EP15-S03, invitations EP15-S01/S02)
+- Decision niveau editeur cross-tenant (EP15-S01)
+
+### Reste explicitement hors vague
+
+Backup DB + monitoring (infra) ; toute la V1 features (Stripe, Yousign, WhatsApp/IA,
+sync Google Cal, refonte devis complete avec preview live + brouillon + wizard, date de
+naissance, lien visio, no-show, degraissage UI icones copier).
+
