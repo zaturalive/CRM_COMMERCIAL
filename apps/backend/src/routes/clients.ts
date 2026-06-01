@@ -2,6 +2,12 @@ import { Router } from "express";
 import type { Request } from "express";
 import { asyncHandler } from "../middleware/errorHandler";
 import { createClientSchema, updateClientSchema } from "../schemas/clients";
+import { emailSearchHashFor } from "../lib/crypto/atRest";
+
+// EP14-S05 / ADR-0009 D4a : email et phone sont chiffres at-rest (blob v1: non
+// deterministe), donc plus aucun `contains` ne peut porter dessus. Detection
+// d'un email complet pour rerouter la recherche vers l'egalite via emailSearchHash.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const router = Router();
 
@@ -34,16 +40,24 @@ router.get(
     const limit = Math.min(parseInt(String(req.query.limit || "50"), 10) || 50, 200);
     const offset = parseInt(String(req.query.offset || "0"), 10) || 0;
 
-    const where = q
-      ? {
-          OR: [
-            { firstName: { contains: q, mode: "insensitive" as const } },
-            { lastName: { contains: q, mode: "insensitive" as const } },
-            { phone: { contains: q } },
-            { email: { contains: q, mode: "insensitive" as const } },
-          ],
-        }
-      : {};
+    // EP14-S05 / ADR-0009 D4a point 3 : email et phone etant chiffres at-rest,
+    // le `contains` (sous-chaine) sur ces colonnes ne ressort plus rien (il
+    // porterait sur le blob chiffre, pas sur le clair). On conserve la recherche
+    // sous-chaine sur firstName/lastName, et on reroute la recherche email vers
+    // l'egalite indexee via emailSearchHash quand `q` est un email complet. La
+    // recherche phone par sous-chaine n'est pas tenue post-chiffrement (perimetre
+    // socle, Mantra #37) ; un phone complet identique pourrait etre route de la
+    // meme facon par une story dediee si requis.
+    const searchClauses: Record<string, unknown>[] = q
+      ? [
+          { firstName: { contains: q, mode: "insensitive" as const } },
+          { lastName: { contains: q, mode: "insensitive" as const } },
+        ]
+      : [];
+    if (q && EMAIL_PATTERN.test(q)) {
+      searchClauses.push({ emailSearchHash: emailSearchHashFor(q) });
+    }
+    const where = q ? { OR: searchClauses } : {};
 
     const [data, total] = await Promise.all([
       req.prisma!.client.findMany({

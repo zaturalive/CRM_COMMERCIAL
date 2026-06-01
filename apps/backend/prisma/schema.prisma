@@ -237,8 +237,14 @@ model Client {
   tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   firstName   String
   lastName    String
+  // EP14-S05 / ADR-0009 D4 : phone et email sont chiffres at-rest (blob v1:...).
+  // Le type reste String : le contenu change, pas la colonne.
   phone       String
   email       String?
+  // EP14-S05 / ADR-0009 D4a point 2 : HMAC-SHA-256 deterministe de l'email en
+  // clair (cle EMAIL_SEARCH_KEY dediee). Permet la recherche par egalite email
+  // sans exposer le clair en index, puisque le blob chiffre n'est pas deterministe.
+  emailSearchHash String?
   city        String?
   address     String?
   source      SourceAcquisition?
@@ -249,8 +255,11 @@ model Client {
   processes      Process[]
   trackingEvents TrackingEvent[]
 
-  @@index([tenantId, phone])
-  @@index([tenantId, email])
+  // EP14-S05 / ADR-0009 D4a point 1 : les anciens index [tenantId, phone] et
+  // [tenantId, email] sont supprimes (un index sur un blob AES-GCM non
+  // deterministe ne sert plus l'egalite ni la recherche). L'egalite email passe
+  // par emailSearchHash, indexe ci-dessous.
+  @@index([tenantId, emailSearchHash])
 }
 
 model Process {

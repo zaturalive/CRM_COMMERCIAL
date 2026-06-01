@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { encryptionExtension } from "./crypto/prismaEncryption";
 
 /**
  * Client Prisma de base — utilise uniquement pour le bootstrap, les seeds,
@@ -51,7 +52,11 @@ const TENANT_BOUND_MODELS = new Set([
 ]);
 
 export function getTenantPrisma(tenantId: string) {
-  return basePrisma.$extends({
+  // EP14-S05 / ADR-0009 D4 : le chiffrement at-rest est compose APRES l'extension
+  // tenant. Il ne touche que les champs declares chiffres ; where.tenantId et les
+  // cles de jointure restent intacts, donc l'isolation multi-tenant est preservee.
+  return basePrisma
+    .$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
@@ -90,7 +95,8 @@ export function getTenantPrisma(tenantId: string) {
         },
       },
     },
-  });
+  })
+    .$extends(encryptionExtension);
 }
 
 export type TenantPrismaClient = ReturnType<typeof getTenantPrisma>;
