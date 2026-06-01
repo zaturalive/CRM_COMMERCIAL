@@ -28,9 +28,10 @@
 | EP12 | UI performance optimistic | — | — | 3 |
 | EP13 | Polish suivi + auto-advance + tags blocages + bug fix devis | F65, F66, F67 | — | 9 |
 | EP14 | Securite & conformite (prod) | 2FA, CGU, AuditLog, at-rest, RGPD | — | 6 |
-| EP15 | Provisioning & cycle de vie des comptes | creation cabinet, gestion users, reset/change pwd, demo-off | — | 5 |
+| EP15 | Provisioning & cycle de vie des comptes | gestion users intra-cabinet, reset/change pwd, demo-off (creation cabinet -> EP17) | — | 5 |
 | EP16 | Devis/PDF commercial utilisable | PDF legal, remise | — | 2 |
-| **Total** | | | | **72** |
+| EP17 | Back Office editeur (console plateforme) | CRUD tenants, users cross-tenant, acces support, logs | — | 5 |
+| **Total** | | | | **77** |
 
 ---
 
@@ -362,7 +363,7 @@ regression (208 security + 18 unit).
 - Desactivation DEMO_MODE + retrait du role switcher en prod
 
 **Stories** :
-- EP15-S01 : Provisioning cabinet par l'editeur (tenant + 1er admin) — **P0**
+- EP15-S01 : ~~Provisioning cabinet par l'editeur~~ — **SUPERSEDED par EP17-S02** (CRUD tenants) + EP17-S01 (niveau editeur)
 - EP15-S02 : Gestion des comptes users intra-cabinet (admin CRUD) — **P0**
 - EP15-S03 : Reset mot de passe oublie (email + token) — **P0**
 - EP15-S04 : Changer son mot de passe + force au 1er login — **P0**
@@ -384,6 +385,28 @@ regression (208 security + 18 unit).
 **Stories** :
 - EP16-S01 : Refonte rendu PDF devis (mentions legales commerciales + mise en page) — **P0**
 - EP16-S02 : Champ remise dedie (sur honoraires/total) — P0/P1
+
+---
+
+## EP17 — Back Office editeur (console plateforme)
+
+**Valeur metier** : donner a l'editeur une console pour administrer le parc (tenants + users), depanner un cabinet (acces support encadre) et auditer l'activite. Surface **distincte** de l'app cabinet, protegee par un guard dedie (backend + frontend). Demande explicite 2026-06-01.
+
+**Scope** :
+- Socle BO + middleware admin backend + guard front (niveau editeur)
+- CRUD tenants (absorbe l'ancienne EP15-S01)
+- CRUD users de n'importe quel tenant (cross-tenant)
+- Compte temporaire de support chez un tenant (acces borne + trace)
+- Visualisation/analyse des logs d'audit (consomme EP14-S04)
+
+**Stories** :
+- EP17-S01 : Socle Back Office + guard admin (back + front) — P0
+- EP17-S02 : CRUD tenants — P0 (supersede EP15-S01)
+- EP17-S03 : CRUD users des tenants (cross-tenant) — P0/P1
+- EP17-S04 : Compte temporaire de support chez un tenant — P1
+- EP17-S05 : Visualisation/analyse des logs d'audit — P1
+
+> **Distinction a garder** : EP14-S04 *produit* les logs (middleware sur toutes les routes) ; EP17-S05 les *lit/analyse*. EP15-S02 = l'admin d'un cabinet gere SES users ; EP17-S03 = l'editeur gere les users de TOUT tenant depuis le BO.
 
 ---
 

@@ -80,7 +80,7 @@ hors de notre perimetre, a confirmer cote infra.
 
 | Story | Titre | Priorite |
 |---|---|---|
-| EP15-S01 | Provisioning cabinet par l'editeur (tenant + 1er admin) | **P0 go-live** |
+| EP15-S01 | Provisioning cabinet -> **superseded par EP17-S02** | (deplace vers EP17) |
 | EP15-S02 | Gestion des comptes users intra-cabinet (admin) | **P0 go-live** |
 | EP15-S03 | Reset mot de passe oublie (email + token) | **P0 go-live** |
 | EP15-S04 | Changer son mot de passe + force au 1er login | **P0 go-live** |
@@ -98,19 +98,30 @@ hors de notre perimetre, a confirmer cote infra.
 > hors-scope non-HDS**. EP16 ne traite que le versant commercial (prestation, honoraires, remise,
 > mentions legales commerciales).
 
+### EP17 — Back Office editeur (nouveau)
+
+| Story | Titre | Priorite |
+|---|---|---|
+| EP17-S01 | Socle BO + guard admin (back + front) | **P0** |
+| EP17-S02 | CRUD tenants (absorbe EP15-S01) | **P0** |
+| EP17-S03 | CRUD users des tenants (cross-tenant) | P0/P1 |
+| EP17-S04 | Compte temporaire de support chez un tenant | P1 |
+| EP17-S05 | Visualisation/analyse des logs d'audit | P1 |
+
 ---
 
 ## 4. Priorisation pre-prod
 
-**P0 — Bloquant go-live d'un vrai client payant**
-- EP15-S01 a S05 (provisioning + cycle de vie comptes + demo off) — sans ca, impossible d'onboarder un client
-- EP14-S02 (CGU) — couverture juridique des le jour 1
+**P0 — Bloquant la mise en prod chez un vrai client payant**
+- EP17-S01 + EP17-S02 (Back Office : socle + CRUD tenants) + EP15-S02 a S05 (cycle de vie comptes + demo off) — sans ca, impossible d'onboarder un client
+- EP14-S02 (CGU) — couverture juridique des la mise en prod
 - EP16-S01 (PDF utilisable) — le devis est l'outil de vente, il doit etre presentable
 
 **P1 — Important (socle conformite ADR-0003, non bloquant la mise en prod)**
-- EP14-S01 (2FA, fenetre de test dediee — risque lockout admin)
+- EP14-S01 (2FA — risque lockout admin si le flux bugue)
 - EP14-S04 (audit log), EP14-S05 (pgcrypto)
 - EP14-S06 (RGPD self-service)
+- EP17-S03 (users cross-tenant), EP17-S04 (acces support), EP17-S05 (viewer logs)
 - EP16-S02 (remise)
 
 **Non-code, porte par Florian (DPO de facto)**
@@ -142,6 +153,7 @@ hors de notre perimetre, a confirmer cote infra.
 - `epics.md` s'arretait a EP13 : **EP14 absent de l'index** alors que les stories existaient sur disque. EP14/15/16 ajoutes.
 - EP14-S04 (AuditLog) et EP14-S05 (pgcrypto) etaient **referencees** par EP14-S01/S02 sans exister : stories ecrites.
 - Stories EP14-S01/S02 : statut Draft → Planned + mode degrade documente.
+- Back Office editeur demande le 2026-06-01 → nouvel **EP17** (5 stories) ; **EP15-S01** (provisioning) absorbe par **EP17-S02**.
 
 ---
 

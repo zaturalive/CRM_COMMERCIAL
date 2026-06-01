@@ -382,13 +382,14 @@ backup DB, monitoring) est portee par le FD `vencor-hardening-zero-trust` + le r
 | Epic | Stories | Theme |
 |---|---|---|
 | EP14 | S01 2FA, S02 CGU, S04 AuditLog (middleware global), S05 chiffrement at-rest, S06 RGPD self-service | Securite & conformite |
-| EP15 | S01 provisioning cabinet, S02 gestion users, S03 reset mdp, S04 change mdp + force 1er login, S05 demo off | Provisioning & comptes |
+| EP15 | S01 (-> EP17-S02), S02 gestion users intra-cabinet, S03 reset mdp, S04 change mdp + force 1er login, S05 demo off | Provisioning & comptes |
 | EP16 | S01 PDF devis utilisable, S02 remise | Devis commercial |
+| EP17 | S01 socle BO + guard admin, S02 CRUD tenants, S03 users cross-tenant, S04 acces support, S05 viewer logs | Back Office editeur |
 
 ### Priorisation
 
-- **P0 go-live** : EP15-S01..S05, EP14-S02 (CGU), EP16-S01 (PDF).
-- **P1 fast-follow** : EP14-S01 (2FA), EP14-S04 (AuditLog), EP14-S05 (at-rest), EP14-S06 (RGPD), EP16-S02 (remise).
+- **P0 (bloquant prod)** : EP17-S01 (socle BO) + EP17-S02 (CRUD tenants), EP15-S02..S05, EP14-S02 (CGU), EP16-S01 (PDF).
+- **P1 (important)** : EP14-S01 (2FA), EP14-S04 (AuditLog), EP14-S05 (at-rest), EP14-S06 (RGPD), EP17-S03/S04/S05, EP16-S02 (remise).
 - **Non-code (Florian / DPO)** : registre traitements (checklist S11), procedure violation <72h (S12), pentest externe (S10).
 
 ### Items du §9 desormais storifies
