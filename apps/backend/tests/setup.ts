@@ -4,5 +4,35 @@
 // le .env local (non committe) avant l'execution des tests via setupFiles.
 import { config } from "dotenv";
 import { resolve } from "node:path";
+import { transformSync } from "esbuild";
+import Module from "node:module";
+import { readFileSync } from "node:fs";
 
 config({ path: resolve(__dirname, "../.env") });
+
+// POURQUOI : certains tests appellent require() au runtime sur un module source
+// TypeScript (ex. tests/unit/demoDataSeedTarget.test.ts require
+// "../../src/lib/passwordPolicy"). Le require natif de Node ne sait pas charger
+// un .ts. On installe un loader require.extensions[".ts"] minimal et synchrone
+// (transpile a la demande via esbuild deja present comme dep de vitest) au lieu
+// d'un loader persistant global : il ne s'active que sur un require(".ts")
+// effectif, n'intercepte aucun import ESM (gere par le runner Vitest) et ne
+// laisse pas de boucle/handle ouvert qui ralentirait la suite complete.
+const moduleExtensions = (Module as unknown as {
+  _extensions: Record<string, (m: NodeModule, filename: string) => void>;
+})._extensions;
+if (!moduleExtensions[".ts"]) {
+  moduleExtensions[".ts"] = (module, filename) => {
+    const source = readFileSync(filename, "utf8");
+    const { code } = transformSync(source, {
+      loader: "ts",
+      format: "cjs",
+      target: "es2022",
+      sourcefile: filename,
+    });
+    (module as unknown as { _compile: (c: string, f: string) => void })._compile(
+      code,
+      filename
+    );
+  };
+}

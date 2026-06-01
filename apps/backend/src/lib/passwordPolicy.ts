@@ -103,3 +103,23 @@ export function mustChangePasswordForSeed(
 ): boolean {
   return !demoSlugs.includes(tenantSlug);
 }
+
+/**
+ * Decision de ciblage du seed de donnees de demo (EP15-S05 AC5 / ADR-0009).
+ *
+ * Source unique, fonction pure : `true` si le tenant est un tenant de demo
+ * (vitrine) et peut donc recevoir les donnees/labels de demo (load-fake-data) ;
+ * `false` sinon (tenant destine a un vrai cabinet -> aucune donnee de demo).
+ *
+ * POURQUOI le complement exact de mustChangePasswordForSeed sur la meme liste :
+ * un tenant ne doit jamais etre "demo" pour une regle et "reel" pour l'autre.
+ * Le defaut securitaire (false hors liste) garantit qu'un slug inconnu est
+ * traite comme un cabinet reel et ne recoit aucune surface de demo (AC4 : la
+ * surface de demo doit etre absente, pas seulement masquee).
+ */
+export function isDemoDataSeedTarget(
+  tenantSlug: string,
+  demoSlugs: string[]
+): boolean {
+  return demoSlugs.includes(tenantSlug);
+}

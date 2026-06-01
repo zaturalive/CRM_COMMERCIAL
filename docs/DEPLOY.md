@@ -105,7 +105,9 @@ Vérifier :
 - `NEXT_PUBLIC_BACKEND_URL=https://delobaux.crm-chirurgie.a3n.fr` (peut
   pointer sur n'importe quel sous-domaine, api.ts passe en relatif en
   prod grâce au même domaine racine)
-- `DEMO_MODE=true` et `NEXT_PUBLIC_DEMO_MODE=true`
+- `DEMO_MODE=true` et `NEXT_PUBLIC_DEMO_MODE=true` **pour l'instance vitrine
+  uniquement**. Pour un cabinet client réel : `DEMO_MODE` off +
+  `NEXT_PUBLIC_DEMO_MODE=false`, et suivre la checklist §10bis (EP15-S05).
 - `NODE_ENV=production`
 
 ## 4. Build + démarrage
@@ -278,6 +280,48 @@ docker compose -f docker/docker-compose.prod.yml exec -T backend \
      pg_dump -U crm_prod crm_chirurgien | gzip > backup-$(date +%F).sql.gz
    ```
 
+## 10bis. Mise en prod d'un cabinet réel — DEMO_MODE off (EP15-S05)
+
+La procédure ci-dessus déploie l'instance **vitrine** (`DEMO_MODE=true`,
+tenant `demo`, switcher de rôle visible). Pour un **cabinet client réel**,
+le mode démo et le switcher de rôle doivent être coupés et vérifiés, pas
+seulement supposés (EP15-S05, AC1-AC4).
+
+### Configuration au build (obligatoire)
+`NEXT_PUBLIC_DEMO_MODE` est inliné dans le bundle Next **au build**
+(cf. §10 point 4) : la valeur doit donc être figée à la construction de
+l'image, pas au runtime.
+
+- `.env.prod` : `NODE_ENV=production`, `DEMO_MODE` non défini (ou `false`),
+  `NEXT_PUBLIC_DEMO_MODE=false`.
+- Rebuild l'image frontend après tout changement de `NEXT_PUBLIC_DEMO_MODE`
+  (sinon l'ancienne valeur reste baked dans le bundle).
+
+### Checklist de vérification (à cocher avant ouverture au client)
+
+- [ ] **Backend — route démo absente.** Le verrou serveur s'appuie sur
+  `NODE_ENV=production` (plancher dur : `DEMO_MODE=true` posé par erreur ne
+  réactive PAS la surface en prod). Vérifier par curl (JWT valide ou non, la
+  surface doit être absente = 404) :
+  ```bash
+  curl -s -o /dev/null -w "%{http_code}\n" \
+    -X POST https://<cabinet>.crm-chirurgie.a3n.fr/api/demo/switch-role \
+    -H "Content-Type: application/json" -d '{"role":"ADMIN"}'
+  # Attendu : 404 (la route n'est pas montée en production)
+  ```
+- [ ] **Frontend — switcher de rôle absent du DOM.** Se connecter, ouvrir
+  l'inspecteur : aucun élément `[data-testid="role-switcher"]` ne doit être
+  rendu (il n'est rendu que si `NEXT_PUBLIC_DEMO_MODE === "true"`).
+- [ ] **Pas de données de démo seedées.** Le tenant client réel ne reçoit
+  ni labels ni patients de démo : ne PAS lancer `load-fake-data.ts` dessus
+  (le script refuse désormais un tenant hors liste démo, EP15-S05 AC5), et
+  le seed positionne `mustChangePassword=true` pour les comptes réels
+  (ADR-0009 D5).
+
+Garde-fou automatisé : `apps/backend/tests/security/demo-mode-off.test.ts`
+assert qu'en mode production simulé la surface de démo est absente (404),
+y compris si `DEMO_MODE=true` est positionné par erreur.
+
 ## 11. Comptes demo récap
 
 Mot de passe : `demo` (tous).
@@ -293,4 +337,4 @@ Mot de passe : `demo` (tous).
 
 ---
 
-*Dernière MAJ : 24 avril 2026*
+*Dernière MAJ : 1 juin 2026 (EP15-S05 : section 10bis DEMO_MODE off)*

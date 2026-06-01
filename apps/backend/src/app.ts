@@ -94,10 +94,15 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // dans le router (forgot-password l'utilise) ; NoopEmailSender par defaut.
   app.use("/api/auth", createAuthRouter(emailSender));
 
-  // Routes demo — activees hors prod OU si DEMO_MODE=true en prod.
-  // Utile pour garder une demo vitrine sur Scaleway sans passer toute
-  // l'instance en NODE_ENV=development.
-  const demoEnabled = env.NODE_ENV !== "production" || env.DEMO_MODE;
+  // Routes demo — EP15-S05 / ADR-0009 : NODE_ENV=production est un plancher dur.
+  // La surface de demo (/api/demo/switch-role re-signe un JWT avec le role
+  // demande, donc permet une elevation de role) ne doit JAMAIS etre montee en
+  // production, meme si DEMO_MODE=true est positionne par erreur sur l'instance.
+  // POURQUOI ne plus lire DEMO_MODE ici : l'ancienne porte `|| env.DEMO_MODE`
+  // re-ouvrait /api/demo en prod sur une simple variable d'env, ce qui faisait
+  // de la coupure une hypothese de config plutot qu'une garantie. Hors prod
+  // (development, test) la surface reste montee pour la demo locale.
+  const demoEnabled = env.NODE_ENV !== "production";
   if (demoEnabled) {
     app.use("/api/demo", demoRoutes);
     logger.warn(

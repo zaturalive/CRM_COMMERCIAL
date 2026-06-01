@@ -122,16 +122,48 @@ function randomDateInRange(daysBefore: number, daysAfter: number): Date {
   return new Date(ms);
 }
 
+// Source de verite des tenants de demo (vitrine), alignee sur seed.ts
+// (DEMO_SLUGS) et sur isDemoDataSeedTarget (src/lib/passwordPolicy.ts, ADR-0009
+// EP15-S05 AC5). Inlinee ici car ce script tourne dans le container prod ou
+// apps/backend/src n'existe pas (cf. en-tete de fichier) ; la regle reste
+// identique : seul un tenant de demo recoit des donnees/labels de demo.
+const DEMO_SLUGS = ["demo", "cabinet-test"];
+
+/**
+ * EP15-S05 AC5 : true si le tenant peut recevoir des donnees de demo. Defaut
+ * securitaire (false hors liste) : un tenant inconnu est traite comme un vrai
+ * cabinet et ne recoit aucune surface de demo. Complement de la regle
+ * mustChangePasswordForSeed (meme liste), conforme a la fonction pure
+ * isDemoDataSeedTarget partagee.
+ */
+function isDemoDataSeedTarget(tenantSlug: string, demoSlugs: string[]): boolean {
+  return demoSlugs.includes(tenantSlug);
+}
+
 async function main() {
   console.log("Loading fake data...");
 
+  // Cible explicite : le slug du tenant a peupler (defaut "demo"). Surchargeable
+  // par FAKE_DATA_TENANT_SLUG pour le tenant generique de demo (cabinet-test).
+  const targetSlug = process.env.FAKE_DATA_TENANT_SLUG ?? "demo";
+
+  // EP15-S05 AC5 : garde-fou serveur. On refuse de seeder des donnees de demo
+  // sur un tenant qui n'est pas un tenant de demo (vrai cabinet de production),
+  // pour que la surface de demo soit absente d'un tenant prod, pas seulement
+  // masquee cote front.
+  if (!isDemoDataSeedTarget(targetSlug, DEMO_SLUGS)) {
+    throw new Error(
+      `Refus de seeder des donnees de demo sur le tenant "${targetSlug}" : ce n'est pas un tenant de demo (${DEMO_SLUGS.join(", ")}). Un tenant de production ne recoit aucune donnee de demo.`,
+    );
+  }
+
   // Cible le tenant demo : c'est lui qui doit avoir des donnees fake pour
-  // les visites de prospects. cabinet-delobaux reste vierge (vrai client).
+  // les visites de prospects. Un tenant de vrai cabinet reste vierge.
   const tenant = await prisma.tenant.findFirst({
-    where: { slug: "demo" },
+    where: { slug: targetSlug },
   });
   if (!tenant) {
-    throw new Error("Tenant demo introuvable. Lancer `npm run db:seed` d'abord.");
+    throw new Error(`Tenant "${targetSlug}" introuvable. Lancer \`npm run db:seed\` d'abord.`);
   }
 
   // Purge ancien fake data
