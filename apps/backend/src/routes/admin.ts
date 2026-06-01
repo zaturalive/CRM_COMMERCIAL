@@ -3,10 +3,20 @@ import { hashSync } from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { asyncHandler } from "../middleware/errorHandler";
 import { requireEditor } from "../middleware/requireEditor";
+import { signImpersonationJWT } from "../middleware/requireJWT";
 import { basePrisma } from "../lib/prisma";
 import { createTenantSchema, updateTenantSchema } from "../schemas/tenants";
 import { generateTempPassword } from "../lib/tempPassword";
+import {
+  openImpersonationSession,
+  revokeImpersonationSession,
+} from "../lib/impersonationSessions";
 import adminTenantUsersRouter from "./adminTenantUsers";
+
+// EP17-S04 / ADR-0009 D2 : duree de vie de la session d'observation (alignee sur
+// IMPERSONATION_TTL de signImpersonationJWT, 30 min). Sert a calculer expiresAt
+// renvoye au front pour le bandeau "expire {heure}" (AC3).
+const IMPERSONATION_TTL_MS = 30 * 60 * 1000;
 
 /**
  * Router Back Office editeur — EP17-S01 (socle) + EP17-S02 (CRUD tenants).
@@ -232,6 +242,74 @@ router.delete(
       throw err;
     }
   })
+);
+
+/**
+ * POST /api/admin/tenants/:tenantId/enter — EP17-S04.
+ *
+ * Ouvre une session d'observation editeur dans le tenant cible (AC1) SANS creer
+ * de compte dans ce tenant (AC6 : autonomie). Emet un jeton d'impersonation
+ * borne (kind "impersonation", editorId reel, tenantId du path signe, scope
+ * "read" par defaut), de courte duree (AC2). L'editeur observe ensuite le tenant
+ * via les routes /api/* nominales, a travers le meme filtre d'isolation que ses
+ * users (getTenantPrisma), sans contournement.
+ *
+ * Le tenantId provient du path (verifie en base), pas du corps : non manipulable
+ * par un parametre arbitraire (ADR-0009 D2). Le scope d'ecriture est refuse au
+ * socle de cette story : "read" uniquement (l'activation write explicite +
+ * motivee est une evolution dediee, AC4).
+ *
+ * 404 si le tenant n'existe pas (pas d'emission de jeton vers un tenant fantome).
+ */
+router.post(
+  "/tenants/:tenantId/enter",
+  asyncHandler(async (req, res) => {
+    const { tenantId } = req.params;
+    const editorId = req.editor!.editorId;
+
+    const tenant = await basePrisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, name: true },
+    });
+    if (!tenant) {
+      return res.status(404).json({ success: false, error: "Tenant not found" });
+    }
+
+    // Une nouvelle entree efface une revocation anterieure pour cette cle :
+    // la session repart fraiche (sinon un /leave precedent revoquerait ce jeton).
+    openImpersonationSession(editorId, tenant.id);
+
+    const token = signImpersonationJWT({ editorId, tenantId: tenant.id });
+    const expiresAt = new Date(Date.now() + IMPERSONATION_TTL_MS).toISOString();
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        token,
+        scope: "read",
+        expiresAt,
+        tenant: { id: tenant.id, name: tenant.name },
+      },
+    });
+  }),
+);
+
+/**
+ * POST /api/admin/tenants/:tenantId/leave — EP17-S04.
+ *
+ * Termine (revoque) la session d'observation de l'editeur sur ce tenant (AC2,
+ * AC7 : sortie = retour au BO, l'impersonation s'arrete). Tout jeton
+ * d'impersonation deja emis pour ce couple (editeur, tenant) est refuse a partir
+ * de maintenant, meme s'il n'est pas encore expire. Idempotent : appeler /leave
+ * sans session active reste 200 (rien a couper).
+ */
+router.post(
+  "/tenants/:tenantId/leave",
+  asyncHandler(async (req, res) => {
+    const editorId = req.editor!.editorId;
+    revokeImpersonationSession(editorId, req.params.tenantId);
+    return res.json({ success: true, data: { revoked: true } });
+  }),
 );
 
 export default router;

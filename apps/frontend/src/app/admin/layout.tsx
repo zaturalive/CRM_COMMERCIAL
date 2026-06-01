@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
+import ObservationBanner from "@/components/admin/ObservationBanner";
 
 /**
  * Coquille Back Office editeur — EP17-S01 (AC 4 et 5).
@@ -70,6 +71,8 @@ export default async function AdminLayout({
             Back Office plateforme — acces editeur
           </h1>
         </header>
+        {/* EP17-S04 / AC3 : bandeau permanent pendant une session d'observation. */}
+        <ObservationBanner />
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>

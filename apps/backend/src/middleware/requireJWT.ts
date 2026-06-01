@@ -3,6 +3,12 @@ import jwt from "jsonwebtoken";
 import type { UserRole } from "@prisma/client";
 import { env } from "../config/env";
 import { logger } from "../lib/logger";
+import { isImpersonationRevoked } from "../lib/impersonationSessions";
+
+// ADR-0009 D2 : duree de vie courte et bornee du jeton d'impersonation,
+// distincte du JWT nominal (JWT_EXPIRES_IN=7d). Materialise "session bornee
+// dans le temps" (AC2) : strictement inferieure a 24h.
+const IMPERSONATION_TTL = "30m";
 
 /**
  * ADR-0009 D1/D2 : le JWT est une union discriminee sur `kind`.
@@ -62,6 +68,33 @@ export function signEditorJWT(editorId: string): string {
   } as jwt.SignOptions);
 }
 
+/**
+ * EP17-S04 / ADR-0009 D2 — signe un jeton d'impersonation borne pour une session
+ * d'observation editeur dans un tenant.
+ *
+ * Le jeton porte le tenant observe (pris du contexte serveur, jamais du corps de
+ * requete) et un scope de moindre privilege : "read" par defaut, "write" seulement
+ * si explicitement demande (et trace par la story dediee). La duree de vie est
+ * courte (IMPERSONATION_TTL), distincte du JWT nominal, pour materialiser la borne
+ * temporelle de la session.
+ */
+export function signImpersonationJWT(opts: {
+  editorId: string;
+  tenantId: string;
+  scope?: "read" | "write";
+}): string {
+  return jwt.sign(
+    {
+      kind: "impersonation",
+      editorId: opts.editorId,
+      tenantId: opts.tenantId,
+      scope: opts.scope ?? "read",
+    },
+    env.JWT_SECRET,
+    { expiresIn: IMPERSONATION_TTL } as jwt.SignOptions,
+  );
+}
+
 export function requireJWT(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
@@ -82,10 +115,20 @@ export function requireJWT(req: Request, res: Response, next: NextFunction) {
       // refusera donc les routes tenant nominales (pas d'heritage implicite).
       req.editor = { editorId: payload.editorId };
     } else if (payload.kind === "impersonation") {
+      // EP17-S04 / AC2 : revocation. Un jeton dont la session (editorId, tenantId)
+      // a ete revoquee (POST /leave) est refuse, meme s'il n'est pas encore expire.
+      if (
+        isImpersonationRevoked(payload.editorId, payload.tenantId, payload.iat)
+      ) {
+        return res
+          .status(401)
+          .json({ success: false, error: "Session revoked" });
+      }
       // ADR-0009 D2 : l'editeur observe un tenant a travers le meme filtre
-      // d'isolation que ses users. On peuple req.editor (trace audit, D3) ET
-      // req.user pour que requireTenant cree getTenantPrisma(tenantId).
-      req.editor = { editorId: payload.editorId };
+      // d'isolation que ses users. On peuple req.editor (trace audit, D3, + scope
+      // pour requireWriteScope) ET req.user pour que requireTenant cree
+      // getTenantPrisma(tenantId).
+      req.editor = { editorId: payload.editorId, scope: payload.scope };
       req.user = {
         userId: payload.editorId,
         tenantId: payload.tenantId,

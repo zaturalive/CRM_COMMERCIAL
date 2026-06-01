@@ -7,6 +7,7 @@ import { errorHandler } from "./middleware/errorHandler";
 import { requireJWT } from "./middleware/requireJWT";
 import { requireTenant } from "./middleware/requireTenant";
 import { requireEditor } from "./middleware/requireEditor";
+import { requireWriteScope } from "./middleware/requireWriteScope";
 import { auditLog } from "./middleware/auditLog";
 import { createAuthRouter } from "./routes/auth";
 import { NoopEmailSender, type EmailSender } from "./lib/email/EmailSender";
@@ -126,6 +127,13 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // + requireTenant (req.user / req.editor deja peuples) et avant la declaration
   // des routers tenant, de sorte qu'il couvre toutes les routes mutantes /api/*.
   app.use("/api", auditLog);
+
+  // EP17-S04 / ADR-0009 D2 : garde de scope lecture pour les sessions
+  // d'observation editeur (impersonation). Montee APRES l'audit pour qu'une
+  // mutation refusee (scope read -> 403) reste tracee avec l'identite de
+  // l'editeur reel (AC5) ; le handler "finish" de l'audit est deja enregistre.
+  // N'affecte pas les users tenant nominaux (req.editor absent).
+  app.use("/api", requireWriteScope);
 
   // EP15-S02 — gestion des comptes users intra-cabinet par l'ADMIN. Tenant-scope
   // (requireRole(["ADMIN"]) + req.prisma), distinct du Back Office editeur
