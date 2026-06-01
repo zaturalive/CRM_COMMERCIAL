@@ -6,6 +6,7 @@ import { requireEditor } from "../middleware/requireEditor";
 import { basePrisma } from "../lib/prisma";
 import { createTenantSchema, updateTenantSchema } from "../schemas/tenants";
 import { generateTempPassword } from "../lib/tempPassword";
+import adminTenantUsersRouter from "./adminTenantUsers";
 
 /**
  * Router Back Office editeur — EP17-S01 (socle) + EP17-S02 (CRUD tenants).
@@ -22,6 +23,15 @@ const router = Router();
 
 // requireEditor sur tout le router : 403 si l'appelant n'est pas editeur.
 router.use(requireEditor);
+
+/**
+ * EP17-S03 — CRUD users cross-tenant. Nested sous /tenants/:tenantId/users sur le
+ * router admin (deja garde par requireEditor + audite). Le sous-router lit
+ * req.params.tenantId via mergeParams et borne chaque acces au tenant du path
+ * (basePrisma, isolation explicite). Place avant les routes /tenants/:id pour ne
+ * pas etre masque par un match de segment dynamique.
+ */
+router.use("/tenants/:tenantId/users", adminTenantUsersRouter);
 
 /**
  * Forme publique d'un tenant en liste/detail. POURQUOI une projection explicite

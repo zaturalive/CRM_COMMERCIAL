@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 
 /**
@@ -294,6 +295,13 @@ export default function AdminTenantsPage() {
                   <td className="px-4 py-2 text-slate-300">{t.userCount}</td>
                   <td className="px-4 py-2">
                     <div className="flex gap-2">
+                      <Link
+                        href={`/admin/cabinets/${t.id}/utilisateurs`}
+                        data-testid={`tenant-users-${t.slug}`}
+                        className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:bg-slate-800"
+                      >
+                        Utilisateurs
+                      </Link>
                       <button
                         type="button"
                         data-testid={`tenant-rename-${t.slug}`}
