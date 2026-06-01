@@ -100,6 +100,11 @@ router.post(
 
     const user = await req.prisma!.user.create({
       data: {
+        // tenantId injecte par le Prisma extended client en runtime (isolation,
+        // src/lib/prisma.ts) ; on le passe aussi explicitement pour que le build
+        // prod (tsc strict) accepte la relation tenant requise. Meme valeur que
+        // l'injection runtime -> idempotent, l'isolation ne regresse pas.
+        tenantId: req.user!.tenantId,
         email: account.email,
         passwordHash: account.passwordHash,
         role: account.role,
