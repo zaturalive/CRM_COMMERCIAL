@@ -12,6 +12,13 @@ import {
   revokeImpersonationSession,
 } from "../lib/impersonationSessions";
 import adminTenantUsersRouter from "./adminTenantUsers";
+import {
+  parseAuditLogFilters,
+  buildAuditLogWhere,
+  computeAuditLogAggregates,
+  toCsv,
+  type AuditLogRecord,
+} from "../services/auditLogViewer";
 
 // EP17-S04 / ADR-0009 D2 : duree de vie de la session d'observation (alignee sur
 // IMPERSONATION_TTL de signImpersonationJWT, 30 min). Sert a calculer expiresAt
@@ -309,6 +316,153 @@ router.post(
     const editorId = req.editor!.editorId;
     revokeImpersonationSession(editorId, req.params.tenantId);
     return res.json({ success: true, data: { revoked: true } });
+  }),
+);
+
+// ─── EP17-S05 : visualisation / analyse du journal d'audit (lecture seule) ────
+//
+// ADR-0009 D3 : AuditLog est hors TENANT_BOUND_MODELS. L'editeur lit cross-tenant
+// via basePrisma ; le filtre par tenant est explicite (parametre tenantId), pas
+// un cloisonnement implicite. Toutes ces routes sont GET : append-only respecte
+// cote API (AC5), aucune route DELETE/UPDATE/PUT/PATCH/POST sur audit-logs n'est
+// exposee. Le modele ne porte que des metadonnees + bodyHash (SHA-256) : aucune
+// donnee metier en clair ne transite (AC5, coherent EP14-S04).
+
+// Projection unique : on serialise exactement les champs du modele AuditLog
+// (qui/quoi/ou/comment/quand + bodyHash). Aucun select de contenu metier (le
+// modele n'en porte pas). Sert la liste, le detail et l'export.
+const AUDIT_LOG_SELECT = {
+  id: true,
+  userId: true,
+  actorId: true,
+  tenantId: true,
+  method: true,
+  path: true,
+  action: true,
+  statusCode: true,
+  ip: true,
+  userAgent: true,
+  bodyHash: true,
+  occurredAt: true,
+} as const;
+
+/**
+ * GET /api/admin/audit-logs — liste paginee, filtrable, triee par date (AC1/AC2).
+ *
+ * Filtres (query) : tenantId, userId, actorId, method, path (sous-chaine), from,
+ * to, statusCode. Pagination keyset par occurredAt+id decroissants (note
+ * technique : cursor plutot qu'offset pour un volume potentiellement eleve). On
+ * demande limit+1 lignes pour deduire hasMore sans count separe.
+ */
+router.get(
+  "/audit-logs",
+  asyncHandler(async (req, res) => {
+    const filters = parseAuditLogFilters(req.query as Record<string, unknown>);
+    const where = buildAuditLogWhere(filters);
+
+    const rows = await basePrisma.auditLog.findMany({
+      where,
+      select: AUDIT_LOG_SELECT,
+      // Tri par date decroissant (AC2). id en cle de bris d'egalite pour un
+      // ordre total stable, indispensable a la pagination keyset.
+      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+      take: filters.limit + 1,
+      // Le curseur pointe sur le dernier id de la page precedente ; skip:1 evite
+      // de re-renvoyer cette ligne.
+      ...(filters.cursor
+        ? { cursor: { id: filters.cursor }, skip: 1 }
+        : {}),
+    });
+
+    const hasMore = rows.length > filters.limit;
+    const page = hasMore ? rows.slice(0, filters.limit) : rows;
+    const nextCursor = hasMore ? page[page.length - 1].id : null;
+
+    return res.json({
+      success: true,
+      data: page,
+      pagination: { nextCursor, hasMore },
+    });
+  }),
+);
+
+/**
+ * GET /api/admin/audit-logs/stats — agregats simples (AC6).
+ * Calcul pur (computeAuditLogAggregates) sur l'ensemble filtre. On borne la
+ * lecture a MAX_LIMIT implicite via le service ? Non : les stats portent sur le
+ * sous-ensemble filtre charge ici. Pour rester simple (Mantra #37), on charge
+ * les lignes filtrees (le filtre tenant/date borne le volume cote operateur).
+ *
+ * Declaree avant /audit-logs/:id pour ne pas etre masquee par le segment
+ * dynamique (sinon "stats" serait interprete comme un :id).
+ */
+router.get(
+  "/audit-logs/stats",
+  asyncHandler(async (req, res) => {
+    const filters = parseAuditLogFilters(req.query as Record<string, unknown>);
+    const where = buildAuditLogWhere(filters);
+
+    const rows = (await basePrisma.auditLog.findMany({
+      where,
+      select: AUDIT_LOG_SELECT,
+      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+    })) as AuditLogRecord[];
+
+    return res.json({ success: true, data: computeAuditLogAggregates(rows) });
+  }),
+);
+
+/**
+ * GET /api/admin/audit-logs/export?format=csv|json — export du sous-ensemble
+ * filtre (AC7). Reutilise les memes filtres que la liste. CSV via toCsv (RFC
+ * 4180) ; JSON via la projection. Aucune donnee metier en clair (le modele ne
+ * porte que bodyHash). Declaree avant /audit-logs/:id (cf. stats).
+ */
+router.get(
+  "/audit-logs/export",
+  asyncHandler(async (req, res) => {
+    const format = req.query.format === "csv" ? "csv" : "json";
+    const filters = parseAuditLogFilters(req.query as Record<string, unknown>);
+    const where = buildAuditLogWhere(filters);
+
+    const rows = (await basePrisma.auditLog.findMany({
+      where,
+      select: AUDIT_LOG_SELECT,
+      orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+    })) as AuditLogRecord[];
+
+    if (format === "csv") {
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="audit-logs.csv"',
+      );
+      return res.send(toCsv(rows));
+    }
+
+    return res.json({ success: true, data: rows });
+  }),
+);
+
+/**
+ * GET /api/admin/audit-logs/:id — vue detail d'une entree (AC3). Tous les champs
+ * du modele (qui/quoi/ou/comment/quand + bodyHash). 404 si l'id est inconnu
+ * (pas de fuite d'existence). Declaree apres /stats et /export pour ne pas les
+ * capturer.
+ */
+router.get(
+  "/audit-logs/:id",
+  asyncHandler(async (req, res) => {
+    const entry = await basePrisma.auditLog.findUnique({
+      where: { id: req.params.id },
+      select: AUDIT_LOG_SELECT,
+    });
+    if (!entry) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Audit log not found" });
+    }
+    return res.json({ success: true, data: entry });
   }),
 );
 

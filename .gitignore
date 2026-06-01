@@ -90,5 +90,9 @@ crm_chirurgien_design.zip
 "files(2)"/uploads/
 
 # Logs
-logs/
+# Ancre a la racine : un pattern "logs/" non ancre capturait aussi la route
+# Back Office apps/frontend/src/app/admin/logs (page EP17-S05). On ne veut
+# ignorer qu'un eventuel repertoire de sortie de logs a la racine du repo.
+/logs/
 *.log
+!apps/frontend/src/app/admin/logs/
