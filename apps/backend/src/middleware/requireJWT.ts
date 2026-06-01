@@ -4,7 +4,15 @@ import type { UserRole } from "@prisma/client";
 import { env } from "../config/env";
 import { logger } from "../lib/logger";
 
-export interface JWTPayload {
+/**
+ * ADR-0009 D1/D2 : le JWT est une union discriminee sur `kind`.
+ *   - kind "user" (ou absent, retro-compat des tokens existants) : acteur tenant
+ *   - kind "editor" : acteur plateforme (PlatformAdmin), sans contexte tenant
+ *   - kind "impersonation" : editeur observant un tenant via un jeton borne signe
+ * requireJWT reste le point unique de verification de signature (HS256, SEC-01).
+ */
+export interface UserJWTPayload {
+  kind?: "user";
   userId: string;
   tenantId: string;
   role: UserRole;
@@ -12,8 +20,46 @@ export interface JWTPayload {
   exp: number;
 }
 
-export function signJWT(payload: Pick<JWTPayload, "userId" | "tenantId" | "role">): string {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: env.JWT_EXPIRES_IN } as jwt.SignOptions);
+export interface EditorJWTPayload {
+  kind: "editor";
+  editorId: string;
+  iat: number;
+  exp: number;
+}
+
+export interface ImpersonationJWTPayload {
+  kind: "impersonation";
+  editorId: string;
+  // tenant observe : provient du jeton signe (pas du corps de requete), il
+  // active getTenantPrisma sur CE tenant via requireTenant. Non manipulable
+  // par l'appelant.
+  tenantId: string;
+  scope: "read" | "write";
+  iat: number;
+  exp: number;
+}
+
+export type JWTPayload =
+  | UserJWTPayload
+  | EditorJWTPayload
+  | ImpersonationJWTPayload;
+
+export function signJWT(
+  payload: Pick<UserJWTPayload, "userId" | "tenantId" | "role">
+): string {
+  return jwt.sign(payload, env.JWT_SECRET, {
+    expiresIn: env.JWT_EXPIRES_IN,
+  } as jwt.SignOptions);
+}
+
+/**
+ * Signe un jeton editeur (kind: "editor"). Utilise par le login editeur
+ * (story EP17-S02). Le socle expose le helper pour la symetrie avec signJWT.
+ */
+export function signEditorJWT(editorId: string): string {
+  return jwt.sign({ kind: "editor", editorId }, env.JWT_SECRET, {
+    expiresIn: env.JWT_EXPIRES_IN,
+  } as jwt.SignOptions);
 }
 
 export function requireJWT(req: Request, res: Response, next: NextFunction) {
@@ -27,12 +73,33 @@ export function requireJWT(req: Request, res: Response, next: NextFunction) {
     //   - `alg: none` (tokens non signes)
     //   - `alg: RS256` avec notre secret utilise comme cle publique RSA (algorithm confusion)
     // Sans `algorithms`, jsonwebtoken v9 essaie de deriver l'algo depuis le header du token.
-    const payload = jwt.verify(token, env.JWT_SECRET, { algorithms: ["HS256"] }) as JWTPayload;
-    req.user = {
-      userId: payload.userId,
-      tenantId: payload.tenantId,
-      role: payload.role,
-    };
+    const payload = jwt.verify(token, env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    }) as JWTPayload;
+
+    if (payload.kind === "editor") {
+      // Acteur plateforme nominal : pas de contexte tenant. requireTenant
+      // refusera donc les routes tenant nominales (pas d'heritage implicite).
+      req.editor = { editorId: payload.editorId };
+    } else if (payload.kind === "impersonation") {
+      // ADR-0009 D2 : l'editeur observe un tenant a travers le meme filtre
+      // d'isolation que ses users. On peuple req.editor (trace audit, D3) ET
+      // req.user pour que requireTenant cree getTenantPrisma(tenantId).
+      req.editor = { editorId: payload.editorId };
+      req.user = {
+        userId: payload.editorId,
+        tenantId: payload.tenantId,
+        role: "ADMIN",
+      };
+    } else {
+      // kind "user" ou absent (retro-compat des tokens deja emis).
+      const userPayload = payload as UserJWTPayload;
+      req.user = {
+        userId: userPayload.userId,
+        tenantId: userPayload.tenantId,
+        role: userPayload.role,
+      };
+    }
     next();
   } catch (err) {
     logger.debug({ err }, "JWT verify failed");

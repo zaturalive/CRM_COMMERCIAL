@@ -6,7 +6,9 @@ import { logger } from "./lib/logger";
 import { errorHandler } from "./middleware/errorHandler";
 import { requireJWT } from "./middleware/requireJWT";
 import { requireTenant } from "./middleware/requireTenant";
+import { requireEditor } from "./middleware/requireEditor";
 import authRoutes from "./routes/auth";
+import adminRoutes from "./routes/admin";
 import demoRoutes from "./routes/demo";
 import cliniquesRoutes from "./routes/cliniques";
 import interventionsRoutes from "./routes/interventions";
@@ -86,6 +88,13 @@ export function buildApp(): Express {
       `Demo routes enabled (/api/demo/*). NODE_ENV=${env.NODE_ENV} DEMO_MODE=${env.DEMO_MODE}.`,
     );
   }
+
+  // EP17-S01 — Back Office editeur. Monte AVANT le guard tenant global :
+  // ces routes utilisent requireJWT + requireEditor (pas requireTenant), car
+  // l'editeur n'a pas de contexte tenant (ADR-0009 D1). Le placer ici evite que
+  // le requireTenant global ci-dessous rejette le jeton editeur en 401 avant
+  // d'atteindre requireEditor.
+  app.use("/api/admin", requireJWT, requireEditor, adminRoutes);
 
   // Routes protegees (JWT + tenant isolation)
   app.use("/api", requireJWT, requireTenant);

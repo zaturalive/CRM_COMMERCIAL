@@ -8,6 +8,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // POURQUOI : l'hote dev est Debian 12 (glibc 2.36) alors que l'image Docker
+  // genere un moteur musl/Alpine. On declare les deux cibles pour que le client
+  // se charge a la fois sur l'hote (tests) et dans le container (runtime).
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -168,6 +172,26 @@ model User {
 
   @@unique([tenantId, email])
   @@index([tenantId])
+}
+
+// ─── PLATFORM ADMIN (editeur) ─────────────────────────────────────────────────
+// ADR-0009 D1 : acteur plateforme hors modele tenant. Aucune FK vers Tenant —
+// l'editeur n'appartient a aucun cabinet et opere cross-tenant par des chemins
+// explicites et bornes (/api/admin/* via basePrisma, ou jeton d'impersonation
+// signe). PlatformAdmin reste hors de TENANT_BOUND_MODELS : l'extension tenant
+// ne s'y applique pas, ce qui garde le modele User invariant (un User a toujours
+// un tenantId) et preserve l'isolation multi-tenant.
+model PlatformAdmin {
+  id           String  @id @default(uuid())
+  email        String  @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  isActive     Boolean @default(true)
+  // EP15-S04 : meme politique de mot de passe que les User cabinet.
+  mustChangePassword Boolean @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ─── CLIENT + PROCESS ────────────────────────────────────────────────────────

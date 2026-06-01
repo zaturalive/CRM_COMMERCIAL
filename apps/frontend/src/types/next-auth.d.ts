@@ -15,6 +15,9 @@ declare module "next-auth" {
     tenantName?: string;
     role: UserRole;
     jwt: string;
+    // EP17-S01 : flag editeur plateforme. Pose au login editeur (EP17-S02).
+    // Absent / false pour les sessions de cabinet.
+    isEditor?: boolean;
   }
 
   interface User extends DefaultUser {
@@ -39,5 +42,7 @@ declare module "next-auth/jwt" {
     firstName: string;
     lastName: string;
     jwt: string;
+    // EP17-S01 : flag editeur plateforme (cf. types Session/User).
+    isEditor?: boolean;
   }
 }
