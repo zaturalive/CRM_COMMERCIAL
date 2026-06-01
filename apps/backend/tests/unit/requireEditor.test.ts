@@ -6,12 +6,14 @@ import { requireEditor } from "../../src/middleware/requireEditor";
  * Tests unitaires du middleware requireEditor (EP17-S01, ADR-0009 D1).
  *
  * Regle metier : monte sur le router /api/admin/*, apres requireJWT. Il laisse
- * passer (next) uniquement si req.editor est present (jeton kind: "editor"), et
- * renvoie 403 sinon. Il ne s'appuie ni sur req.user.role ni sur le contexte
+ * passer (next) uniquement pour un VRAI editeur (req.editor.kind === "editor"),
+ * et renvoie 403 sinon. Il ne s'appuie ni sur req.user.role ni sur le contexte
  * tenant : un ADMIN de cabinet ne devient pas editeur.
  *
- * Phase TDD rouge : src/middleware/requireEditor.ts n'existe pas encore, donc
- * l'import echoue tant que la feature n'est pas implementee.
+ * Remediation cross-tenant : un jeton kind "impersonation" peuple aussi
+ * req.editor (trace audit + scope), mais il est borne a un seul tenant. Il ne
+ * doit donc pas franchir la surface BO cross-tenant /api/admin/* (sinon escalade
+ * vers un autre tenant). requireEditor le refuse en 403.
  */
 
 function mockRes(): Response {
@@ -22,8 +24,10 @@ function mockRes(): Response {
 }
 
 describe("requireEditor (EP17-S01)", () => {
-  it("appelle next() quand req.editor est present", () => {
-    const req = { editor: { editorId: "ed-1" } } as unknown as Request;
+  it("appelle next() quand req.editor.kind est 'editor' (vrai editeur)", () => {
+    const req = {
+      editor: { editorId: "ed-1", kind: "editor" },
+    } as unknown as Request;
     const res = mockRes();
     const next = vi.fn() as unknown as NextFunction;
 
@@ -31,6 +35,22 @@ describe("requireEditor (EP17-S01)", () => {
 
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("renvoie 403 pour une session d'impersonation (kind 'impersonation', borne a un tenant)", () => {
+    // Remediation : un jeton d'impersonation peuple req.editor mais ne doit pas
+    // atteindre le BO cross-tenant (escalade : forge d'un jeton vers un autre
+    // tenant, lecture des AuditLog de tous les tenants).
+    const req = {
+      editor: { editorId: "ed-1", kind: "impersonation", scope: "read" },
+    } as unknown as Request;
+    const res = mockRes();
+    const next = vi.fn() as unknown as NextFunction;
+
+    requireEditor(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 
   it("renvoie 403 quand req.editor est absent", () => {

@@ -113,7 +113,8 @@ export function requireJWT(req: Request, res: Response, next: NextFunction) {
     if (payload.kind === "editor") {
       // Acteur plateforme nominal : pas de contexte tenant. requireTenant
       // refusera donc les routes tenant nominales (pas d'heritage implicite).
-      req.editor = { editorId: payload.editorId };
+      // kind "editor" : seul kind autorise par requireEditor sur /api/admin/*.
+      req.editor = { editorId: payload.editorId, kind: "editor" };
     } else if (payload.kind === "impersonation") {
       // EP17-S04 / AC2 : revocation. Un jeton dont la session (editorId, tenantId)
       // a ete revoquee (POST /leave) est refuse, meme s'il n'est pas encore expire.
@@ -125,10 +126,19 @@ export function requireJWT(req: Request, res: Response, next: NextFunction) {
           .json({ success: false, error: "Session revoked" });
       }
       // ADR-0009 D2 : l'editeur observe un tenant a travers le meme filtre
-      // d'isolation que ses users. On peuple req.editor (trace audit, D3, + scope
-      // pour requireWriteScope) ET req.user pour que requireTenant cree
-      // getTenantPrisma(tenantId).
-      req.editor = { editorId: payload.editorId, scope: payload.scope };
+      // d'isolation que ses users. On peuple req.editor (trace audit D3 via
+      // actorId, + scope pour requireWriteScope) ET req.user pour que
+      // requireTenant cree getTenantPrisma(tenantId).
+      // kind "impersonation" : requireEditor le refuse sur /api/admin/* (BO
+      // cross-tenant), mais l'acces LECTURE aux routes tenant nominales reste
+      // ouvert via req.user. Cela borne la session a son seul tenant et empeche
+      // l'escalade (forge d'un jeton vers un autre tenant, lecture des AuditLog
+      // de tous les tenants).
+      req.editor = {
+        editorId: payload.editorId,
+        kind: "impersonation",
+        scope: payload.scope,
+      };
       req.user = {
         userId: payload.editorId,
         tenantId: payload.tenantId,

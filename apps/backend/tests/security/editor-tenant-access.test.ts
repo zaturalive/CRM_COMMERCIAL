@@ -435,4 +435,133 @@ describe("Security — Acces editeur a un tenant (impersonation, EP17-S04)", () 
       expect(ids).not.toContain(clientObsId);
     });
   });
+
+  /**
+   * SECURITE — remediation escalade cross-tenant (reviewers compliance).
+   *
+   * INTENTION ADR-0009 D2 : un jeton d'impersonation donne a l'editeur un acces
+   * LECTURE aux donnees NOMINALES du tenant cible (routes /api/* tenant-scope),
+   * SANS atteindre la surface Back Office cross-tenant /api/admin/*, et SANS
+   * pouvoir muter (scope read).
+   *
+   * DEFAUT corrige : requireEditor ne testait que `if (!req.editor)`, et
+   * requireJWT peuple req.editor AUSSI pour kind "impersonation". Un jeton
+   * d'impersonation passait donc requireEditor et atteignait /api/admin/* :
+   *   - POST /enter -> il forgeait un nouveau jeton d'impersonation vers un autre
+   *     tenant (escalade cross-tenant) ;
+   *   - GET /audit-logs(/stats|/export|/:id) -> il lisait les AuditLog de TOUS
+   *     les tenants (fuite cross-tenant).
+   *
+   * Contrat cible : la surface BO /api/admin/* exige kind "editor" (vrai
+   * editeur). Un jeton d'impersonation y est refuse en 403. L'acces LECTURE du
+   * jeton d'impersonation aux routes tenant nominales reste intact (verifie plus
+   * haut).
+   */
+  describe("SEC : un jeton d'impersonation ne franchit PAS la surface BO /api/admin/*", () => {
+    it("impersonation -> POST /enter vers le MEME tenant => 403 (ne peut pas forger un nouveau jeton)", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .post(`/api/admin/tenants/${obsTenantId}/enter`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({});
+      expect(res.status).toBe(403);
+    });
+
+    it("impersonation (tenant observe) -> POST /enter vers un AUTRE tenant => 403 (pas d'escalade cross-tenant)", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .post(`/api/admin/tenants/${otherTenantId}/enter`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({});
+      expect(res.status).toBe(403);
+      // Aucun jeton d'impersonation vers le tenant tiers n'est emis.
+      expect(res.body.data?.token).toBeUndefined();
+    });
+
+    it("impersonation -> POST /leave (BO) => 403 (pas d'action de gestion de session cross-tenant)", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .post(`/api/admin/tenants/${otherTenantId}/leave`)
+        .set("Authorization", `Bearer ${token}`)
+        .send({});
+      expect(res.status).toBe(403);
+    });
+
+    it("impersonation -> GET /api/admin/tenants => 403 (et ne liste pas les cabinets cross-tenant)", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .get("/api/admin/tenants")
+        .set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+      // La liste cross-tenant des cabinets n'est jamais renvoyee a une session
+      // d'observation (qui est bornee a un seul tenant via req.user).
+      expect(res.body.data).toBeUndefined();
+    });
+
+    it("impersonation -> GET /api/admin/tenants/:id (autre tenant) => 403 (pas de detail cross-tenant)", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .get(`/api/admin/tenants/${otherTenantId}`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+    });
+
+    it("impersonation -> GET /api/admin/tenants/:id/users (autre tenant) => 403 (pas de fuite des comptes)", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .get(`/api/admin/tenants/${otherTenantId}/users`)
+        .set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+    });
+
+    it("impersonation -> POST /api/admin/tenants (creation cabinet) => 403", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .post("/api/admin/tenants")
+        .set("Authorization", `Bearer ${token}`)
+        .send({
+          slug: "ne-doit-pas-se-creer-s04",
+          name: "Forge",
+          admin: { email: "x@x.fr", firstName: "X", lastName: "Y" },
+        });
+      expect(res.status).toBe(403);
+    });
+
+    it("impersonation -> GET /api/admin/audit-logs => 403 (pas de lecture cross-tenant des journaux)", async () => {
+      const { token } = await enterTenant(obsTenantId);
+      const res = await request(app)
+        .get("/api/admin/audit-logs")
+        .set("Authorization", `Bearer ${token}`);
+      expect(res.status).toBe(403);
+      // Surtout : aucune ligne d'audit (d'un autre tenant ou non) n'est exposee.
+      expect(res.body.data).toBeUndefined();
+    });
+  });
+
+  describe("SEC : non-regression — un vrai jeton editeur garde l'acces complet au BO", () => {
+    it("editeur -> GET /api/admin/tenants => 200 (acces cross-tenant preserve)", async () => {
+      const res = await request(app)
+        .get("/api/admin/tenants")
+        .set("Authorization", `Bearer ${editorJwt}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    it("editeur -> POST /enter => 201 (emission de jeton d'impersonation preservee)", async () => {
+      const res = await request(app)
+        .post(`/api/admin/tenants/${obsTenantId}/enter`)
+        .set("Authorization", `Bearer ${editorJwt}`)
+        .send({});
+      expect(res.status).toBe(201);
+      expect(typeof res.body.data?.token).toBe("string");
+    });
+
+    it("editeur -> GET /api/admin/audit-logs => 200 (lecture cross-tenant preservee)", async () => {
+      const res = await request(app)
+        .get("/api/admin/audit-logs")
+        .set("Authorization", `Bearer ${editorJwt}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+  });
 });
