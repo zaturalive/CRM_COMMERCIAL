@@ -179,6 +179,11 @@ model User {
   // true ; change-password le repasse a false). Defaut false pour ne pas
   // bloquer les comptes de demo existants.
   mustChangePassword Boolean @default(false)
+  // EP15-S02 : un ADMIN de cabinet desactive un compte sans le supprimer
+  // (depart d'un commercial). Un user inactif voit son login refuse (auth.ts),
+  // ses donnees restent en base (pas de suppression). Defaut true pour ne pas
+  // bloquer les comptes existants/demo a la migration.
+  active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

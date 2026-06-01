@@ -155,27 +155,65 @@ describe("Security — A04 Insecure Design", () => {
   });
 
   describe("Privilege escalation", () => {
-    it("PAS de route PATCH /api/users/:me → impossible de se promouvoir (N/A by design)", async () => {
-      // Le projet n'expose AUCUNE route /api/users : pas de CRUD users
-      // depuis le frontend a date (V1.0). Les users sont crees uniquement
-      // via seed/admin DB. C'est une defense by design.
+    it("les routes /api/users (EP15-S02) ne permettent pas l'escalade vers le niveau plateforme", async () => {
+      // EP15-S02 : l'ADMIN du cabinet gere SES users (CRUD tenant-scope). La
+      // defense n'est plus "la route n'existe pas" mais "la route existe et borne
+      // le role a UserRole { ADMIN, COMMERCIAL }". Le niveau editeur est une table
+      // separee (PlatformAdmin, ADR-0009 D1) hors de portee de ces routes : tout
+      // role plateforme injecte dans le corps est rejete en 400, aucune mutation.
+
+      // PATCH avec un role hors UserRole -> 400 (pas de promotion au niveau plateforme).
       const r1 = await request(app)
-        .patch(`/api/users/${ctx.admin.userId}`)
+        .patch(`/api/users/${ctx.commercial.userId}`)
         .set("Authorization", `Bearer ${ctx.admin.jwt}`)
-        .send({ role: "ADMIN" });
+        .send({ role: "PLATFORM_ADMIN" });
+      expect(r1.status).toBe(400);
+
+      // /api/users/me n'est pas un id valide du tenant -> 404 (pas de route magique).
       const r2 = await request(app)
         .patch("/api/users/me")
         .set("Authorization", `Bearer ${ctx.admin.jwt}`)
         .send({ role: "ADMIN" });
+      expect(r2.status).toBe(404);
+
+      // POST avec un role hors UserRole (EDITEUR) -> 400, aucun compte cree.
       const r3 = await request(app)
         .post("/api/users")
         .set("Authorization", `Bearer ${ctx.admin.jwt}`)
-        .send({ email: "evil@hack.fr", role: "ADMIN" });
+        .send({
+          email: "evil@hack.fr",
+          firstName: "E",
+          lastName: "V",
+          role: "EDITEUR",
+        });
+      expect(r3.status).toBe(400);
 
-      // Les 3 routes n'existent pas → Express 404.
-      expect(r1.status).toBe(404);
-      expect(r2.status).toBe(404);
-      expect(r3.status).toBe(404);
+      // Le role en DB du commercial n'a pas bouge.
+      const after = await basePrisma.user.findUnique({
+        where: { id: ctx.commercial.userId },
+        select: { role: true },
+      });
+      expect(after!.role).toBe("COMMERCIAL");
+    });
+
+    it("un COMMERCIAL ne peut pas atteindre les routes de gestion des users (EP15-S02 RBAC)", async () => {
+      // requireRole(["ADMIN"]) garde le router /api/users : un COMMERCIAL est
+      // refuse en 403 (il ne peut ni lister, ni creer, ni modifier des comptes).
+      const list = await request(app)
+        .get("/api/users")
+        .set("Authorization", `Bearer ${ctx.commercial.jwt}`);
+      expect(list.status).toBe(403);
+
+      const create = await request(app)
+        .post("/api/users")
+        .set("Authorization", `Bearer ${ctx.commercial.jwt}`)
+        .send({
+          email: "promote-self@hack.fr",
+          firstName: "P",
+          lastName: "S",
+          role: "ADMIN",
+        });
+      expect(create.status).toBe(403);
     });
 
     it("COMMERCIAL ne peut pas modifier la table User via aucune route exposed", async () => {

@@ -22,6 +22,9 @@ const CONFIG_TABS = [
   { href: "/config/document-templates", label: "Templates documents" },
   { href: "/config/blocking-points", label: "Points de blocage" },
   { href: "/config/cabinet", label: "Cabinet" },
+  // EP15-S02 : gestion des comptes par l'ADMIN du cabinet. La page elle-meme
+  // gate le contenu sur le role (le backend renvoie 403 a un COMMERCIAL).
+  { href: "/config/utilisateurs", label: "Utilisateurs" },
 ];
 
 export default async function ConfigLayout({ children }: { children: React.ReactNode }) {

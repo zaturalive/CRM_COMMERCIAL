@@ -77,6 +77,15 @@ router.post(
       return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
 
+    // EP15-S02 AC : un compte desactive par l'ADMIN du cabinet ne peut plus se
+    // connecter, sans suppression (les donnees restent). On verifie l'etat APRES
+    // la validation du mot de passe pour ne pas reveler le statut d'un compte a un
+    // appelant qui ne connait pas le secret. 403 (etat du compte), distinct du 401
+    // "credentials invalides".
+    if (!user.active) {
+      return res.status(403).json({ success: false, error: "Account is disabled" });
+    }
+
     const jwt = signJWT({ userId: user.id, tenantId: user.tenantId, role: user.role });
 
     return res.json({

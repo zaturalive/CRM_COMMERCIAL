@@ -10,6 +10,7 @@ import { requireEditor } from "./middleware/requireEditor";
 import { auditLog } from "./middleware/auditLog";
 import authRoutes from "./routes/auth";
 import adminRoutes from "./routes/admin";
+import usersRoutes from "./routes/users";
 import demoRoutes from "./routes/demo";
 import cliniquesRoutes from "./routes/cliniques";
 import interventionsRoutes from "./routes/interventions";
@@ -106,6 +107,12 @@ export function buildApp(): Express {
   // + requireTenant (req.user / req.editor deja peuples) et avant la declaration
   // des routers tenant, de sorte qu'il couvre toutes les routes mutantes /api/*.
   app.use("/api", auditLog);
+
+  // EP15-S02 — gestion des comptes users intra-cabinet par l'ADMIN. Tenant-scope
+  // (requireRole(["ADMIN"]) + req.prisma), distinct du Back Office editeur
+  // cross-tenant (/api/admin/*). Monte apres le requireTenant global, donc
+  // req.prisma est deja le client tenant-scope (isolation 404 cross-tenant).
+  app.use("/api/users", usersRoutes);
 
   // EP02
   app.use("/api/cliniques", cliniquesRoutes);
