@@ -26,6 +26,14 @@ enum UserRole {
   COMMERCIAL
 }
 
+// EP17-S02 / ADR-0009 : statut d'un cabinet. SUSPENDED refuse le login de ses
+// users sans suppression de donnees (AC4). On privilegie la suspension a la
+// suppression dure (perte de donnees client, sujet RGPD).
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum ProcessStage {
   CONTACT
   CONSULTATION
@@ -132,6 +140,9 @@ model Tenant {
   id                 String   @id @default(uuid())
   name               String
   slug               String   @unique
+  // EP17-S02 / ADR-0009 AC3-AC4 : statut du cabinet. ACTIVE par defaut ; un
+  // tenant SUSPENDED refuse le login de ses users (donnees conservees).
+  status             TenantStatus @default(ACTIVE)
   settings             Json?
   acompteDefaultAmount Int      @default(150000)  // EP07 : montant fixe d'acompte par defaut, en centimes (150000 = 1500€)
   // F8 : si true, les process avancent automatiquement au stage suivant

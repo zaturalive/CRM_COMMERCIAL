@@ -52,6 +52,15 @@ router.post(
       return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
 
+    // EP17-S02 / ADR-0009 AC4 : un cabinet SUSPENDED refuse le login de ses
+    // users, sans suppression de donnees. On garde l'equalisation de timing
+    // (SEC-11) en forcant un compare factice, et on renvoie 403 (etat du
+    // compte/cabinet, distinct du 401 "credentials invalides").
+    if (tenant.status === "SUSPENDED") {
+      await compare(password, DUMMY_HASH);
+      return res.status(403).json({ success: false, error: "Tenant suspended" });
+    }
+
     // Chercher le user dans ce tenant
     const user = await basePrisma.user.findUnique({
       where: { tenantId_email: { tenantId: tenant.id, email } },
