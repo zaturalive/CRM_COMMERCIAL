@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
 import { buildApp } from "../../src/app";
@@ -105,6 +105,21 @@ describe("Security — AuditLog append-only middleware (EP14-S04)", () => {
     await teardownTestTenant(TENANT_B);
     await prisma.$disconnect();
     await disconnectPrisma();
+  });
+
+  // POURQUOI : un test simule l'indisponibilite de l'audit en remplacant
+  // basePrisma.auditLog.create par un mock rejete. L'ecriture d'audit est
+  // fire-and-forget dans res.on("finish"), et la suite tourne en singleFork
+  // (vitest.config.ts) : un callback "finish" d'une requete d'un AUTRE fichier
+  // de test peut s'executer pendant que ce mock est encore actif et heurter le
+  // delegate mocke, ce qui pollue par intermittence des tests voisins. On filet
+  // de securite : tout mock pose dans CE fichier est restaure apres chaque test,
+  // jamais laisse vivant au-dela de son "it".
+  afterEach(async () => {
+    // Laisse le flush asynchrone des callbacks "finish" deja en vol se terminer
+    // avant de retirer le mock, puis restaure l'implementation reelle.
+    await waitForFlush();
+    vi.restoreAllMocks();
   });
 
   describe("AC : une mutation produit une entree AuditLog (qui/quoi/ou/comment/quand)", () => {
