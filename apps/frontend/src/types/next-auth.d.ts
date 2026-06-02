@@ -38,6 +38,9 @@ declare module "next-auth" {
     jwt: string;
     mustChangePassword?: boolean;
     cguAccepted?: boolean;
+    // EP17 (completion) : flag editeur plateforme pose au login editeur. Absent /
+    // false pour un user de cabinet.
+    isEditor?: boolean;
   }
 }
 

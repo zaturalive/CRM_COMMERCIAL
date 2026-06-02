@@ -30,6 +30,12 @@ const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "vencor-crm.localhost
 const TENANT_HEADER = "x-tenant-slug";
 
 /**
+ * EP17 (completion) — en-tete portant le chemin de la requete vers les layouts
+ * serveur (admin/layout.tsx exempte /admin/login de sa garde editeur).
+ */
+const PATHNAME_HEADER = "x-pathname";
+
+/**
  * Guard d'authentification + garde Back Office editeur + gate force-change.
  *
  * EP17-S01 / ADR-0009 D1 (impact frontend) : on conserve withAuth NextAuth
@@ -93,11 +99,20 @@ export default withAuth(
       return NextResponse.redirect(url);
     }
 
-    if (tenantSlug == null) {
-      return NextResponse.next();
+    // EP17 (completion) : on propage le chemin courant aux composants serveur
+    // (admin/layout.tsx exempte /admin/login de sa garde editeur). La seule
+    // facon fiable d'exposer un en-tete a headers() cote serveur est de le poser
+    // sur les en-tetes de REQUETE transmis a NextResponse.next({ request }), pas
+    // sur la reponse.
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set(PATHNAME_HEADER, path);
+    if (tenantSlug != null) {
+      requestHeaders.set(TENANT_HEADER, tenantSlug);
     }
-    const res = NextResponse.next();
-    res.headers.set(TENANT_HEADER, tenantSlug);
+    const res = NextResponse.next({ request: { headers: requestHeaders } });
+    if (tenantSlug != null) {
+      res.headers.set(TENANT_HEADER, tenantSlug);
+    }
     return res;
   },
   {
@@ -105,6 +120,12 @@ export default withAuth(
     callbacks: {
       authorized({ token, req }) {
         const path = req.nextUrl.pathname;
+        // EP17 (completion) : la page de login editeur est PUBLIQUE (l'editeur n'a
+        // pas encore de session). Elle est sous /admin mais exemptee de la garde
+        // editeur, sinon withAuth la redirige vers /login (boucle d'acces au BO).
+        if (path === "/admin/login") {
+          return true;
+        }
         // Zone Back Office : reservee a l'editeur plateforme.
         if (path === "/admin" || path.startsWith("/admin/")) {
           return token?.isEditor === true;

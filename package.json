@@ -17,6 +17,7 @@
     "dev:back": "npm -w apps/backend run dev",
     "db:migrate": "docker compose -f docker/docker-compose.yml exec backend npx prisma migrate dev",
     "db:seed": "docker compose -f docker/docker-compose.yml exec backend npx prisma db seed",
+    "db:seed-editor": "docker compose -f docker/docker-compose.yml exec -T backend npx tsx prisma/seed-editor.ts",
     "db:reset": "docker compose -f docker/docker-compose.yml exec backend npx prisma migrate reset",
     "db:studio": "docker compose -f docker/docker-compose.yml exec backend npx prisma studio",
     "test": "npm -w apps/backend test && npm -w apps/frontend test",

@@ -153,6 +153,12 @@ const PUBLIC_ROUTES = new Set<string>([
   // c'est la garde 405 (Method Not Allowed) du lookup public, pas un point
   // d'ecriture. Classee publique (l'autorite reste le JWT + Prisma).
   "_ALL /api/tenant/by-slug/:slug",
+  // EP17 (completion) : login editeur. PUBLIC par conception (l'editeur n'a pas
+  // encore de jeton) — monte AVANT requireEditor (app.ts). L'authz reelle est
+  // portee par bcrypt + signEditorJWT (cf. editor-login.test.ts). Declaree ici
+  // explicitement pour rester "secure by default" : c'est la seule route
+  // /api/admin/* non gardee, et ce choix est conscient.
+  "POST /api/admin/login",
 ]);
 
 /**
@@ -308,7 +314,14 @@ describe("EP14-S08 — Conformite securite par-endpoint (auto-decouverte)", () =
   });
 
   describe("Baseline B — surface BO /api/admin/* cloisonnee (requireEditor)", () => {
-    const adminRoutes = ALL_ROUTES.filter(isEditorSurface);
+    // EP17 (completion) : on exclut les routes /api/admin/* explicitement
+    // declarees publiques (POST /api/admin/login). Elles sont montees AVANT
+    // requireEditor (l'editeur n'a pas encore de jeton) ; leur contrat est teste
+    // a part (editor-login.test.ts : 401 mauvais mdp, 403 inactif, anti-oracle).
+    // Le reste de la surface BO reste asserte 401 (sans token) / 403 (JWT tenant).
+    const adminRoutes = ALL_ROUTES.filter(
+      (r) => isEditorSurface(r) && !isPublic(r),
+    );
 
     it("au moins une route editeur decouverte", () => {
       expect(adminRoutes.length).toBeGreaterThan(0);

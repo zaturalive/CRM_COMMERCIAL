@@ -8,6 +8,18 @@ export const loginSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
+/**
+ * EP17 — login editeur plateforme (PlatformAdmin). Pas de tenantSlug :
+ * l'editeur n'appartient a aucun cabinet (ADR-0009 D1). L'email est unique
+ * globalement sur PlatformAdmin (lookup direct, distinct du carnet User).
+ */
+export const editorLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+export type EditorLoginInput = z.infer<typeof editorLoginSchema>;
+
 export const switchRoleSchema = z.object({
   role: z.enum(["ADMIN", "COMMERCIAL"]),
 });

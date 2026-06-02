@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import ObservationBanner from "@/components/admin/ObservationBanner";
@@ -30,6 +31,16 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // EP17 (completion) : la page de login editeur (/admin/login) est publique et
+  // ne doit pas etre enveloppee par la garde + le shell BO (sinon l'editeur sans
+  // session est redirige vers /login avant meme d'avoir pu se connecter). On lit
+  // le chemin courant via l'en-tete pose par middleware.ts et on rend la page de
+  // login telle quelle (elle porte sa propre mise en page).
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
   const session = await getServerSession(authOptions);
   // Seul l'editeur plateforme accede au BO. Un user de cabinet (ou pas de
   // session) est renvoye hors de la zone, sans rendu de la coquille.

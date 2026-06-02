@@ -13,6 +13,7 @@ import { auditLog } from "./middleware/auditLog";
 import { createAuthRouter } from "./routes/auth";
 import { NoopEmailSender, type EmailSender } from "./lib/email/EmailSender";
 import adminRoutes from "./routes/admin";
+import adminLoginRoutes from "./routes/adminLogin";
 import usersRoutes from "./routes/users";
 import meRoutes from "./routes/me";
 import demoRoutes from "./routes/demo";
@@ -121,6 +122,13 @@ export function buildApp(options: BuildAppOptions = {}): Express {
       `Demo routes enabled (/api/demo/*). NODE_ENV=${env.NODE_ENV} DEMO_MODE=${env.DEMO_MODE}.`,
     );
   }
+
+  // EP17 (completion) — login editeur plateforme. PUBLIC : monte AVANT la chaine
+  // /api/admin gardee (requireJWT + requireEditor) ci-dessous, car l'editeur n'a
+  // pas encore de jeton a ce stade. POST /api/admin/login uniquement ; toutes les
+  // autres routes /api/admin/* restent gardees. Le router login porte son propre
+  // rate-limit (loginLimiter), miroir du login user.
+  app.use("/api/admin", adminLoginRoutes);
 
   // EP17-S01 — Back Office editeur. Monte AVANT le guard tenant global :
   // ces routes utilisent requireJWT + requireEditor (pas requireTenant), car

@@ -40,6 +40,68 @@ function buildSessionUser(d: BackendLoginData): User {
 }
 
 /**
+ * Forme de la charge utile du login editeur (POST /api/admin/login). ADR-0009 D1 :
+ * l'editeur est un PlatformAdmin sans contexte tenant (pas de tenantId/role/slug).
+ */
+interface EditorLoginData {
+  editorId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  jwt: string;
+  mustChangePassword?: boolean;
+}
+
+/**
+ * EP17 (completion) — construit l'utilisateur de session editeur. isEditor: true
+ * est le seul levier consomme par la garde /admin (middleware.ts callback
+ * authorized + admin/layout.tsx). On ne pose ni tenantId ni role : l'editeur
+ * n'appartient a aucun cabinet, le JWT porte kind:"editor". cguAccepted: true
+ * exempte l'editeur de la gate CGU (gate propre aux cabinets, pas a la
+ * plateforme) sans modifier la logique de gate elle-meme.
+ */
+function buildEditorSessionUser(d: EditorLoginData): User {
+  return {
+    id: d.editorId,
+    email: d.email,
+    name: `${d.firstName} ${d.lastName}`,
+    firstName: d.firstName,
+    lastName: d.lastName,
+    // Champs tenant absents pour un editeur : valeurs neutres pour satisfaire le
+    // type, jamais utilisees (la garde /admin filtre sur isEditor, et l'editeur
+    // ne traverse pas les routes tenant nominales — le backend refuse son JWT).
+    role: "ADMIN",
+    tenantId: "",
+    tenantSlug: "",
+    jwt: d.jwt,
+    isEditor: true,
+    mustChangePassword: d.mustChangePassword === true,
+    cguAccepted: true,
+  };
+}
+
+const BACKEND_URL_EDITOR = BACKEND_URL;
+
+/**
+ * EP17 (completion) — echange email/password editeur contre une charge utile de
+ * login editeur. null sur credentials invalides (401) ou compte desactive (403).
+ */
+async function editorLoginStep(
+  email: string,
+  password: string,
+): Promise<EditorLoginData | null> {
+  const res = await fetch(`${BACKEND_URL_EDITOR}/api/admin/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  return body.data as EditorLoginData;
+}
+
+/**
  * EP14-S01 / AC5 — etape 2 : echange le pendingToken + code TOTP contre une
  * charge utile de login complete (JWT mfaVerified). Retourne null sur code
  * invalide / challenge expire (401 backend) : authorize renverra null -> echec.
@@ -104,8 +166,22 @@ export const authOptions: NextAuthOptions = {
         totpCode: { label: "TOTP", type: "text" },
         recoveryCode: { label: "Recovery", type: "text" },
         pendingToken: { label: "Pending", type: "text" },
+        // EP17 (completion) : login editeur plateforme. kind === "editor" route
+        // vers POST /api/admin/login (pas de tenantSlug, l'editeur n'a pas de
+        // cabinet). Absent / "user" => login cabinet existant inchange.
+        kind: { label: "Kind", type: "text" },
       },
       async authorize(creds) {
+        // EP17 (completion) : chemin editeur. Discrimine par kind === "editor",
+        // AVANT le check tenantSlug (un editeur n'en fournit pas). Le login
+        // cabinet reste strictement inchange en dessous.
+        if (creds?.kind === "editor") {
+          if (!creds.email || !creds.password) return null;
+          const editor = await editorLoginStep(creds.email, creds.password);
+          if (!editor) return null;
+          return buildEditorSessionUser(editor);
+        }
+
         if (!creds?.email || !creds?.password || !creds?.tenantSlug) return null;
         const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
           method: "POST",
@@ -156,6 +232,10 @@ export const authOptions: NextAuthOptions = {
         token.jwt = user.jwt;
         token.mustChangePassword = user.mustChangePassword === true;
         token.cguAccepted = user.cguAccepted === true;
+        // EP17 (completion) : flag editeur plateforme propage dans le token de
+        // session. Seul vecteur d'autorisation de la garde /admin (middleware +
+        // layout). Absent / false pour une session de cabinet.
+        token.isEditor = user.isEditor === true;
       }
       // Update trigger (useSession().update) pour rafraichir apres switch-role,
       // apres un changement de mot de passe reussi (leve la gate force-change,
@@ -179,6 +259,9 @@ export const authOptions: NextAuthOptions = {
       session.jwt = token.jwt;
       session.mustChangePassword = token.mustChangePassword === true;
       session.cguAccepted = token.cguAccepted === true;
+      // EP17 (completion) : expose le flag editeur dans la session (lu par
+      // admin/layout.tsx getServerSession et la garde middleware).
+      session.isEditor = token.isEditor === true;
       return session;
     },
   },
