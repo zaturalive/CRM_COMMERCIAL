@@ -7,6 +7,8 @@ import {
   Download,
   Send,
   FileSignature,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
@@ -169,6 +171,13 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
   const [loading, setLoading] = useState(true);
   const [bounceTotal, setBounceTotal] = useState(false);
   const [saving, setSaving] = useState(false);
+  /**
+   * EP16-S03 : visibilite du panneau d'apercu sur petit ecran. Sur desktop
+   * l'apercu est toujours rendu a droite (split-pane, classes lg:). Sur mobile
+   * il est masque par defaut (tiroir) et le toggle l'affiche/le replie pour
+   * laisser l'editeur utilisable. Le toggle n'est visible qu'en dessous de lg.
+   */
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   /**
    * EP12-S02 : `silent=true` (post-mutation) ne touche pas `loading` et ne
@@ -418,7 +427,7 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl pb-32">
+    <div className="mx-auto max-w-screen-2xl pb-32">
       {/* Header */}
       <header className="mb-6 flex flex-wrap items-center gap-3">
         <h1 className="font-mono text-2xl font-bold tracking-tight">
@@ -432,6 +441,19 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
           </span>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* EP16-S03 AC5 : toggle d'apercu, visible uniquement sous lg (mobile/tablette) */}
+          <Button
+            variant="secondary"
+            size="sm"
+            className="lg:hidden"
+            data-testid="devis-preview-toggle"
+            aria-pressed={previewOpen}
+            aria-controls="devis-preview-panel"
+            onClick={() => setPreviewOpen((v) => !v)}
+          >
+            {previewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+            {previewOpen ? "Masquer l'apercu" : "Apercu"}
+          </Button>
           <Button variant="secondary" size="sm" onClick={handleDownloadPdf}>
             <Download size={14} /> Telecharger PDF
           </Button>
@@ -455,6 +477,15 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
         Client : <strong>{devis.process.client.firstName} {devis.process.client.lastName}</strong>
         {saving && <span className="ml-2 text-xs">· Enregistrement…</span>}
       </p>
+
+      {/*
+        EP16-S03 : split-pane deux zones. Editeur a gauche, apercu live a droite.
+        Sur desktop (lg) c'est une grille 2 colonnes ; en dessous, une seule
+        colonne et l'apercu est un tiroir controle par previewOpen (AC5).
+      */}
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+        {/* ── Zone editeur (gauche) ─────────────────────────────────────── */}
+        <div data-testid="devis-editor" className="min-w-0">
 
       {/* Section Technique */}
       <GlassCard className="mb-6 border-l-4 border-l-[color:var(--accent)] p-5">
@@ -625,50 +656,161 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
         />
       </GlassCard>
 
-      {/* Sticky total */}
-      {calc && (
+        </div>
+        {/* ── Zone apercu (droite) ──────────────────────────────────────── */}
+        {/*
+          AC5 : sur mobile masque par defaut (previewOpen=false → hidden) ;
+          le toggle bascule. Sur desktop (lg) toujours visible (lg:block) et
+          colle en haut (sticky) pour suivre le scroll de l'editeur. AC4 :
+          rendu HTML/React leger, aucun appel Puppeteer (le PDF reste sur le
+          bouton "Voir le PDF complet" / "Telecharger PDF").
+        */}
         <div
-          className={`fixed bottom-4 right-6 z-30 min-w-[320px] rounded-lg border border-white/80 bg-white/95 p-4 shadow-lg backdrop-blur transition-transform ${
-            bounceTotal ? "scale-105" : "scale-100"
-          }`}
+          id="devis-preview-panel"
+          data-testid="devis-preview"
+          className={`${previewOpen ? "block" : "hidden"} lg:block lg:sticky lg:top-6`}
         >
-          <div className="space-y-1 text-sm">
-            <TotalLine label="Honoraires" value={calc.honoraires} />
-            <TotalLine
-              label="Frais interventions"
-              value={calc.fraisInterventions}
-            />
-            <TotalLine label="Frais clinique" value={calc.fraisClinique} />
-            <TotalLine label="Options catalogue" value={calc.optionsCatalogue} />
-            <TotalLine label="Options personnalisees" value={calc.optionsCustom} />
+          <DevisPreview
+            devis={devis}
+            calc={calc}
+            bounce={bounceTotal}
+            onOpenPdf={handleDownloadPdf}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * DevisPreview — apercu live du devis (EP16-S03). Rendu HTML/React leger qui
+ * mappe l'etat du devis et le total issu de computeDevisTotal (source unique
+ * D6, via l'API /total). Il ne regenere JAMAIS le PDF Puppeteer (AC4) : le
+ * total se rafraichit a chaque mutation parce que le builder refetch /total.
+ *
+ * Versant COMMERCIAL non-HDS (ADR-0003) : aucun champ medical rendu (pas de
+ * consentement, antecedents, anesthesiste isole, double signature). On
+ * n'affiche que des libelles commerciaux (prestations, frais d'etablissement,
+ * options, remise, total net).
+ */
+function DevisPreview({
+  devis,
+  calc,
+  bounce,
+  onOpenPdf,
+}: {
+  devis: Devis;
+  calc: Calculation | null;
+  bounce: boolean;
+  onOpenPdf: () => void;
+}) {
+  const remise = calc?.remise ?? 0;
+  const totalNet = calc?.totalNet ?? calc?.total ?? devis.totalCached ?? 0;
+
+  // Lignes de prestation commerciales (1 par intervention : honoraires + frais
+  // supp inclus). Meme logique de regroupement commercial que le PDF, sans
+  // nomenclature medicale.
+  const prestationLines = devis.devisInterventions.map((di) => {
+    const feesIncluded = di.fees
+      .filter((f) => f.isIncluded)
+      .reduce((s, f) => s + f.price * f.quantity, 0);
+    return {
+      id: di.id,
+      label: di.intervention.name,
+      total: di.priceHonoraires + feesIncluded,
+    };
+  });
+
+  return (
+    <GlassCard className="p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--text-secondary)]">
+          Apercu du devis
+        </h2>
+        <span className="font-mono text-xs text-[color:var(--text-secondary)]">
+          {devis.reference}
+        </span>
+      </div>
+
+      {/* En-tete commercial : client (pas de donnee de sante) */}
+      <div className="mb-4 text-sm">
+        <span className="text-[color:var(--text-secondary)]">Client : </span>
+        <strong>
+          {devis.process.client.firstName} {devis.process.client.lastName}
+        </strong>
+      </div>
+
+      {/* Lignes de prestation */}
+      <div className="space-y-1 border-t border-[color:var(--border)] pt-3 text-sm">
+        {prestationLines.length === 0 && (
+          <p className="italic text-[color:var(--text-secondary)]">
+            Aucune prestation pour l&apos;instant.
+          </p>
+        )}
+        {prestationLines.map((l) => (
+          <div key={l.id} className="flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate">{l.label}</span>
+            <span className="font-mono">{formatCurrency(l.total)}</span>
           </div>
-          {(calc.remise ?? 0) > 0 && (
-            <div className="mt-1 flex items-center justify-between text-[color:var(--warning)]">
-              <span>Remise</span>
-              <span className="font-mono">- {formatCurrency(calc.remise ?? 0)}</span>
-            </div>
+        ))}
+      </div>
+
+      {/* Sous-totaux commerciaux (issus de la source unique via /total) */}
+      {calc && (
+        <div className="mt-3 space-y-1 border-t border-[color:var(--border)] pt-3 text-sm">
+          <TotalLine label="Honoraires" value={calc.honoraires} />
+          {calc.fraisInterventions > 0 && (
+            <TotalLine label="Frais interventions" value={calc.fraisInterventions} />
           )}
-          <div className="my-2 h-px bg-[color:var(--border)]" />
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-semibold">
-              {(calc.remise ?? 0) > 0 ? "TOTAL NET" : "TOTAL"}
-            </span>
-            <div className="flex items-center gap-2">
-              <span
-                data-testid="devis-preview-total"
-                className="font-mono text-2xl font-bold text-[color:var(--accent)]"
-              >
-                {formatCurrency(calc.totalNet ?? calc.total)}
-              </span>
-              <CopyButton
-                value={formatCurrency(calc.totalNet ?? calc.total)}
-                size={14}
-              />
-            </div>
-          </div>
+          <TotalLine label="Frais clinique" value={calc.fraisClinique} />
+          {calc.optionsCatalogue > 0 && (
+            <TotalLine label="Options catalogue" value={calc.optionsCatalogue} />
+          )}
+          {calc.optionsCustom > 0 && (
+            <TotalLine label="Options personnalisees" value={calc.optionsCustom} />
+          )}
         </div>
       )}
-    </div>
+
+      {remise > 0 && (
+        <div className="mt-1 flex items-center justify-between text-[color:var(--warning)]">
+          <span>Remise</span>
+          <span className="font-mono">- {formatCurrency(remise)}</span>
+        </div>
+      )}
+
+      <div className="my-3 h-px bg-[color:var(--border)]" />
+      <div
+        className={`flex items-center justify-between gap-2 transition-transform ${
+          bounce ? "scale-105" : "scale-100"
+        }`}
+      >
+        <span className="text-sm font-semibold">
+          {remise > 0 ? "TOTAL NET" : "TOTAL"}
+        </span>
+        <div className="flex items-center gap-2">
+          <span
+            data-testid="devis-preview-total"
+            className="font-mono text-2xl font-bold text-[color:var(--accent)]"
+          >
+            {formatCurrency(totalNet)}
+          </span>
+          <CopyButton value={formatCurrency(totalNet)} size={14} />
+        </div>
+      </div>
+
+      {/* AC7 : bouton optionnel pour generer le PDF complet (Puppeteer). */}
+      <div className="mt-4">
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full"
+          onClick={onOpenPdf}
+        >
+          <Download size={14} /> Voir le PDF complet
+        </Button>
+      </div>
+    </GlassCard>
   );
 }
 
