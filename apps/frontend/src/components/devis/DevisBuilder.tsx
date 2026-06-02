@@ -5,9 +5,7 @@ import {
   Plus,
   Trash2,
   Download,
-  Clipboard,
   Send,
-  Check,
   FileSignature,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -162,7 +160,6 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
     Record<string, CliniqueOption[]>
   >({});
   const [loading, setLoading] = useState(true);
-  const [copiedText, setCopiedText] = useState(false);
   const [bounceTotal, setBounceTotal] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -347,23 +344,6 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
   const deleteCustomOption = (id: string) =>
     runMutation(`/api/devis/custom-options/${id}`, { method: "DELETE" });
 
-  const handleCopyText = async () => {
-    try {
-      const { getSession } = await import("next-auth/react");
-      const s = await getSession();
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000"}/api/devis/${devisId}/as-text`,
-        { headers: { Authorization: `Bearer ${s?.jwt ?? ""}` } }
-      );
-      const text = await res.text();
-      await navigator.clipboard.writeText(text);
-      setCopiedText(true);
-      setTimeout(() => setCopiedText(false), 2000);
-    } catch {
-      // Clipboard API / fetch indisponible (HTTP hors localhost) — silent fail
-    }
-  };
-
   const handleDownloadPdf = async () => {
     const { getSession } = await import("next-auth/react");
     const s = await getSession();
@@ -437,10 +417,6 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
           </span>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleCopyText}>
-            {copiedText ? <Check size={14} /> : <Clipboard size={14} />}
-            Copier le devis complet en texte
-          </Button>
           <Button variant="secondary" size="sm" onClick={handleDownloadPdf}>
             <Download size={14} /> Telecharger PDF
           </Button>

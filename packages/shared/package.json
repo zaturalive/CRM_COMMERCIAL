@@ -1,0 +1,21 @@
+{
+  "name": "@crm/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Code partage entre apps/backend et apps/frontend (source unique). ADR-0009 D6 : computeDevisTotal.",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "exports": {
+    "./devis/computeTotal": {
+      "types": "./dist/devis/computeTotal.d.ts",
+      "default": "./src/devis/computeTotal.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src"
+  ],
+  "license": "UNLICENSED"
+}

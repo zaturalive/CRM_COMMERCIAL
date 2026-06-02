@@ -13,7 +13,7 @@ import {
   COMMERCIAL_ONLY_FIELDS,
 } from "../schemas/devis";
 import { reconcileStays } from "../services/reconcileStays";
-import { buildDevisBundle } from "../services/devisLoader";
+import { buildDevisBundle, buildDevisPdfInput } from "../services/devisLoader";
 import { generateDevisPdf } from "../services/pdfGenerator";
 import { formatDevisAsText } from "../services/devisTextFormatter";
 import { syncProcessDocuments } from "../services/syncProcessDocuments";
@@ -832,22 +832,27 @@ router.get(
   "/:id/pdf",
   asyncHandler(async (req, res) => {
     await loadOwnedDevis(req, req.params.id);
-    const bundle = await buildDevisBundle(basePrisma, req.params.id);
-    if (!bundle) return res.status(404).json({ success: false, error: "Not found" });
 
     const tenant = await basePrisma.tenant.findUnique({
       where: { id: req.user!.tenantId },
+      select: { name: true, settings: true },
     });
+    if (!tenant) return res.status(404).json({ success: false, error: "Not found" });
 
-    const pdf = await generateDevisPdf({
-      ...bundle.text,
-      tenantName: tenant?.name,
+    // EP16-S01 : rendu PDF commercial (mentions legales + total via la fonction
+    // de calcul unique computeDevisTotal @crm/shared, ADR-0009 D6).
+    const pdfInput = await buildDevisPdfInput(basePrisma, req.params.id, {
+      name: tenant.name,
+      settings: tenant.settings,
     });
+    if (!pdfInput) return res.status(404).json({ success: false, error: "Not found" });
+
+    const pdf = await generateDevisPdf(pdfInput);
     res
       .status(200)
       .set({
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${bundle.raw!.reference}.pdf"`,
+        "Content-Disposition": `attachment; filename="${pdfInput.reference}.pdf"`,
         "Content-Length": String(pdf.length),
       })
       .send(pdf);

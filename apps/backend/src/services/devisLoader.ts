@@ -10,6 +10,11 @@ import {
   type DevisCalculationResult,
 } from "./devisCalculator";
 import type { DevisTextInput } from "./devisTextFormatter";
+import {
+  computeDevisTotal,
+  type DevisComputeInput,
+} from "@crm/shared/devis/computeTotal";
+import type { DevisPdfInput, DevisLegalMentions } from "./devisTemplate";
 
 type AnyPrisma = PrismaClient;
 
@@ -152,4 +157,165 @@ export async function buildDevisBundle(
   };
 
   return { calculation, text, raw: devis };
+}
+
+/**
+ * Mentions legales par defaut (versant commercial). Le cabinet peut les
+ * surcharger via Tenant.settings.legal ; sinon on retombe sur des valeurs
+ * commerciales neutres. POURQUOI un defaut non vide : AC1 exige des mentions
+ * presentes — un cabinet non encore configure ne doit pas produire un PDF avec
+ * des champs "undefined" (AC7).
+ */
+function resolveLegalMentions(
+  tenantName: string,
+  settings: unknown
+): DevisLegalMentions {
+  const legal =
+    settings && typeof settings === "object" && "legal" in settings
+      ? ((settings as { legal?: Record<string, unknown> }).legal ?? {})
+      : {};
+  const str = (k: string, fallback: string): string => {
+    const v = (legal as Record<string, unknown>)[k];
+    return typeof v === "string" && v.trim().length > 0 ? v : fallback;
+  };
+  const num = (k: string, fallback: number): number => {
+    const v = (legal as Record<string, unknown>)[k];
+    return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+  };
+  const siretRaw = (legal as Record<string, unknown>).siret;
+  return {
+    raisonSociale: str("raisonSociale", tenantName),
+    siret: typeof siretRaw === "string" && siretRaw.trim().length > 0 ? siretRaw : null,
+    adresse: str("adresse", "Adresse a renseigner"),
+    telephone: str("telephone", "Telephone a renseigner"),
+    email: str("email", "Email a renseigner"),
+    validiteJours: num("validiteJours", 30),
+    cgvReference: str("cgvReference", "Voir CGV disponibles sur demande"),
+  };
+}
+
+/**
+ * Construit l'entree du rendu PDF commercial (EP16-S01) a partir du devis
+ * charge et des mentions legales du cabinet. Le total provient de
+ * computeDevisTotal (@crm/shared, ADR-0009 D6) : source unique. Les lignes de
+ * prestation regroupent honoraires, frais d'etablissement et options en
+ * libelles commerciaux (aucune nomenclature medicale).
+ */
+export async function buildDevisPdfInput(
+  prisma: AnyPrisma,
+  devisId: string,
+  tenant: { name: string; settings?: unknown }
+): Promise<DevisPdfInput | null> {
+  const devis = await loadFullDevis(prisma, devisId);
+  if (!devis) return null;
+
+  const cliniqueIds = new Set<string>();
+  for (const di of devis.devisInterventions) {
+    if (di.cliniqueId) cliniqueIds.add(di.cliniqueId);
+  }
+  for (const s of devis.devisStays) cliniqueIds.add(s.cliniqueId);
+
+  const cliniques =
+    cliniqueIds.size > 0
+      ? await prisma.clinique.findMany({
+          where: { id: { in: Array.from(cliniqueIds) } },
+          include: { tarifs: true },
+        })
+      : [];
+
+  const computeInput: DevisComputeInput = {
+    interventions: devis.devisInterventions.map((di) => ({
+      id: di.id,
+      priceHonoraires: di.priceHonoraires,
+      duration: di.duration,
+      cliniqueId: di.cliniqueId,
+      datePrestation: di.datePrestation,
+      fees: di.fees.map((f) => ({
+        price: f.price,
+        quantity: f.quantity,
+        isIncluded: f.isIncluded,
+      })),
+    })),
+    cliniques: cliniques.map((c) => ({
+      id: c.id,
+      fraisAmbulatoire: c.fraisAmbulatoire,
+      fraisHospitalisationParNuit: c.fraisHospitalisationParNuit,
+      tarifs: c.tarifs.map((t) => ({
+        dureeMin: t.dureeMin,
+        dureeMax: t.dureeMax,
+        fraisBloc: t.fraisBloc,
+        fraisAnesthesie: t.fraisAnesthesie,
+      })),
+    })),
+    stays: devis.devisStays.map((s) => ({
+      cliniqueId: s.cliniqueId,
+      date: s.date,
+      mode: s.mode,
+      nightCount: s.nightCount,
+    })),
+    options: devis.devisOptions.map((o) => ({
+      price: o.price,
+      quantity: o.quantity,
+    })),
+    customOptions: devis.devisCustomOptions.map((o) => ({
+      price: o.price,
+      quantity: o.quantity,
+    })),
+    // EP16-S02 (remise) ajoutera la lecture du champ remise du Devis ici. Tant
+    // que le champ n'existe pas au schema, pas de remise (null).
+    remise: null,
+  };
+
+  const breakdown = computeDevisTotal(computeInput);
+
+  // Lignes de prestation commerciales : 1 ligne par intervention (honoraires +
+  // frais supp inclus), 1 ligne par option. Pas de nomenclature medicale.
+  const lines: DevisPdfInput["lines"] = [];
+  for (const di of devis.devisInterventions) {
+    const feesIncluded = di.fees
+      .filter((f) => f.isIncluded)
+      .reduce((s, f) => s + f.price * f.quantity, 0);
+    const total = di.priceHonoraires + feesIncluded;
+    lines.push({
+      label: di.intervention.name,
+      quantity: 1,
+      unitPrice: total,
+      total,
+    });
+  }
+  if (breakdown.sousTotalClinique > 0) {
+    lines.push({
+      label: "Frais d'etablissement",
+      quantity: 1,
+      unitPrice: breakdown.sousTotalClinique,
+      total: breakdown.sousTotalClinique,
+    });
+  }
+  for (const o of devis.devisOptions) {
+    lines.push({
+      label: o.label,
+      quantity: o.quantity,
+      unitPrice: o.price,
+      total: o.price * o.quantity,
+    });
+  }
+  for (const o of devis.devisCustomOptions) {
+    lines.push({
+      label: o.label,
+      quantity: o.quantity,
+      unitPrice: o.price,
+      total: o.price * o.quantity,
+    });
+  }
+
+  const client = devis.process.client;
+  return {
+    reference: devis.reference,
+    clientFullName: `${client.firstName} ${client.lastName}`.trim(),
+    tenantName: tenant.name,
+    legal: resolveLegalMentions(tenant.name, tenant.settings),
+    emissionDateIso: devis.createdAt.toISOString().slice(0, 10),
+    lines,
+    breakdown,
+  };
 }

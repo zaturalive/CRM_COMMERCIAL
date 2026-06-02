@@ -17,6 +17,13 @@ out/
 build/
 dist/
 
+# Le package partage @crm/shared expose ses declarations (.d.ts) + JS compile
+# pour que tsc (backend) et le runtime de prod resolvent la source unique
+# computeDevisTotal (ADR-0009 D6) sans etape de build prealable obligatoire.
+# Regenerable via `npm run build -w @crm/shared`.
+!packages/shared/dist/
+!packages/shared/dist/**
+
 # Production
 *.tsbuildinfo
 next-env.d.ts
