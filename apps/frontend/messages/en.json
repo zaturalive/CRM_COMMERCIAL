@@ -24,6 +24,7 @@
     "submit": "Sign in",
     "submitting": "Signing in...",
     "errorInvalid": "Invalid email, password or center code",
+    "unknownCabinet": "Unknown center",
     "demoAccountsTitle": "Demo accounts (password: demo):",
     "feature1": "5-stage sales pipeline",
     "feature2": "Two-step quote with automatic calculation",

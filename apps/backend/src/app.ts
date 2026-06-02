@@ -17,6 +17,7 @@ import usersRoutes from "./routes/users";
 import meRoutes from "./routes/me";
 import demoRoutes from "./routes/demo";
 import tenantRoutes from "./routes/tenant";
+import tenantPublicRoutes from "./routes/tenantPublic";
 import cliniquesRoutes from "./routes/cliniques";
 import interventionsRoutes from "./routes/interventions";
 import documentLabelsRoutes from "./routes/documentLabels";
@@ -97,6 +98,13 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // Routes auth (public + /me protege). EP15-S03 / D7 : l'EmailSender est injecte
   // dans le router (forgot-password l'utilise) ; NoopEmailSender par defaut.
   app.use("/api/auth", createAuthRouter(emailSender));
+
+  // EP14-S03 — lookup public du nom de cabinet pour l'affichage au login (resolu
+  // depuis le sous-domaine). PUBLIC : monte AVANT le requireJWT global ci-dessous,
+  // car l'utilisateur n'est pas encore authentifie a ce stade. Read-only,
+  // anti-enumeration (404 identique pour inexistant et suspendu). N'ouvre aucune
+  // surface d'autorite : l'isolation reste portee par le JWT + Prisma $extends.
+  app.use("/api/tenant", tenantPublicRoutes);
 
   // Routes demo — EP15-S05 / ADR-0009 : NODE_ENV=production est un plancher dur.
   // La surface de demo (/api/demo/switch-role re-signe un JWT avec le role

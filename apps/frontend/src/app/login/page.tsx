@@ -7,9 +7,33 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ThemeSwitcher } from "@/components/layout/ThemeSwitcher";
 import { TOTP_REQUIRED_PREFIX, PENDING_2FA_KEY } from "@/lib/twoFactorSession";
+import { parseTenantSubdomain } from "@/lib/tenantHost";
 
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT ?? "demo";
 const TENANT_STORAGE_KEY = "crm-chirurgie:last-cabinet";
+
+/**
+ * Domaine racine du deploiement (EP14-S03). Injecte pour servir local (.localhost)
+ * et prod (.com) avec le meme code. Cote client : process.env.NEXT_PUBLIC_* est
+ * inline au build, donc lisible ici.
+ */
+const BASE_DOMAIN =
+  process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "vencor-crm.localhost";
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+
+/**
+ * Etat de la resolution du cabinet depuis le sous-domaine (EP14-S03 AC4/AC5).
+ *   none    : apex/www -> formulaire 3 champs (fallback, AC6)
+ *   loading : sous-domaine present, lookup du nom en cours
+ *   found   : tenant actif -> champ cabinet verrouille + nom affiche
+ *   unknown : sous-domaine sans tenant actif (inexistant/suspendu) -> cabinet inconnu
+ */
+type SubdomainState =
+  | { kind: "none" }
+  | { kind: "loading"; slug: string }
+  | { kind: "found"; slug: string; name: string }
+  | { kind: "unknown"; slug: string };
 
 export default function LoginPage() {
   const t = useTranslations("Login");
@@ -23,12 +47,59 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [subdomain, setSubdomain] = useState<SubdomainState>({ kind: "none" });
+
+  // EP14-S03 AC3/AC4 : resolution du tenant depuis le sous-domaine de l'hote.
+  // Priorite sur ?cabinet=/localStorage : si l'URL est mon-cabinet.vencor-crm.com,
+  // le cabinet est impose par l'hote (champ verrouille). On lit le nom via la
+  // route publique read-only by-slug (anti-enumeration : 404 identique pour
+  // inexistant et suspendu -> "cabinet inconnu"). Sur apex/www -> fallback.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const slug = parseTenantSubdomain(window.location.hostname, BASE_DOMAIN);
+    if (slug == null) return; // apex/www -> formulaire 3 champs (AC6)
+
+    setSubdomain({ kind: "loading", slug });
+    setTenantSlug(slug);
+    const controller = new AbortController();
+
+    fetch(`${BACKEND_URL}/api/tenant/by-slug/${encodeURIComponent(slug)}`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          setSubdomain({ kind: "unknown", slug });
+          return;
+        }
+        const body = await res.json();
+        const name = body?.data?.name;
+        if (typeof name === "string" && name.length > 0) {
+          setSubdomain({ kind: "found", slug, name });
+        } else {
+          setSubdomain({ kind: "unknown", slug });
+        }
+      })
+      .catch((err) => {
+        // POURQUOI ne pas basculer en "unknown" sur un abort : un demontage du
+        // composant ne doit pas afficher "cabinet inconnu". Toute autre erreur
+        // reseau retombe sur le formulaire libre (le slug reste pre-rempli).
+        if ((err as Error)?.name === "AbortError") return;
+        setSubdomain({ kind: "none" });
+      });
+
+    return () => controller.abort();
+  }, []);
 
   // Pre-remplit le champ Cabinet depuis (par ordre de priorite) :
-  //   1. ?cabinet=xyz dans l'URL (bookmark partage par l'admin)
-  //   2. localStorage (dernier cabinet utilise sur ce navigateur)
-  //   3. NEXT_PUBLIC_DEFAULT_TENANT (fallback build-time)
+  //   1. sous-domaine de l'hote (gere ci-dessus, verrouille le champ) — prioritaire
+  //   2. ?cabinet=xyz dans l'URL (bookmark partage par l'admin)
+  //   3. localStorage (dernier cabinet utilise sur ce navigateur)
+  //   4. NEXT_PUBLIC_DEFAULT_TENANT (fallback build-time)
+  // POURQUOI ce 2e effet ne touche pas le cas sous-domaine : quand l'hote impose
+  // un cabinet (subdomain.kind != "none"), l'URL/localStorage ne doivent pas
+  // l'ecraser ; ils ne servent qu'au chemin apex (formulaire 3 champs).
   useEffect(() => {
+    if (subdomain.kind !== "none") return;
     const fromUrl = searchParams.get("cabinet");
     if (fromUrl) {
       setTenantSlug(fromUrl);
@@ -38,7 +109,12 @@ export default function LoginPage() {
       const stored = window.localStorage.getItem(TENANT_STORAGE_KEY);
       if (stored) setTenantSlug(stored);
     }
-  }, [searchParams]);
+  }, [searchParams, subdomain.kind]);
+
+  const tenantLocked =
+    subdomain.kind === "found" ||
+    subdomain.kind === "loading" ||
+    subdomain.kind === "unknown";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -121,21 +197,56 @@ export default function LoginPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-            <div>
-              <label htmlFor="cabinet" className="block text-sm font-medium text-text-primary">
-                {t("cabinetCode")}
-              </label>
-              <input
-                id="cabinet"
-                type="text"
-                value={tenantSlug}
-                onChange={(e) => setTenantSlug(e.target.value)}
-                required
-                placeholder={t("cabinetPlaceholder")}
-                autoComplete="organization"
-                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
-              />
-            </div>
+            {/* EP14-S03 AC4 : quand le cabinet est resolu depuis le sous-domaine,
+                le champ est verrouille (le nom est impose par l'hote). Sur apex
+                (subdomain.kind === "none"), on garde le formulaire 3 champs (AC6). */}
+            {tenantLocked ? (
+              <div>
+                <span className="block text-sm font-medium text-text-primary">
+                  {t("cabinetCode")}
+                </span>
+                {subdomain.kind === "found" && (
+                  <p
+                    data-testid="resolved-tenant-name"
+                    className="mt-1 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm font-semibold text-[color:var(--text-primary)]"
+                  >
+                    {subdomain.name}
+                  </p>
+                )}
+                {subdomain.kind === "loading" && (
+                  <p className="mt-1 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-text-secondary">
+                    {tCommon("loading")}
+                  </p>
+                )}
+                {subdomain.kind === "unknown" && (
+                  <p
+                    data-testid="unknown-tenant"
+                    className="mt-1 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger"
+                  >
+                    {t("unknownCabinet")}
+                  </p>
+                )}
+                {/* Le slug reste transmis au login via un champ cache : le backend
+                    valide et tranche sur le JWT (l'hote n'est pas une autorite). */}
+                <input type="hidden" name="cabinet" value={tenantSlug} />
+              </div>
+            ) : (
+              <div>
+                <label htmlFor="cabinet" className="block text-sm font-medium text-text-primary">
+                  {t("cabinetCode")}
+                </label>
+                <input
+                  id="cabinet"
+                  type="text"
+                  value={tenantSlug}
+                  onChange={(e) => setTenantSlug(e.target.value)}
+                  required
+                  placeholder={t("cabinetPlaceholder")}
+                  autoComplete="organization"
+                  className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
+                />
+              </div>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-text-primary">
                 {t("email")}
@@ -165,7 +276,7 @@ export default function LoginPage() {
             {error && <p className="text-sm text-danger">{error}</p>}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || subdomain.kind === "unknown"}
               className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60"
             >
               {loading ? t("submitting") : t("submit")}

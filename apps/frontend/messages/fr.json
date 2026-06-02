@@ -24,6 +24,7 @@
     "submit": "Se connecter",
     "submitting": "Connexion...",
     "errorInvalid": "Email, mot de passe ou cabinet invalide",
+    "unknownCabinet": "Cabinet inconnu",
     "demoAccountsTitle": "Comptes demo (mot de passe demo) :",
     "feature1": "Pipeline commerciale 5 etapes",
     "feature2": "Devis en deux temps avec calcul auto",

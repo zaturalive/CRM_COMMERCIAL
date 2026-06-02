@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "next-auth/middleware";
+import { parseTenantSubdomain } from "@/lib/tenantHost";
 
 /**
  * Chemin de la gate force-change (EP15-S04 / ADR-0009 D5 AC3).
@@ -10,6 +11,23 @@ const CHANGE_PASSWORD_PATH = "/account/change-password";
  * Chemin de la gate CGU (EP14-S02 / ADR-0009 D5 AC2).
  */
 const CGU_PATH = "/onboarding/cgu";
+
+/**
+ * Domaine racine du deploiement (EP14-S03 AC3). Injecte par variable
+ * d'environnement pour servir le local (.localhost, RFC 6761 6.3) et la prod
+ * (.com) avec le meme code, sans wildcard DNS en dev. Defaut local pour ne pas
+ * casser le dev sans config.
+ */
+const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "vencor-crm.localhost";
+
+/**
+ * En-tete propage vers les composants serveur quand l'hote porte un sous-domaine
+ * de cabinet (EP14-S03 AC3). POURQUOI un en-tete et pas une redirection : le
+ * sous-domaine ne fait que pre-remplir le tenant ; il ne confere aucune autorite
+ * (l'isolation reste portee par le JWT + Prisma $extends, ADR-0009). Le header
+ * n'est ajoute que sur un sous-domaine de cabinet (null sur apex/www).
+ */
+const TENANT_HEADER = "x-tenant-slug";
 
 /**
  * Guard d'authentification + garde Back Office editeur + gate force-change.
@@ -41,6 +59,15 @@ export default withAuth(
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
+    // EP14-S03 AC3 : resolution du tenant depuis le sous-domaine de l'hote. On
+    // ne redirige PAS (le sous-domaine pre-remplit, il ne change pas l'autorite) ;
+    // on propage le slug resolu via un en-tete consommable par les composants
+    // serveur. null sur apex/www -> en-tete absent -> fallback formulaire 3 champs.
+    const tenantSlug = parseTenantSubdomain(
+      req.headers.get("host"),
+      BASE_DOMAIN,
+    );
+
     // Gate 1 (priorite) : changement de mot de passe force.
     if (
       token?.mustChangePassword === true &&
@@ -66,7 +93,12 @@ export default withAuth(
       return NextResponse.redirect(url);
     }
 
-    return NextResponse.next();
+    if (tenantSlug == null) {
+      return NextResponse.next();
+    }
+    const res = NextResponse.next();
+    res.headers.set(TENANT_HEADER, tenantSlug);
+    return res;
   },
   {
     pages: { signIn: "/login" },
