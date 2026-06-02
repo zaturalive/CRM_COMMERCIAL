@@ -149,6 +149,15 @@ model Tenant {
   // des qu'ils satisfont canTransitionTo (apres mutation devis/document/process).
   // Si false, transition manuelle uniquement (drag-drop ou stepper).
   autoAdvanceProcesses Boolean  @default(true)
+  // EP14-S02 / ADR-0009 : gate d'acceptation CGU (preuve legale non-HDS, mode
+  // degrade porte par la ligne Tenant tant que l'AuditLog n'est pas requis).
+  // null = CGU jamais acceptee -> le gate redirige vers /onboarding/cgu. La
+  // version acceptee est comparee a CURRENT_CGU_VERSION : une version perimee
+  // re-declenche l'acceptation (RM5). cguSignatoryName = identite pro saisie par
+  // l'ADMIN signataire (RM4, jamais pre-remplie).
+  cguAcceptedAt        DateTime?
+  cguVersion           String?
+  cguSignatoryName     String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

@@ -21,6 +21,10 @@ declare module "next-auth" {
     // EP15-S04 / ADR-0009 D5 : gate force-change. Tant que true, l'app redirige
     // vers /account/change-password (cf. middleware.ts).
     mustChangePassword?: boolean;
+    // EP14-S02 / ADR-0009 D5 : gate CGU. Tant que false, l'app redirige vers
+    // /onboarding/cgu (cf. middleware.ts). true une fois la version courante
+    // acceptee par un ADMIN du cabinet.
+    cguAccepted?: boolean;
   }
 
   interface User extends DefaultUser {
@@ -33,6 +37,7 @@ declare module "next-auth" {
     lastName: string;
     jwt: string;
     mustChangePassword?: boolean;
+    cguAccepted?: boolean;
   }
 }
 
@@ -50,5 +55,7 @@ declare module "next-auth/jwt" {
     isEditor?: boolean;
     // EP15-S04 / ADR-0009 D5 : gate force-change (cf. types Session/User).
     mustChangePassword?: boolean;
+    // EP14-S02 / ADR-0009 D5 : gate CGU (cf. types Session/User).
+    cguAccepted?: boolean;
   }
 }

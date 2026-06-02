@@ -7,6 +7,11 @@ import { withAuth } from "next-auth/middleware";
 const CHANGE_PASSWORD_PATH = "/account/change-password";
 
 /**
+ * Chemin de la gate CGU (EP14-S02 / ADR-0009 D5 AC2).
+ */
+const CGU_PATH = "/onboarding/cgu";
+
+/**
  * Guard d'authentification + garde Back Office editeur + gate force-change.
  *
  * EP17-S01 / ADR-0009 D1 (impact frontend) : on conserve withAuth NextAuth
@@ -23,12 +28,20 @@ const CHANGE_PASSWORD_PATH = "/account/change-password";
  * /api/auth, deja exclu du matcher). La gate est levee des que le token repasse
  * mustChangePassword a false (via useSession().update apres un changement
  * reussi).
+ *
+ * EP14-S02 / ADR-0009 D5 AC2 : couche unique post-login requirements. Apres la
+ * gate force-change (securite du compte d'abord), tant que token.cguAccepted !==
+ * true, toute navigation est redirigee vers /onboarding/cgu. Exemption : la page
+ * d'onboarding elle-meme (sinon boucle). La gate est levee quand le token repasse
+ * cguAccepted a true (useSession().update apres acceptation par un ADMIN). Un
+ * COMMERCIAL atteint la page mais ne peut pas accepter (message dedie, RM1/A1).
  */
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
+    // Gate 1 (priorite) : changement de mot de passe force.
     if (
       token?.mustChangePassword === true &&
       path !== CHANGE_PASSWORD_PATH &&
@@ -36,6 +49,20 @@ export default withAuth(
     ) {
       const url = req.nextUrl.clone();
       url.pathname = CHANGE_PASSWORD_PATH;
+      return NextResponse.redirect(url);
+    }
+
+    // Gate 2 : acceptation des CGU du cabinet. POURQUOI apres la gate 1 : la
+    // securite du compte passe avant le consentement (ordre ADR-0009 D5).
+    if (
+      token != null &&
+      token.cguAccepted !== true &&
+      token.mustChangePassword !== true &&
+      path !== CGU_PATH &&
+      !path.startsWith(`${CGU_PATH}/`)
+    ) {
+      const url = req.nextUrl.clone();
+      url.pathname = CGU_PATH;
       return NextResponse.redirect(url);
     }
 

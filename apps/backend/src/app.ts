@@ -8,12 +8,14 @@ import { requireJWT } from "./middleware/requireJWT";
 import { requireTenant } from "./middleware/requireTenant";
 import { requireEditor } from "./middleware/requireEditor";
 import { requireWriteScope } from "./middleware/requireWriteScope";
+import { requireCguAccepted } from "./middleware/requireCguAccepted";
 import { auditLog } from "./middleware/auditLog";
 import { createAuthRouter } from "./routes/auth";
 import { NoopEmailSender, type EmailSender } from "./lib/email/EmailSender";
 import adminRoutes from "./routes/admin";
 import usersRoutes from "./routes/users";
 import demoRoutes from "./routes/demo";
+import tenantRoutes from "./routes/tenant";
 import cliniquesRoutes from "./routes/cliniques";
 import interventionsRoutes from "./routes/interventions";
 import documentLabelsRoutes from "./routes/documentLabels";
@@ -134,6 +136,20 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // l'editeur reel (AC5) ; le handler "finish" de l'audit est deja enregistre.
   // N'affecte pas les users tenant nominaux (req.editor absent).
   app.use("/api", requireWriteScope);
+
+  // EP14-S02 / ADR-0009 D5 — gate CGU (couche post-login requirements, garde
+  // back). Montee APRES requireTenant (req.user.tenantId peuple) et APRES l'audit
+  // (un refus 403 reste trace). Tant que le tenant n'a pas accepte la version
+  // courante des CGU, toute route tenant nominale est refusee en 403 (le front
+  // redirige vers /onboarding/cgu). La route d'acceptation /api/tenant/accept-cgu
+  // est exemptee par le middleware lui-meme (sinon boucle) ; /api/auth/* est deja
+  // monte avant cette chaine.
+  app.use("/api", requireCguAccepted);
+
+  // EP14-S02 — cabinet courant (self-service intra-tenant) : POST
+  // /api/tenant/accept-cgu. Monte apres requireTenant (req.user.tenantId) ; la
+  // route d'acceptation est exemptee de la gate CGU ci-dessus.
+  app.use("/api/tenant", tenantRoutes);
 
   // EP15-S02 — gestion des comptes users intra-cabinet par l'ADMIN. Tenant-scope
   // (requireRole(["ADMIN"]) + req.prisma), distinct du Back Office editeur

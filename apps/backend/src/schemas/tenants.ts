@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { validateTenantSlug } from "../lib/tenantSlug";
+import { isKnownCguVersion } from "../lib/postLoginRequirements";
 
 /**
  * EP17-S02 — validation des entrees du CRUD tenants (Back Office editeur).
@@ -49,3 +50,30 @@ export const updateTenantSchema = z
   });
 
 export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;
+
+/**
+ * EP14-S02 — corps de POST /api/tenant/accept-cgu.
+ *
+ * - signatoryName : identite pro du signataire (RM4, saisie obligatoire). Trim
+ *   puis min(1) -> une chaine vide ou uniquement des espaces est rejetee en 400
+ *   sans muter la ligne Tenant.
+ * - cguVersion : doit etre une version CONNUE (anti-downgrade, AC4). Une version
+ *   inconnue ou absente est rejetee en 400. La version connue alimente
+ *   Tenant.cguVersion ; le gate (RM5) comparera ensuite a la version courante.
+ *
+ * .strict() : tout champ inattendu (ex: tenantId, slug injectes pour tenter de
+ * rediriger l'acceptation vers un autre cabinet) fait echouer le parse -> 400.
+ * Le test d'isolation accepte 200 (champ ignore) ou 400 ; on choisit 400 (rejet
+ * explicite) pour fermer le mass-assignment, le tenant cible restant de toute
+ * facon req.user.tenantId cote handler.
+ */
+export const acceptCguSchema = z
+  .object({
+    signatoryName: z.string().trim().min(1, "Le nom du signataire est requis."),
+    cguVersion: z.string().refine(isKnownCguVersion, {
+      message: "Version CGU inconnue.",
+    }),
+  })
+  .strict();
+
+export type AcceptCguInput = z.infer<typeof acceptCguSchema>;

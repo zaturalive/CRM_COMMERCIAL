@@ -5,7 +5,11 @@ import { PrismaClient } from "@prisma/client";
 import { hashSync } from "bcryptjs";
 import { buildApp } from "../../src/app";
 import { env } from "../../src/config/env";
-import { teardownTestTenant, disconnectPrisma } from "../helpers/testAuth";
+import {
+  teardownTestTenant,
+  disconnectPrisma,
+  onboardedCguFields,
+} from "../helpers/testAuth";
 
 /**
  * EP17-S04 — Tests de securite : acces editeur autonome a un tenant
@@ -120,7 +124,7 @@ describe("Security — Acces editeur a un tenant (impersonation, EP17-S04)", () 
     // Tenant observe + son ADMIN + un client (donnee metier a lire en observation).
     await teardownTestTenant(SLUG_OBS);
     const obs = await prisma.tenant.create({
-      data: { name: "Cabinet Observe", slug: SLUG_OBS },
+      data: { name: "Cabinet Observe", slug: SLUG_OBS, ...onboardedCguFields },
     });
     obsTenantId = obs.id;
     await prisma.user.create({
@@ -149,7 +153,7 @@ describe("Security — Acces editeur a un tenant (impersonation, EP17-S04)", () 
     // d'impersonation sur le tenant observe ne lit pas le tenant tiers.
     await teardownTestTenant(SLUG_OTHER);
     const other = await prisma.tenant.create({
-      data: { name: "Cabinet Autre", slug: SLUG_OTHER },
+      data: { name: "Cabinet Autre", slug: SLUG_OTHER, ...onboardedCguFields },
     });
     otherTenantId = other.id;
     await prisma.user.create({

@@ -8,6 +8,7 @@ import {
   resetPasswordSchema,
 } from "../schemas/auth";
 import { validatePassword } from "../lib/passwordPolicy";
+import { isCguSatisfied } from "../lib/postLoginRequirements";
 import { signJWT, requireJWT } from "../middleware/requireJWT";
 import {
   loginLimiter,
@@ -128,6 +129,14 @@ router.post(
         // EP15-S04 / ADR-0009 D5 AC3 : le front pose la gate force-change des le
         // login a partir de ce flag (redirection /account/change-password).
         mustChangePassword: user.mustChangePassword,
+        // EP14-S02 / ADR-0009 D5 AC6 : etat CGU expose des le login (mutualise
+        // avec mustChangePassword). false tant que le tenant n'a pas accepte la
+        // version courante (jamais accepte OU version perimee, RM5) -> le front
+        // redirige vers /onboarding/cgu.
+        cguAccepted: isCguSatisfied({
+          cguAcceptedAt: tenant.cguAcceptedAt,
+          cguVersion: tenant.cguVersion,
+        }),
         jwt,
       },
     });
@@ -161,7 +170,14 @@ router.get(
         role: true,
         tenantId: true,
         mustChangePassword: true,
-        tenant: { select: { slug: true, name: true } },
+        tenant: {
+          select: {
+            slug: true,
+            name: true,
+            cguAcceptedAt: true,
+            cguVersion: true,
+          },
+        },
       },
     });
     if (!user) {
@@ -179,6 +195,11 @@ router.get(
         // EP15-S04 / ADR-0009 D5 AC3 : le front pilote la gate force-change a
         // partir de ce flag (redirection vers /account/change-password).
         mustChangePassword: user.mustChangePassword,
+        // EP14-S02 / ADR-0009 D5 AC6 : etat CGU pour la gate onboarding.
+        cguAccepted: isCguSatisfied({
+          cguAcceptedAt: user.tenant.cguAcceptedAt,
+          cguVersion: user.tenant.cguVersion,
+        }),
         tenantSlug: user.tenant.slug,
         tenantName: user.tenant.name,
       },

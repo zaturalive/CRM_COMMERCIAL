@@ -5,7 +5,11 @@ import { PrismaClient } from "@prisma/client";
 import { hashSync } from "bcryptjs";
 import { buildApp } from "../../src/app";
 import { env } from "../../src/config/env";
-import { teardownTestTenant, disconnectPrisma } from "../helpers/testAuth";
+import {
+  teardownTestTenant,
+  disconnectPrisma,
+  onboardedCguFields,
+} from "../helpers/testAuth";
 
 /**
  * Re-exploitation adversariale (verificateur securite #2) du fix
@@ -86,7 +90,7 @@ describe("Adversarial — impersonation ne franchit pas le BO cross-tenant (re-e
 
     await teardownTestTenant(SLUG_X);
     const x = await prisma.tenant.create({
-      data: { name: "Cabinet Adv X", slug: SLUG_X },
+      data: { name: "Cabinet Adv X", slug: SLUG_X, ...onboardedCguFields },
     });
     tenantXId = x.id;
     await prisma.user.create({
@@ -102,7 +106,7 @@ describe("Adversarial — impersonation ne franchit pas le BO cross-tenant (re-e
 
     await teardownTestTenant(SLUG_Y);
     const y = await prisma.tenant.create({
-      data: { name: "Cabinet Adv Y", slug: SLUG_Y },
+      data: { name: "Cabinet Adv Y", slug: SLUG_Y, ...onboardedCguFields },
     });
     tenantYId = y.id;
     const adminY = await prisma.user.create({

@@ -13,6 +13,17 @@ const router = Router();
 
 const periodSchema = z.enum(["week", "month", "year"]);
 
+/**
+ * GET /api/dashboard — point d'entree du tableau de bord cabinet. Sert
+ * d'indicateur "route tenant nominale joignable" (les donnees detaillees sont
+ * exposees par les sous-routes /kpis, /ca, /previsionnel, /ca-en-attente).
+ * Derriere la gate CGU (EP14-S02) : un cabinet non onboarde ne l'atteint pas
+ * (403 par requireCguAccepted) ; une fois la CGU acceptee, elle repond 200.
+ */
+router.get("/", (req, res) => {
+  res.json({ success: true, data: { tenantId: req.user!.tenantId } });
+});
+
 router.get(
   "/kpis",
   asyncHandler(async (req, res) => {

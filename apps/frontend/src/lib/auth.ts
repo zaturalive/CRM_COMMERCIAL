@@ -48,6 +48,8 @@ export const authOptions: NextAuthOptions = {
           tenantSlug: d.tenantSlug,
           jwt: d.jwt,
           mustChangePassword: d.mustChangePassword === true,
+          // EP14-S02 / ADR-0009 D5 : etat CGU expose par le backend au login.
+          cguAccepted: d.cguAccepted === true,
         };
       },
     }),
@@ -63,14 +65,17 @@ export const authOptions: NextAuthOptions = {
         token.lastName = user.lastName;
         token.jwt = user.jwt;
         token.mustChangePassword = user.mustChangePassword === true;
+        token.cguAccepted = user.cguAccepted === true;
       }
-      // Update trigger (useSession().update) pour rafraichir apres switch-role
-      // ou apres un changement de mot de passe reussi (leve la gate force-change
-      // sans imposer un re-login, EP15-S04).
+      // Update trigger (useSession().update) pour rafraichir apres switch-role,
+      // apres un changement de mot de passe reussi (leve la gate force-change,
+      // EP15-S04) ou apres acceptation des CGU (leve la gate CGU, EP14-S02) sans
+      // imposer un re-login.
       if (trigger === "update" && session) {
         if (session.role) token.role = session.role;
         if (session.jwt) token.jwt = session.jwt;
         if (session.mustChangePassword === false) token.mustChangePassword = false;
+        if (session.cguAccepted === true) token.cguAccepted = true;
       }
       return token;
     },
@@ -83,6 +88,7 @@ export const authOptions: NextAuthOptions = {
       session.role = token.role;
       session.jwt = token.jwt;
       session.mustChangePassword = token.mustChangePassword === true;
+      session.cguAccepted = token.cguAccepted === true;
       return session;
     },
   },
