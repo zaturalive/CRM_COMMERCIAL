@@ -54,7 +54,9 @@ describe("Security — JWT hardening (SEC-01)", () => {
   beforeAll(async () => {
     const res = await request(app)
       .post("/api/auth/login")
-      .send({ email: "julie@cabinet-delobaux.fr", password: "demo", tenantSlug: "cabinet-delobaux" });
+      // Seed PUBLIC committe (prisma/seed.ts) : tenant `demo` reproductible en
+      // CI. Le seed des vrais cabinets (seed.local.ts) est gitignored (EP14-S08).
+      .send({ email: "commercial@cabinet-demo.fr", password: "demo", tenantSlug: "demo" });
     legitimateJWT = res.body.data.jwt;
     legitimateUserId = res.body.data.userId;
     legitimateTenantId = res.body.data.tenantId;

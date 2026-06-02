@@ -1,0 +1,159 @@
+# EP14-S08 — Pipeline de tests applicatifs (GATE batterie OWASP par-endpoint)
+#
+# Pourquoi ce workflow est SEPARE de security.yml :
+#   - security.yml appartient a l'infra (SAST/SCA : trivy, hadolint, gitleaks,
+#     regression Dockerfile USER). Il scanne l'arbre et les images, pas le code
+#     applicatif a l'execution.
+#   - test.yml fait tourner la suite de tests Vitest contre un Postgres reel
+#     migre. C'est lui qui GATE la batterie de conformite par-endpoint
+#     (tests/security/endpoint-conformance.test.ts) : toute route montee sans
+#     baseline (401 sans JWT, isolation cross-tenant, headers helmet, surface BO
+#     cloisonnee) fait echouer la PR. Les deux workflows ont des owners et des
+#     cadences distincts ; les fusionner couplerait infra et applicatif.
+#
+# Pourquoi un service Postgres plutot qu'un mock : les suites de securite
+# (isolation multi-tenant via Prisma $extends, anti-oracle 404 cross-tenant)
+# exercent le vrai moteur SQL. Un mock ne prouverait pas l'isolation.
+#
+# Pourquoi migrate deploy et non migrate dev : migrate deploy applique les
+# migrations DEJA committees, sans prompt ni generation de nouveau fichier, ce
+# qui est le contrat CI (la base de CI est jetable, recreee a chaque run).
+#
+# Non-HDS : la base de CI est ephemere et ne contient que des donnees de test
+# commerciales (aucune donnee de sante).
+
+name: test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: backend unit + integration + security (OWASP gate)
+    runs-on: ubuntu-latest
+
+    # Postgres de service : recree a chaque job, migre avant les tests. Le
+    # healthcheck garantit que le moteur accepte les connexions avant l'etape
+    # migrate (sinon course au demarrage -> echec flaky).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: crm_commercial_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Pourquoi figer ces valeurs ici : aucun .env n'est committe (couvert par
+    # .gitignore). src/config/env.ts parse process.env au chargement et echoue
+    # en ZodError si une variable manque. Ces valeurs sont des secrets JETABLES
+    # de CI (cle at-rest 32 octets base64, secret JWT >= 32 chars), jamais des
+    # secrets de prod. NODE_ENV=test active le comportement de test attendu par
+    # la baseline (ADR-0009).
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/crm_commercial_test?schema=public
+      JWT_SECRET: ci-test-jwt-secret-not-a-production-value-0123456789
+      JWT_EXPIRES_IN: 7d
+      FRONTEND_URL: http://localhost:3301
+      NODE_ENV: test
+      LOG_LEVEL: error
+      UPLOADS_DIR: /tmp/crm-uploads-ci
+      # Cles de chiffrement at-rest jetables (32 octets exactement, encodes
+      # base64) : env.ts valide la longueur au boot. Generees pour la CI, sans
+      # valeur en dehors d'elle.
+      AT_REST_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      EMAIL_SEARCH_KEY: ci-test-email-search-hmac-key-0123456789-abcd
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # npm ci a la racine : monorepo workspaces (apps/*). Installe backend +
+      # frontend depuis le lockfile racine en un appel reproductible.
+      - name: Install dependencies (workspaces)
+        run: npm ci
+
+      # Prisma genere le client AVANT les tests (les helpers importent
+      # @prisma/client). Le client native cible l'host de CI (Debian/glibc).
+      - name: Generate Prisma client
+        working-directory: apps/backend
+        run: npx prisma generate
+
+      - name: Create uploads dir
+        run: mkdir -p /tmp/crm-uploads-ci
+
+      # migrate deploy applique les migrations committees sur la base de service.
+      # Pas de reset ni de db push : on rejoue exactement l'historique versionne.
+      - name: Apply migrations (prisma migrate deploy)
+        working-directory: apps/backend
+        run: npx prisma migrate deploy
+
+      # Seed PUBLIC committe (prisma/seed.ts) : cree le tenant `demo` + ses users
+      # (admin/commercial@cabinet-demo.fr, password=demo). Pourquoi necessaire :
+      # quelques suites de securite (auth, jwt-hardening) exercent un login
+      # NOMINAL et ont besoin d'un user reel. Le seed des vrais cabinets
+      # (seed.local.ts) est gitignored et absent en CI ; le seed public est la
+      # seule source de credentials reproductible (EP14-S08). Aucune donnee de
+      # sante (non-HDS) : clients commerciaux de demonstration uniquement.
+      - name: Seed public reference data
+        working-directory: apps/backend
+        run: npx prisma db seed
+
+      # GATE batterie OWASP par-endpoint : la suite tests/security inclut
+      # endpoint-conformance.test.ts (auto-decouverte de la surface de routes +
+      # baseline auth/isolation/headers). Tout endpoint hors allowlist qui
+      # repond sans JWT fait echouer cette etape, donc bloque la PR.
+      - name: Security suite (OWASP gate)
+        working-directory: apps/backend
+        run: npm run test:security
+
+      # Suites unit + integration : non-regression du metier (calculs devis,
+      # services dashboard, parcours d'integration).
+      - name: Unit + integration suite
+        working-directory: apps/backend
+        run: npm test
+
+      # Typecheck backend : le binaire tsc local (apps/backend/node_modules) est
+      # un stub dans ce repo (TypeScript est hoiste a la racine). On invoque donc
+      # le binaire hoiste pour un noEmit fiable.
+      - name: Typecheck backend
+        working-directory: apps/backend
+        run: node ../../node_modules/typescript/bin/tsc --noEmit
+
+  frontend:
+    name: frontend unit + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies (workspaces)
+        run: npm ci
+
+      - name: Frontend tests
+        working-directory: apps/frontend
+        run: npm test
+
+      - name: Typecheck frontend
+        working-directory: apps/frontend
+        run: node ../../node_modules/typescript/bin/tsc --noEmit

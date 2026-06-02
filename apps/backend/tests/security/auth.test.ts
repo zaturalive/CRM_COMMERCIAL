@@ -8,14 +8,20 @@ const app = buildApp();
 
 /**
  * Tests de securite obligatoires (ADR-0005).
- * On s'appuie sur les users seedes (florian/julie/alexis @cabinet-delobaux.fr, password=demo).
+ *
+ * POURQUOI le tenant "demo" et non un vrai cabinet : ces tests s'appuient sur
+ * les users du SEED PUBLIC committe (prisma/seed.ts) — tenant `demo`, users
+ * admin@cabinet-demo.fr (ADMIN) + commercial@cabinet-demo.fr (COMMERCIAL),
+ * password=demo. Le seed des vrais cabinets (seed.local.ts) est gitignored et
+ * absent en CI : s'appuyer dessus rendrait la suite verte en local mais rouge
+ * en CI (EP14-S08). On vise donc la seule source de credentials reproductible.
  */
 describe("Security — auth", () => {
   describe("POST /api/auth/login", () => {
     it("400 si payload invalide (email manquant)", async () => {
       const res = await request(app)
         .post("/api/auth/login")
-        .send({ password: "demo", tenantSlug: "cabinet-delobaux" });
+        .send({ password: "demo", tenantSlug: "demo" });
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
     });
@@ -23,7 +29,7 @@ describe("Security — auth", () => {
     it("401 si mauvais mot de passe", async () => {
       const res = await request(app)
         .post("/api/auth/login")
-        .send({ email: "julie@cabinet-delobaux.fr", password: "wrong", tenantSlug: "cabinet-delobaux" });
+        .send({ email: "commercial@cabinet-demo.fr", password: "wrong", tenantSlug: "demo" });
       expect(res.status).toBe(401);
       expect(res.body.error).toBe("Invalid credentials");
     });
@@ -31,7 +37,7 @@ describe("Security — auth", () => {
     it("401 si tenant inconnu (anti-enumeration)", async () => {
       const res = await request(app)
         .post("/api/auth/login")
-        .send({ email: "julie@cabinet-delobaux.fr", password: "demo", tenantSlug: "fake-tenant-that-does-not-exist" });
+        .send({ email: "commercial@cabinet-demo.fr", password: "demo", tenantSlug: "fake-tenant-that-does-not-exist" });
       expect(res.status).toBe(401);
       // Meme message pour tenant inconnu que bad password → anti-enumeration
       expect(res.body.error).toBe("Invalid credentials");
@@ -40,7 +46,7 @@ describe("Security — auth", () => {
     it("401 si email inconnu (anti-enumeration)", async () => {
       const res = await request(app)
         .post("/api/auth/login")
-        .send({ email: "unknown@cabinet-delobaux.fr", password: "demo", tenantSlug: "cabinet-delobaux" });
+        .send({ email: "unknown@cabinet-demo.fr", password: "demo", tenantSlug: "demo" });
       expect(res.status).toBe(401);
       expect(res.body.error).toBe("Invalid credentials");
     });
@@ -48,7 +54,7 @@ describe("Security — auth", () => {
     it("200 avec credentials valides + JWT signe", async () => {
       const res = await request(app)
         .post("/api/auth/login")
-        .send({ email: "julie@cabinet-delobaux.fr", password: "demo", tenantSlug: "cabinet-delobaux" });
+        .send({ email: "commercial@cabinet-demo.fr", password: "demo", tenantSlug: "demo" });
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.role).toBe("COMMERCIAL");
@@ -67,7 +73,7 @@ describe("Security — auth", () => {
     beforeAll(async () => {
       const res = await request(app)
         .post("/api/auth/login")
-        .send({ email: "julie@cabinet-delobaux.fr", password: "demo", tenantSlug: "cabinet-delobaux" });
+        .send({ email: "commercial@cabinet-demo.fr", password: "demo", tenantSlug: "demo" });
       validJWT = res.body.data.jwt;
     });
 
@@ -111,9 +117,9 @@ describe("Security — auth", () => {
       const res = await request(app).get("/api/auth/me").set("Authorization", `Bearer ${validJWT}`);
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.email).toBe("julie@cabinet-delobaux.fr");
+      expect(res.body.data.email).toBe("commercial@cabinet-demo.fr");
       expect(res.body.data.role).toBe("COMMERCIAL");
-      expect(res.body.data.tenantSlug).toBe("cabinet-delobaux");
+      expect(res.body.data.tenantSlug).toBe("demo");
     });
   });
 
@@ -123,7 +129,7 @@ describe("Security — auth", () => {
     beforeAll(async () => {
       const res = await request(app)
         .post("/api/auth/login")
-        .send({ email: "julie@cabinet-delobaux.fr", password: "demo", tenantSlug: "cabinet-delobaux" });
+        .send({ email: "commercial@cabinet-demo.fr", password: "demo", tenantSlug: "demo" });
       validJWT = res.body.data.jwt;
     });
 
