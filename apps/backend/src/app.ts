@@ -71,12 +71,20 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   const domainRegex = process.env.DOMAIN
     ? new RegExp(`^https:\\/\\/[a-z0-9-]+\\.${process.env.DOMAIN.replace(/\./g, "\\.")}$`)
     : null;
+  // EP14-S03 : en developpement, le frontend peut etre servi sur un sous-domaine
+  // tenant en .localhost (ex http://demo.vencor-crm.localhost:3301, RFC 6761 6.3,
+  // loopback). Origines autorisees hors production uniquement.
+  const devSubdomainRegex =
+    env.NODE_ENV !== "production"
+      ? /^http:\/\/([a-z0-9-]+\.)?vencor-crm\.localhost(:\d+)?$/
+      : null;
   app.use(
     cors({
       origin: (origin, callback) => {
         if (!origin) return callback(null, true); // requetes same-origin / server-to-server
         if (origin === allowedOrigin) return callback(null, true);
         if (domainRegex && domainRegex.test(origin)) return callback(null, true);
+        if (devSubdomainRegex && devSubdomainRegex.test(origin)) return callback(null, true);
         return callback(new Error("CORS: origin non autorise"));
       },
       credentials: true,
