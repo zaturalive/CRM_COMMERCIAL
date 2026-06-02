@@ -188,6 +188,15 @@ model User {
   // true ; change-password le repasse a false). Defaut false pour ne pas
   // bloquer les comptes de demo existants.
   mustChangePassword Boolean @default(false)
+  // EP14-S01 / ADR-0009 D4 : second facteur TOTP (RFC 6238).
+  // totpSecret est stocke CHIFFRE at-rest (blob v1:... via encryptField), jamais
+  // en clair — c'est le secret partage avec l'authenticator. recoveryCodes porte
+  // 10 codes de secours hashes bcrypt (one-shot : un code est retire de la liste
+  // a sa consommation). mfaEnabled passe a true une fois le setup confirme par un
+  // premier code valide. Defauts non bloquants pour les comptes existants.
+  totpSecret    String?
+  recoveryCodes String[] @default([])
+  mfaEnabled    Boolean  @default(false)
   // EP15-S02 : un ADMIN de cabinet desactive un compte sans le supprimer
   // (depart d'un commercial). Un user inactif voit son login refuse (auth.ts),
   // ses donnees restent en base (pas de suppression). Defaut true pour ne pas

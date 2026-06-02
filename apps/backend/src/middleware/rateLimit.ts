@@ -59,3 +59,23 @@ export const resetPasswordLimiter =
         message: { success: false, error: "Too many reset attempts, try again later" },
       })
     : (_req: unknown, _res: unknown, next: () => void) => next();
+
+/**
+ * Rate limit dedie a la verification du second facteur (EP14-S01 AC8) — anti
+ * brute-force du code TOTP a 6 chiffres (10^6 combinaisons, devinable sans
+ * plafond). 3 essais / 5 min / IP, la 4e tentative dans la fenetre -> 429.
+ *
+ * Bypass complet en dev/test (meme raison que loginLimiter : le store in-memory
+ * cumulerait entre runs). Le plafond n'est donc observable qu'en
+ * NODE_ENV=production (cf. 2fa-rate-limit-prod.test.ts).
+ */
+export const twoFactorVerifyLimiter =
+  env.NODE_ENV === "production"
+    ? rateLimit({
+        windowMs: 5 * 60 * 1000,
+        max: 3,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { success: false, error: "Too many 2FA attempts, try again later" },
+      })
+    : (_req: unknown, _res: unknown, next: () => void) => next();

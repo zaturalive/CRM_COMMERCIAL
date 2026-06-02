@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ThemeSwitcher } from "@/components/layout/ThemeSwitcher";
+import { TOTP_REQUIRED_PREFIX, PENDING_2FA_KEY } from "@/lib/twoFactorSession";
 
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT ?? "demo";
 const TENANT_STORAGE_KEY = "crm-chirurgie:last-cabinet";
@@ -51,6 +52,26 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (res?.error) {
+      // EP14-S01 / AC4 : mot de passe OK mais second facteur requis. authorize a
+      // encode le pendingToken dans le message d'erreur ; on memorise le contexte
+      // (cabinet pre-rempli) et on bascule vers la page de saisie du code TOTP.
+      // AUCUN JWT n'a ete emis a ce stade : pas de session ouverte.
+      if (res.error.startsWith(TOTP_REQUIRED_PREFIX)) {
+        const pendingToken = res.error.slice(TOTP_REQUIRED_PREFIX.length);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(TENANT_STORAGE_KEY, tenantSlug);
+          // POURQUOI sessionStorage et pas l'URL : le mot de passe et le
+          // pendingToken ne doivent pas transiter par la query string (historique
+          // navigateur, logs proxy). sessionStorage est efface a la fermeture de
+          // l'onglet et reste cote client. /login/2fa les relit puis les purge.
+          window.sessionStorage.setItem(
+            PENDING_2FA_KEY,
+            JSON.stringify({ email, password, tenantSlug, pendingToken, callbackUrl }),
+          );
+        }
+        router.push("/login/2fa");
+        return;
+      }
       setError(t("errorInvalid"));
       return;
     }

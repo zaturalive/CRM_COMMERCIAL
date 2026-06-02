@@ -1,20 +1,35 @@
 import { Router } from "express";
 import { compare, hashSync } from "bcryptjs";
+import type { UserRole } from "@prisma/client";
 import { basePrisma } from "../lib/prisma";
 import {
   loginSchema,
   changePasswordSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  twoFactorVerifySchema,
+  twoFactorRecoverySchema,
 } from "../schemas/auth";
 import { validatePassword } from "../lib/passwordPolicy";
 import { isCguSatisfied } from "../lib/postLoginRequirements";
-import { signJWT, requireJWT } from "../middleware/requireJWT";
+import { signJWT, requireJWT, verifyUserAccessToken } from "../middleware/requireJWT";
 import {
   loginLimiter,
   forgotPasswordLimiter,
   resetPasswordLimiter,
+  twoFactorVerifyLimiter,
 } from "../middleware/rateLimit";
+import { encryptField, decryptField } from "../lib/crypto/atRest";
+import {
+  generateTotpSecret,
+  buildOtpauthUrl,
+  verifyTotp,
+  generateRecoveryCodes,
+  hashRecoveryCode,
+  verifyRecoveryCode,
+  signPendingTotpToken,
+  verifyPendingTotpToken,
+} from "../lib/twoFactor";
 import { asyncHandler } from "../middleware/errorHandler";
 import { env } from "../config/env";
 import { logger } from "../lib/logger";
@@ -112,6 +127,38 @@ router.post(
     // "credentials invalides".
     if (!user.active) {
       return res.status(403).json({ success: false, error: "Account is disabled" });
+    }
+
+    // EP14-S01 / AC4 : etape TOTP inseree dans le flux login EXISTANT, APRES la
+    // validation du mot de passe et APRES les checks SUSPENDED (403) / inactif
+    // (403) qui restent prioritaires (non-regression : un compte suspendu ou
+    // desactive n'atteint jamais le challenge 2FA). Si la MFA est active sur le
+    // compte, on N'EMET PAS de JWT a ce stade : on repond { step: "totp_required" }
+    // avec un pendingToken (jeton intermediaire non-acces, refuse par requireJWT)
+    // qui relie l'etape 1 a /2fa/verify ou /2fa/recovery.
+    //
+    // RBAC (AC7) : la 2FA est obligatoire pour l'ADMIN et optionnelle pour le
+    // COMMERCIAL. On porte cette regle par le flag user.mfaEnabled : le challenge
+    // se declenche des que la MFA est activee sur le compte (un ADMIN ayant fait
+    // son setup, ou un COMMERCIAL qui a opte). L'obligation ADMIN au sens "doit
+    // configurer la 2FA" est portee par l'enrolement front (page setup forcee) ;
+    // le backend ne fabrique pas de JWT mfaVerified sans passage par /2fa/verify.
+    if (user.mfaEnabled) {
+      const pendingToken = signPendingTotpToken({
+        userId: user.id,
+        tenantId: user.tenantId,
+        role: user.role,
+      });
+      // Trace degradee (AC9) tant qu'AuditLog ne couvre pas /api/auth/* : log
+      // applicatif structure, sans secret ni code.
+      logger.info(
+        { userId: user.id, tenantId: user.tenantId, event: "2fa.login_challenge" },
+        "2FA challenge emis au login",
+      );
+      return res.json({
+        success: true,
+        data: { step: "totp_required", pendingToken },
+      });
     }
 
     const jwt = signJWT({ userId: user.id, tenantId: user.tenantId, role: user.role });
@@ -412,7 +459,281 @@ router.post(
     }),
   );
 
+  /**
+   * POST /api/auth/2fa/setup (authentifie) — EP14-S01 AC2.
+   *
+   * Genere un secret TOTP (RFC 6238) pour le compte du token (req.user.userId),
+   * le stocke CHIFFRE at-rest (ADR-0009 D4, encryptField -> blob v1:...) et
+   * renvoie le secret en clair + l'URL otpauth:// pour le QR cote front. Le setup
+   * ne suffit PAS a activer la MFA : tant que /2fa/verify n'a pas valide un
+   * premier code, mfaEnabled reste false (le compte n'est pas verrouille sur un
+   * secret jamais scanne -> pas de lockout).
+   *
+   * Monte sur le router /api/auth (declare avant le requireJWT global, app.ts),
+   * donc la route porte requireJWT elle-meme (comme /me). Agit uniquement sur le
+   * compte authentifie : aucun identifiant de cible n'est lu dans le corps.
+   */
+  router.post(
+    "/2fa/setup",
+    requireJWT,
+    asyncHandler(async (req, res) => {
+      const userId = req.user!.userId;
+      const user = await basePrisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true },
+      });
+      if (!user) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+
+      const secret = generateTotpSecret();
+      // Le secret est persiste chiffre des sa creation (jamais en clair, AC D4).
+      // mfaEnabled n'est PAS positionne ici : il le sera a la confirmation
+      // (/2fa/verify avec un code valide).
+      await basePrisma.user.update({
+        where: { id: user.id },
+        data: { totpSecret: encryptField(secret) },
+      });
+
+      logger.info(
+        { userId: user.id, event: "2fa.setup" },
+        "2FA setup : secret genere",
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          secret,
+          otpauthUrl: buildOtpauthUrl({ secret, accountName: user.email }),
+        },
+      });
+    }),
+  );
+
+  /**
+   * POST /api/auth/2fa/verify — EP14-S01 AC3/AC4/AC5.
+   *
+   * Deux chemins discrimines par la presence d'un pendingToken :
+   *
+   *   1. Confirmation de setup (authentifie, JWT, body { token }) : valide le
+   *      premier code TOTP contre le secret pose par /2fa/setup, active la MFA
+   *      (mfaEnabled = true) et renvoie 10 recovery codes one-shot AFFICHES UNE
+   *      SEULE FOIS (AC3, seuls les hashes bcrypt sont persistes).
+   *
+   *   2. Challenge de login (body { pendingToken, token }, pas de JWT requis) :
+   *      le pendingToken (emis a l'etape 1) identifie le compte ; un code TOTP
+   *      valide emet le JWT d'acces avec mfaVerified: true (AC5). Un code invalide
+   *      -> 401, AUCUN JWT (AC4).
+   *
+   * Rate-limit dedie (AC8) : 3 essais / 5 min -> 429 (twoFactorVerifyLimiter), en
+   * tete de chaine pour couper avant tout traitement.
+   */
+  router.post(
+    "/2fa/verify",
+    twoFactorVerifyLimiter,
+    asyncHandler(async (req, res) => {
+      const { token, pendingToken } = twoFactorVerifySchema.parse(req.body);
+
+      // Chemin 2 — challenge de login (pendingToken present). Pas de JWT d'acces
+      // requis : c'est l'etape 2 du login, l'identite vient du pendingToken signe.
+      if (pendingToken) {
+        const pending = verifyPendingTotpToken(pendingToken);
+        if (!pending) {
+          return res
+            .status(401)
+            .json({ success: false, error: "Invalid or expired challenge" });
+        }
+        const user = await basePrisma.user.findUnique({
+          where: { id: pending.userId },
+          select: { ...MFA_LOGIN_USER_SELECT, totpSecret: true },
+        });
+        // Le compte doit toujours avoir la MFA active et un secret : sinon le
+        // challenge n'a pas lieu d'etre (etat incoherent / desactive entre-temps).
+        if (!user || !user.mfaEnabled || !user.totpSecret) {
+          return res.status(401).json({ success: false, error: "Invalid challenge" });
+        }
+        const secret = decryptField(user.totpSecret);
+        if (!verifyTotp(token, secret)) {
+          // Code invalide : 401, aucun JWT (AC4).
+          return res.status(401).json({ success: false, error: "Invalid TOTP code" });
+        }
+        logger.info(
+          { userId: user.id, tenantId: user.tenantId, event: "2fa.login_verified" },
+          "2FA login verifie (TOTP)",
+        );
+        // Reponse alignee sur /login (le front reconstruit la session NextAuth a
+        // l'identique) ; le JWT porte mfaVerified: true (AC5).
+        return res.json({ success: true, data: buildMfaLoginSuccess(user) });
+      }
+
+      // Chemin 1 — confirmation de setup (authentifie). On exige le JWT
+      // explicitement ici (la route n'est pas montee derriere requireJWT global
+      // car /api/auth est public), pour valider le code contre le secret du compte
+      // et activer la MFA.
+      const header = req.headers.authorization;
+      if (!header?.startsWith("Bearer ")) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+      // Verification de signature centralisee (HS256, SEC-01) via le helper de
+      // requireJWT, qui refuse aussi un pendingToken presente ici par erreur.
+      let authedUserId: string;
+      try {
+        authedUserId = verifyUserAccessToken(header.slice(7)).userId;
+      } catch {
+        return res.status(401).json({ success: false, error: "Invalid token" });
+      }
+
+      const user = await basePrisma.user.findUnique({
+        where: { id: authedUserId },
+        select: { id: true, totpSecret: true },
+      });
+      if (!user || !user.totpSecret) {
+        // Pas de secret pose : il faut d'abord /2fa/setup.
+        return res
+          .status(400)
+          .json({ success: false, error: "2FA setup required first" });
+      }
+      const secret = decryptField(user.totpSecret);
+      if (!verifyTotp(token, secret)) {
+        return res.status(401).json({ success: false, error: "Invalid TOTP code" });
+      }
+
+      // Code valide : on active la MFA et on genere 10 recovery codes one-shot.
+      // Seuls les hashes bcrypt sont persistes ; le clair n'est renvoye qu'ici,
+      // une seule fois (AC3).
+      const recoveryCodes = generateRecoveryCodes();
+      await basePrisma.user.update({
+        where: { id: user.id },
+        data: { mfaEnabled: true, recoveryCodes: recoveryCodes.map(hashRecoveryCode) },
+      });
+      logger.info(
+        { userId: user.id, event: "2fa.enabled" },
+        "2FA activee (setup confirme)",
+      );
+      return res.json({ success: true, data: { recoveryCodes } });
+    }),
+  );
+
+  /**
+   * POST /api/auth/2fa/recovery — EP14-S01 AC6.
+   *
+   * Chemin de secours du challenge de login (pendingToken de l'etape 1) quand
+   * l'authenticator est perdu. Un code de secours valide (comparaison bcrypt
+   * constant-time) emet le JWT d'acces (mfaVerified: true) ET invalide le code
+   * (one-shot : le hash est retire de la liste). Un code inconnu / deja consomme
+   * -> 401, aucun JWT.
+   *
+   * Rate-limit dedie comme /2fa/verify : meme surface de brute-force (un code de
+   * secours est plus entropique mais on borne malgre tout).
+   */
+  router.post(
+    "/2fa/recovery",
+    twoFactorVerifyLimiter,
+    asyncHandler(async (req, res) => {
+      const { pendingToken, recoveryCode } = twoFactorRecoverySchema.parse(req.body);
+
+      const pending = verifyPendingTotpToken(pendingToken);
+      if (!pending) {
+        return res
+          .status(401)
+          .json({ success: false, error: "Invalid or expired challenge" });
+      }
+      const user = await basePrisma.user.findUnique({
+        where: { id: pending.userId },
+        select: { ...MFA_LOGIN_USER_SELECT, recoveryCodes: true },
+      });
+      if (!user || !user.mfaEnabled) {
+        return res.status(401).json({ success: false, error: "Invalid challenge" });
+      }
+
+      // Recherche du hash correspondant au code presente (comparaison bcrypt
+      // constant-time par hash, AC6). On ne court-circuite pas sur la longueur.
+      const matchIndex = user.recoveryCodes.findIndex((h) =>
+        verifyRecoveryCode(recoveryCode, h),
+      );
+      if (matchIndex === -1) {
+        return res.status(401).json({ success: false, error: "Invalid recovery code" });
+      }
+
+      // One-shot : retire le hash consomme. updateMany conditionne sur l'etat
+      // courant des codes pour fermer la fenetre de double-consommation
+      // concurrente (le code ne peut etre utilise deux fois, AC6).
+      const remaining = user.recoveryCodes.filter((_, i) => i !== matchIndex);
+      const consumed = await basePrisma.user.updateMany({
+        where: { id: user.id, recoveryCodes: { equals: user.recoveryCodes } },
+        data: { recoveryCodes: remaining },
+      });
+      if (consumed.count !== 1) {
+        // Un autre appel a consomme entre le findUnique et ici : on refuse plutot
+        // que d'emettre un JWT sur un etat de codes perime.
+        return res.status(401).json({ success: false, error: "Invalid recovery code" });
+      }
+
+      logger.info(
+        { userId: user.id, tenantId: user.tenantId, event: "2fa.recovery_used" },
+        "2FA recovery code consomme",
+      );
+      return res.json({ success: true, data: buildMfaLoginSuccess(user) });
+    }),
+  );
+
   return router;
+}
+
+// EP14-S01 : projection commune des champs utilisateur necessaires pour
+// reconstruire une reponse de login identique a /login apres validation du
+// second facteur (le front rebatit la session NextAuth a l'identique). Inclut le
+// tenant (slug + etat CGU) pour porter le flag cguAccepted.
+const MFA_LOGIN_USER_SELECT = {
+  id: true,
+  email: true,
+  tenantId: true,
+  role: true,
+  firstName: true,
+  lastName: true,
+  mustChangePassword: true,
+  mfaEnabled: true,
+  tenant: { select: { slug: true, cguAcceptedAt: true, cguVersion: true } },
+} as const;
+
+/**
+ * Construit la charge utile de succes du login post-2FA, alignee sur la reponse
+ * de /api/auth/login (memes champs : userId, role, gates...) avec un JWT portant
+ * mfaVerified: true. Source unique pour /2fa/verify (chemin login) et
+ * /2fa/recovery, pour eviter toute divergence avec le login nominal.
+ */
+function buildMfaLoginSuccess(user: {
+  id: string;
+  email: string;
+  tenantId: string;
+  role: UserRole;
+  firstName: string;
+  lastName: string;
+  mustChangePassword: boolean;
+  tenant: { slug: string; cguAcceptedAt: Date | null; cguVersion: string | null };
+}) {
+  const jwt = signJWT({
+    userId: user.id,
+    tenantId: user.tenantId,
+    role: user.role,
+    mfaVerified: true,
+  });
+  return {
+    userId: user.id,
+    email: user.email,
+    tenantId: user.tenantId,
+    tenantSlug: user.tenant.slug,
+    role: user.role,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    mustChangePassword: user.mustChangePassword,
+    cguAccepted: isCguSatisfied({
+      cguAcceptedAt: user.tenant.cguAcceptedAt,
+      cguVersion: user.tenant.cguVersion,
+    }),
+    mfaVerified: true,
+    jwt,
+  };
 }
 
 // Export par defaut : router avec NoopEmailSender (ADR-0009 D7, demarrage sans

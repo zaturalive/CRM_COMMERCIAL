@@ -51,3 +51,30 @@ export const resetPasswordSchema = z.object({
 });
 
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+/**
+ * EP14-S01 — verification d'un code TOTP. Deux usages :
+ *   - setup confirme (authentifie, JWT) : seul `token` est present, la route
+ *     active la MFA et renvoie les recovery codes.
+ *   - challenge de login (etape 2) : `pendingToken` (emis a l'etape 1) + `token`,
+ *     la route emet le JWT d'acces (mfaVerified: true).
+ * `pendingToken` est donc optionnel : la route discrimine les deux chemins.
+ */
+export const twoFactorVerifySchema = z.object({
+  token: z.string().min(1),
+  pendingToken: z.string().min(1).optional(),
+});
+
+export type TwoFactorVerifyInput = z.infer<typeof twoFactorVerifySchema>;
+
+/**
+ * EP14-S01 AC6 — usage d'un code de secours one-shot. Toujours via le challenge
+ * de login (pendingToken de l'etape 1) : la recovery remplace le code TOTP quand
+ * l'authenticator est perdu, elle n'est pas un chemin authentifie nominal.
+ */
+export const twoFactorRecoverySchema = z.object({
+  pendingToken: z.string().min(1),
+  recoveryCode: z.string().min(1),
+});
+
+export type TwoFactorRecoveryInput = z.infer<typeof twoFactorRecoverySchema>;
