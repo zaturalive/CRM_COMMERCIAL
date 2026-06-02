@@ -115,6 +115,9 @@ interface Devis {
     | "REFUSE";
   firstSignedAt: string | null;
   totalCached: number | null;
+  // EP16-S02 : remise commerciale dediee snapshotee sur le devis.
+  discount: number;
+  discountType: "AMOUNT" | "PERCENT" | null;
   process: {
     id: string;
     stage: string;
@@ -144,6 +147,10 @@ interface Calculation {
   optionsCatalogue: number;
   optionsCustom: number;
   total: number;
+  // EP16-S02 : remise effective (bornee) + total net (apres remise, borne a 0).
+  // Le backend (computeDevisTotal, source unique D6) les fournit sur /total.
+  remise?: number;
+  totalNet?: number;
   groups: CalcGroup[];
 }
 
@@ -343,6 +350,14 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
 
   const deleteCustomOption = (id: string) =>
     runMutation(`/api/devis/custom-options/${id}`, { method: "DELETE" });
+
+  // EP16-S02 : pose/maj la remise dediee, puis recalcul du total net (le backend
+  // recalcule totalCached via computeDevisTotal, source unique D6).
+  const patchDiscount = (discount: number, discountType: "AMOUNT" | "PERCENT") =>
+    runMutation(`/api/devis/${devisId}/discount`, {
+      method: "PATCH",
+      body: JSON.stringify({ discount, discountType }),
+    });
 
   const handleDownloadPdf = async () => {
     const { getSession } = await import("next-auth/react");
@@ -599,6 +614,17 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
         </div>
       </GlassCard>
 
+      {/* Section Remise (EP16-S02) */}
+      <GlassCard className="mb-6 p-5">
+        <h2 className="mb-3 text-lg font-semibold">Remise commerciale</h2>
+        <DiscountEditor
+          discount={devis.discount}
+          discountType={devis.discountType}
+          remise={calc?.remise ?? 0}
+          onApply={patchDiscount}
+        />
+      </GlassCard>
+
       {/* Sticky total */}
       {calc && (
         <div
@@ -616,14 +642,28 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
             <TotalLine label="Options catalogue" value={calc.optionsCatalogue} />
             <TotalLine label="Options personnalisees" value={calc.optionsCustom} />
           </div>
+          {(calc.remise ?? 0) > 0 && (
+            <div className="mt-1 flex items-center justify-between text-[color:var(--warning)]">
+              <span>Remise</span>
+              <span className="font-mono">- {formatCurrency(calc.remise ?? 0)}</span>
+            </div>
+          )}
           <div className="my-2 h-px bg-[color:var(--border)]" />
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-semibold">TOTAL</span>
+            <span className="text-sm font-semibold">
+              {(calc.remise ?? 0) > 0 ? "TOTAL NET" : "TOTAL"}
+            </span>
             <div className="flex items-center gap-2">
-              <span className="font-mono text-2xl font-bold text-[color:var(--accent)]">
-                {formatCurrency(calc.total)}
+              <span
+                data-testid="devis-preview-total"
+                className="font-mono text-2xl font-bold text-[color:var(--accent)]"
+              >
+                {formatCurrency(calc.totalNet ?? calc.total)}
               </span>
-              <CopyButton value={formatCurrency(calc.total)} size={14} />
+              <CopyButton
+                value={formatCurrency(calc.totalNet ?? calc.total)}
+                size={14}
+              />
             </div>
           </div>
         </div>
@@ -1082,6 +1122,101 @@ function StayCard({
       {calcGroup && (
         <span className="ml-auto font-mono text-sm">
           {formatCurrency(calcGroup.fraisSejour)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * DiscountEditor — champ remise dedie (EP16-S02). Le type AMOUNT prend un
+ * montant en euros (converti en centimes), PERCENT un pourcentage entier 0..100.
+ * La valeur est envoyee au backend qui recalcule le total net via la fonction de
+ * calcul unique (computeDevisTotal, D6) ; l'apercu (sticky total) reflete le net.
+ * POURQUOI input non controle (defaultValue) : eviter le re-render qui ferait
+ * perdre le focus pendant la saisie, coherent avec les autres champs du builder.
+ */
+function DiscountEditor({
+  discount,
+  discountType,
+  remise,
+  onApply,
+}: {
+  discount: number;
+  discountType: "AMOUNT" | "PERCENT" | null;
+  remise: number;
+  onApply: (
+    discount: number,
+    discountType: "AMOUNT" | "PERCENT"
+  ) => void | Promise<boolean | void>;
+}) {
+  const [type, setType] = useState<"AMOUNT" | "PERCENT">(
+    discountType ?? "AMOUNT"
+  );
+
+  // Valeur affichee : euros si AMOUNT, pourcentage si PERCENT.
+  const displayValue =
+    discountType === null
+      ? ""
+      : type === "PERCENT"
+        ? String(discount)
+        : (discount / 100).toFixed(2);
+
+  const apply = (raw: string) => {
+    const num = Number(raw);
+    if (raw === "" || Number.isNaN(num) || num < 0) return;
+    const value = type === "PERCENT" ? Math.round(num) : Math.round(num * 100);
+    void onApply(value, type);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="vc-segmented flex overflow-hidden rounded-md border border-[color:var(--border)]">
+        <button
+          type="button"
+          onClick={() => setType("AMOUNT")}
+          aria-pressed={type === "AMOUNT"}
+          className={`px-3 py-1 text-xs font-medium transition ${
+            type === "AMOUNT"
+              ? "bg-[color:var(--accent)] text-[color:var(--surface)]"
+              : "bg-[color:var(--surface-glass)] text-[color:var(--text-secondary)]"
+          }`}
+        >
+          Montant (€)
+        </button>
+        <button
+          type="button"
+          onClick={() => setType("PERCENT")}
+          aria-pressed={type === "PERCENT"}
+          className={`px-3 py-1 text-xs font-medium transition ${
+            type === "PERCENT"
+              ? "bg-[color:var(--accent)] text-[color:var(--surface)]"
+              : "bg-[color:var(--surface-glass)] text-[color:var(--text-secondary)]"
+          }`}
+        >
+          Pourcentage (%)
+        </button>
+      </div>
+      <label className="flex items-center gap-1 text-sm">
+        <span className="text-[color:var(--text-secondary)]">Remise</span>
+        <input
+          key={`${type}-${discount}`}
+          data-testid="devis-remise-value"
+          type="number"
+          min={0}
+          max={type === "PERCENT" ? 100 : undefined}
+          step={type === "PERCENT" ? 1 : 0.01}
+          defaultValue={displayValue}
+          onBlur={(e) => apply(e.target.value)}
+          className="w-28 rounded border border-[color:var(--border)] bg-white/80 px-2 py-1 text-right font-mono"
+        />
+        <span className="text-[color:var(--text-secondary)]">
+          {type === "PERCENT" ? "%" : "€"}
+        </span>
+      </label>
+      {remise > 0 && (
+        <span className="text-sm text-[color:var(--warning)]">
+          Remise appliquee : - {formatCurrency(remise)}
         </span>
       )}
     </div>

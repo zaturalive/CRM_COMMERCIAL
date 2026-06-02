@@ -121,6 +121,24 @@ export const updateDevisStaySchema = z
     { message: "" }
   );
 
+// ─── Remise commerciale (EP16-S02) ──────────────────────────────────────────
+
+/**
+ * Remise dediee sur le devis. discount en centimes entiers >= 0 si AMOUNT, en
+ * pourcentage entier 0..100 si PERCENT. La validation par type empeche un
+ * PERCENT > 100 (AC4 : remise plafonnee). Le plancher a 0 du total net est
+ * applique cote calcul (computeDevisTotal), pas ici.
+ */
+export const updateDevisDiscountSchema = z
+  .object({
+    discount: z.number().int().min(0),
+    discountType: z.enum(["AMOUNT", "PERCENT"]),
+  })
+  .refine(
+    (v) => v.discountType !== "PERCENT" || v.discount <= 100,
+    { message: "Une remise PERCENT ne peut depasser 100 %" }
+  );
+
 // ─── DevisOption (catalogue clinique) ───────────────────────────────────────
 
 export const addDevisOptionSchema = z.object({

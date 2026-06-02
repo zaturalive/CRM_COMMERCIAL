@@ -6,8 +6,10 @@
 import type { PrismaClient } from "@prisma/client";
 import {
   calculateDevisTotal,
+  computeDevisTotal as computeDevisTotalNet,
   type DevisCalculationInput,
   type DevisCalculationResult,
+  type DevisRemiseType,
 } from "./devisCalculator";
 import type { DevisTextInput } from "./devisTextFormatter";
 import {
@@ -18,8 +20,19 @@ import type { DevisPdfInput, DevisLegalMentions } from "./devisTemplate";
 
 type AnyPrisma = PrismaClient;
 
+/**
+ * Resultat de calcul enrichi de la remise (EP16-S02). total = brut avant
+ * remise, remise = remise effective bornee, totalNet = total apres remise
+ * (borne a 0). totalNet est la valeur unique reutilisee par l'apercu, le PDF et
+ * le snapshot totalCached (KPIs).
+ */
+export interface DevisCalculationWithRemise extends DevisCalculationResult {
+  remise: number;
+  totalNet: number;
+}
+
 export interface LoadedDevis {
-  calculation: DevisCalculationResult;
+  calculation: DevisCalculationWithRemise;
   text: DevisTextInput;
   raw: Awaited<ReturnType<typeof loadFullDevis>>;
 }
@@ -112,7 +125,19 @@ export async function buildDevisBundle(
     })),
   };
 
-  const calculation = calculateDevisTotal(calcInput);
+  const baseCalculation = calculateDevisTotal(calcInput);
+  // EP16-S02 : applique la remise snapshotee sur le devis via la fonction de
+  // calcul unique (ADR-0009 D6). totalNet borne a 0.
+  const net = computeDevisTotalNet({
+    ...calcInput,
+    discount: devis.discount,
+    discountType: (devis.discountType ?? undefined) as DevisRemiseType | undefined,
+  });
+  const calculation: DevisCalculationWithRemise = {
+    ...baseCalculation,
+    remise: net.remise,
+    totalNet: net.totalNet,
+  };
 
   const cliniquesById = new Map(cliniques.map((c) => [c.id, c]));
 
@@ -261,9 +286,12 @@ export async function buildDevisPdfInput(
       price: o.price,
       quantity: o.quantity,
     })),
-    // EP16-S02 (remise) ajoutera la lecture du champ remise du Devis ici. Tant
-    // que le champ n'existe pas au schema, pas de remise (null).
-    remise: null,
+    // EP16-S02 : remise snapshotee sur le devis, lue ici pour que le PDF affiche
+    // la ligne remise et le total net via la fonction de calcul unique.
+    remise:
+      devis.discountType === "AMOUNT" || devis.discountType === "PERCENT"
+        ? { type: devis.discountType, value: devis.discount }
+        : null,
   };
 
   const breakdown = computeDevisTotal(computeInput);

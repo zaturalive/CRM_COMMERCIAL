@@ -35,7 +35,12 @@ export interface DevisTextInput {
   }>;
   options: Array<{ label: string; price: number; quantity: number }>;
   customOptions: Array<{ label: string; price: number; quantity: number }>;
-  calculation: DevisCalculationResult;
+  // EP16-S02 : la calculation peut porter la remise + le total net (champs
+  // optionnels pour retro-compatibilite des appels existants).
+  calculation: DevisCalculationResult & {
+    remise?: number;
+    totalNet?: number;
+  };
 }
 
 function formatEur(cents: number): string {
@@ -115,6 +120,17 @@ export function formatDevisAsText(input: DevisTextInput): string {
     lines.push("");
   }
 
-  lines.push(`TOTAL : ${formatEur(input.calculation.total)}`);
+  // EP16-S02 (AC5) : la ligne remise apparait uniquement si une remise existe.
+  // Le TOTAL imprime reflete le net (apres remise), coherent avec le PDF et le
+  // totalCached (source KPI).
+  const remise = input.calculation.remise ?? 0;
+  if (remise > 0) {
+    const totalNet = input.calculation.totalNet ?? input.calculation.total - remise;
+    lines.push(`Sous-total : ${formatEur(input.calculation.total)}`);
+    lines.push(`Remise : - ${formatEur(remise)}`);
+    lines.push(`TOTAL : ${formatEur(totalNet)}`);
+  } else {
+    lines.push(`TOTAL : ${formatEur(input.calculation.total)}`);
+  }
   return lines.join("\n");
 }

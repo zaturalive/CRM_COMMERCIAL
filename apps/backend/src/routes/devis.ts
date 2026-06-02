@@ -10,6 +10,7 @@ import {
   createCustomOptionSchema,
   updateCustomOptionSchema,
   addDevisInterventionSchema,
+  updateDevisDiscountSchema,
   COMMERCIAL_ONLY_FIELDS,
 } from "../schemas/devis";
 import { reconcileStays } from "../services/reconcileStays";
@@ -165,9 +166,12 @@ async function generateReference(
 async function recomputeTotal(devisId: string) {
   const bundle = await buildDevisBundle(basePrisma, devisId);
   if (!bundle) return null;
+  // EP16-S02 (ADR-0009 D6) : totalCached est le total APRES remise (totalNet),
+  // source unique des KPIs. computeDevisTotal (via buildDevisBundle) est
+  // l'ecrivain unique ; les KPIs lisent totalCached sans recalculer la remise.
   await basePrisma.devis.update({
     where: { id: devisId },
-    data: { totalCached: bundle.calculation.total },
+    data: { totalCached: bundle.calculation.totalNet },
   });
   return bundle;
 }
@@ -382,6 +386,36 @@ router.get(
     const bundle = await recomputeTotal(req.params.id);
     if (!bundle) return res.status(404).json({ success: false, error: "Not found" });
     res.json({ success: true, data: bundle.calculation });
+  })
+);
+
+// ─── PATCH /api/devis/:id/discount — remise commerciale (EP16-S02) ──────────
+// Pose/maj la remise dediee (montant fixe ou pourcentage), snapshotee sur le
+// devis, puis recalcule totalCached via computeDevisTotal (ecrivain unique).
+// L'isolation passe par loadOwnedDevis (404 si autre tenant).
+
+router.patch(
+  "/:id/discount",
+  asyncHandler(async (req, res) => {
+    const devis = await loadOwnedDevis(req, req.params.id);
+    const body = updateDevisDiscountSchema.parse(req.body);
+
+    await basePrisma.devis.update({
+      where: { id: devis.id },
+      data: { discount: body.discount, discountType: body.discountType },
+    });
+
+    // Recalcule le snapshot apres remise (totalNet → totalCached).
+    const bundle = await recomputeTotal(devis.id);
+
+    const updated = await basePrisma.devis.findUnique({
+      where: { id: devis.id },
+      select: { id: true, discount: true, discountType: true, totalCached: true },
+    });
+    res.json({
+      success: true,
+      data: { ...updated, breakdown: bundle?.calculation ?? null },
+    });
   })
 );
 

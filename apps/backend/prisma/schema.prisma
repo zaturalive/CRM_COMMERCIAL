@@ -506,7 +506,12 @@ model Devis {
   sentAt           DateTime?
   acomptePaidAt    DateTime?
   soldePaidAmount  Int         @default(0)  // centimes
-  totalCached      Int?        // centimes, snapshot du total pour perf
+  totalCached      Int?        // centimes, snapshot du total APRES remise (perf + KPI)
+  // EP16-S02 (ADR-0009 D6) : remise commerciale dediee, snapshotee sur le devis.
+  // discount = centimes si AMOUNT, pourcentage entier 0..100 si PERCENT.
+  // discountType null = pas de remise (retro-compatibilite des devis existants).
+  discount         Int         @default(0)
+  discountType     String?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 

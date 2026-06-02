@@ -249,3 +249,83 @@ export function calculateDevisTotal(
     groups,
   };
 }
+
+// ─── Remise commerciale (EP16-S02, ADR-0009 D6) ─────────────────────────────
+
+export type DevisRemiseType = "AMOUNT" | "PERCENT";
+
+/**
+ * Entree du calcul total APRES remise. Reprend l'entree de calcul existante et
+ * y ajoute la remise dediee (champs plats, snapshotes sur le Devis). discount en
+ * centimes si AMOUNT, en pourcentage entier 0..100 si PERCENT. Absence de remise
+ * = discountType non fourni ou discount 0.
+ */
+export interface DevisComputeInput extends DevisCalculationInput {
+  discount?: number;
+  discountType?: DevisRemiseType;
+}
+
+/**
+ * Decomposition commerciale exposant le brut (total), la remise effective et le
+ * total net. Source unique consommee par l'editeur, l'apercu, le PDF et les
+ * KPIs : tous lisent totalNet, aucun ne recalcule la remise localement.
+ *
+ * Versant COMMERCIAL non-HDS (ADR-0003) : aucun champ medical (pas de
+ * consentement, pas de ligne anesthesiste isolee comme acte medical, pas de
+ * separation frais cliniques/medicaux, pas de double signature legale).
+ */
+export interface DevisTotalBreakdown {
+  honoraires: number;
+  fraisClinique: number;
+  optionsCatalogue: number;
+  optionsCustom: number;
+  total: number;
+  remise: number;
+  totalNet: number;
+}
+
+/**
+ * Calcule la remise effective en centimes, bornee a [0, brut]. PERCENT borne a
+ * 100 %, AMOUNT borne au brut : le total net ne descend jamais sous 0 (AC4 — pas
+ * de net negatif). Arrondi au centime entier pour PERCENT.
+ */
+function computeRemiseCents(
+  brut: number,
+  discount: number | undefined,
+  discountType: DevisRemiseType | undefined
+): number {
+  if (!discountType || !discount || discount <= 0) return 0;
+  let raw: number;
+  if (discountType === "PERCENT") {
+    const pct = Math.max(0, Math.min(100, discount));
+    raw = Math.round((brut * pct) / 100);
+  } else {
+    raw = Math.max(0, Math.round(discount));
+  }
+  return Math.min(raw, brut);
+}
+
+/**
+ * computeDevisTotal — total devis APRES remise (EP16-S02). S'appuie sur
+ * calculateDevisTotal pour le brut puis applique la remise dediee. Pure et
+ * deterministe : recoit des donnees deja chargees (snapshots), n'accede a aucune
+ * base. Ecrivain unique de Devis.totalCached cote backend.
+ */
+export function computeDevisTotal(input: DevisComputeInput): DevisTotalBreakdown {
+  const base = calculateDevisTotal(input);
+  const remise = computeRemiseCents(base.total, input.discount, input.discountType);
+  // POURQUOI : les frais supplementaires inclus (fraisInterventions) sont
+  // rattaches a la prestation, donc agreges au sous-total honoraires commercial.
+  // Ainsi la relation total = honoraires + clinique + options reste vraie pour
+  // les consommateurs (apercu/PDF/KPI), sans sous-total cache hors decomposition.
+  const honoraires = base.honoraires + base.fraisInterventions;
+  return {
+    honoraires,
+    fraisClinique: base.fraisClinique,
+    optionsCatalogue: base.optionsCatalogue,
+    optionsCustom: base.optionsCustom,
+    total: base.total,
+    remise,
+    totalNet: base.total - remise,
+  };
+}
