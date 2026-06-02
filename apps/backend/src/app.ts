@@ -14,6 +14,7 @@ import { createAuthRouter } from "./routes/auth";
 import { NoopEmailSender, type EmailSender } from "./lib/email/EmailSender";
 import adminRoutes from "./routes/admin";
 import usersRoutes from "./routes/users";
+import meRoutes from "./routes/me";
 import demoRoutes from "./routes/demo";
 import tenantRoutes from "./routes/tenant";
 import cliniquesRoutes from "./routes/cliniques";
@@ -156,6 +157,12 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // cross-tenant (/api/admin/*). Monte apres le requireTenant global, donc
   // req.prisma est deja le client tenant-scope (isolation 404 cross-tenant).
   app.use("/api/users", usersRoutes);
+
+  // EP14-S06 — self-service RGPD du compte courant (GET /api/me/export, DELETE
+  // /api/me). Tenant-scope (req.prisma), agit uniquement sur req.user.userId.
+  // Monte apres requireTenant global + audit : l'export (GET sensible) et la
+  // suppression (DELETE) sont traces automatiquement (ADR-0009 D3).
+  app.use("/api/me", meRoutes);
 
   // EP02
   app.use("/api/cliniques", cliniquesRoutes);

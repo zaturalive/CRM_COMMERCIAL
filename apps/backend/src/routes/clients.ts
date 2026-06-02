@@ -1,8 +1,10 @@
 import { Router } from "express";
 import type { Request } from "express";
 import { asyncHandler } from "../middleware/errorHandler";
+import { requireRole } from "../middleware/requireRole";
 import { createClientSchema, updateClientSchema } from "../schemas/clients";
 import { emailSearchHashFor } from "../lib/crypto/atRest";
+import { buildClientAnonymization } from "../lib/rgpd";
 
 // EP14-S05 / ADR-0009 D4a : email et phone sont chiffres at-rest (blob v1: non
 // deterministe), donc plus aucun `contains` ne peut porter dessus. Detection
@@ -248,6 +250,105 @@ router.get(
     const unsigned = allDevis.filter((d) => d.firstSignedAt === null);
     res.json({ success: true, data: { signed, unsigned } });
   })
+);
+
+// ─── RGPD self-service (EP14-S06) ────────────────────────────────────────────
+
+/**
+ * GET /api/clients/:id/export — portabilite RGPD (Art. 15/20), reserve ADMIN.
+ *
+ * Export JSON complet des donnees de la personne concernee (fiche client +
+ * process + devis + documents + logs de message), scope tenant. La lecture passe
+ * par req.prisma (extension tenant -> where.tenantId + dechiffrement at-rest D4),
+ * donc l'export contient le clair des champs de contact et ne peut porter que sur
+ * le tenant courant. 404 si l'id n'appartient pas au tenant (isolation AC8 : on ne
+ * confirme pas l'existence d'une cible d'un autre tenant par un 403).
+ *
+ * Audite automatiquement : /api/clients/:id/export matche SENSITIVE_GET_PATTERNS
+ * (auditLog.ts, ADR-0009 D3), donc chaque export laisse une trace (AC7) sans que
+ * la donnee de contact n'apparaisse dans le journal (seul bodyHash y figure).
+ */
+router.get(
+  "/:id/export",
+  requireRole(["ADMIN"]),
+  asyncHandler(async (req, res) => {
+    await loadOwnedClient(req, req.params.id);
+
+    const client = await req.prisma!.client.findUnique({
+      where: { id: req.params.id },
+      include: {
+        processes: {
+          include: {
+            processInterventions: {
+              include: { intervention: { select: { id: true, name: true } } },
+            },
+            devis: true,
+            documents: true,
+            messageSendLogs: true,
+            trackingEvents: true,
+          },
+        },
+        trackingEvents: true,
+      },
+    });
+    if (!client) {
+      return res.status(404).json({ success: false, error: "Not found" });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        exportedAt: new Date().toISOString(),
+        // Art. 20 : format JSON structure et portable. Tout l'arbre relatif a la
+        // personne concernee dans le tenant courant.
+        client,
+      },
+    });
+  }),
+);
+
+/**
+ * POST /api/clients/:id/anonymize — effacement RGPD (Art. 17), reserve ADMIN.
+ *
+ * Anonymisation (et non suppression dure) : remplace firstName/lastName/email/
+ * phone par la sentinelle "ANONYMISE" (buildClientAnonymization, source unique
+ * AC3) en conservant les agregats (montants, dates, CA, process) — on ne touche
+ * que les 4 champs identifiants. L'ecriture passe par req.prisma : l'extension de
+ * chiffrement re-chiffre email/phone (la sentinelle remplace l'ancien contact AU
+ * STOCKAGE, l'ancienne valeur ne reapparait jamais) et recalcule emailSearchHash.
+ *
+ * 404 si la cible est hors tenant (AC8, sans aucune mutation cross-tenant).
+ * Idempotent : un second appel re-ecrit la sentinelle sans casser. Un COMMERCIAL
+ * -> 403 (requireRole), pas de token -> 401 (requireJWT global). Mutation auditee
+ * automatiquement (POST, ADR-0009 D3).
+ */
+router.post(
+  "/:id/anonymize",
+  requireRole(["ADMIN"]),
+  asyncHandler(async (req, res) => {
+    const client = await loadOwnedClient(req, req.params.id);
+
+    const patch = buildClientAnonymization({
+      firstName: client.firstName,
+      lastName: client.lastName,
+      email: client.email,
+      phone: client.phone,
+    });
+
+    const anonymized = await req.prisma!.client.update({
+      where: { id: client.id },
+      data: patch,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+      },
+    });
+
+    res.json({ success: true, data: anonymized });
+  }),
 );
 
 export default router;

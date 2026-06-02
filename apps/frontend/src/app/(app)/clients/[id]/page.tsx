@@ -2,6 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
+import { useSession, getSession } from "next-auth/react";
 import {
   ArrowLeft,
   Phone,
@@ -15,13 +16,24 @@ import {
   FileMinus,
   CheckCircle,
   Bell,
+  Download,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/Dialog";
 import { GlassCard } from "@/components/shared/GlassCard";
 import { CopyButton } from "@/components/shared/CopyButton";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import { ClientEngagementSection } from "@/components/clients/ClientEngagementSection";
 import { toast } from "@/components/ui/Toast";
+import { apiFetch } from "@/lib/api";
 import { useApiOne, useApiList } from "@/lib/hooks/useApiResource";
 import { formatCurrency, formatDate, formatDateShort } from "@/lib/utils";
 import type { Client, ClientProcessItem, ClientDevisItem } from "@/types/clients";
@@ -60,6 +72,66 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
     unsigned: ClientDevisItem[];
   }>(`/api/clients/${id}/devis`);
   const [editOpen, setEditOpen] = useState(false);
+  // EP14-S06 (AC6) : actions RGPD reservees a l'ADMIN du cabinet sur la fiche
+  // client. "Anonymiser" passe par une confirmation forte (modale distincte).
+  const { data: session } = useSession();
+  const isAdmin = session?.role === "ADMIN";
+  const [anonymizeOpen, setAnonymizeOpen] = useState(false);
+  const [anonymizing, setAnonymizing] = useState(false);
+
+  async function handleExport() {
+    const s = await getSession();
+    const base =
+      process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+    let origin = base;
+    try {
+      if (typeof window !== "undefined") {
+        const b = new URL(base);
+        origin = window.location.host === b.host ? "" : base;
+      }
+    } catch {
+      origin = base;
+    }
+    const res = await fetch(`${origin}/api/clients/${id}/export`, {
+      method: "GET",
+      headers: s?.jwt ? { Authorization: `Bearer ${s.jwt}` } : {},
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      toast.error("Export impossible");
+      return;
+    }
+    const body = await res.json().catch(() => null);
+    if (typeof window !== "undefined" && body) {
+      const blob = new Blob([JSON.stringify(body.data ?? body, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `client-${id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+    toast.success("Donnees exportees");
+  }
+
+  async function handleAnonymize() {
+    setAnonymizing(true);
+    const res = await apiFetch(`/api/clients/${id}/anonymize`, {
+      method: "POST",
+    });
+    setAnonymizing(false);
+    setAnonymizeOpen(false);
+    if (res.success) {
+      toast.success("Client anonymise");
+      reload();
+    } else {
+      toast.error("Anonymisation impossible");
+    }
+  }
 
   if (loading) return <div className="text-sm text-text-secondary">Chargement...</div>;
   if (error || !client) {
@@ -132,10 +204,29 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
               {formatCurrency(client.stats?.caTotal ?? 0)}
             </div>
           </div>
-          <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil size={13} />
-            Modifier
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil size={13} />
+              Modifier
+            </Button>
+            {/* EP14-S06 (AC6) : droits RGPD reserves a l'ADMIN. */}
+            {isAdmin && (
+              <>
+                <Button variant="secondary" size="sm" onClick={handleExport}>
+                  <Download size={13} />
+                  Exporter
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setAnonymizeOpen(true)}
+                >
+                  <UserX size={13} />
+                  Anonymiser
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </GlassCard>
 
@@ -247,6 +338,32 @@ export default function ClientDetailPage({ params }: { params: Promise<{ id: str
         existing={client}
         onSuccess={reload}
       />
+
+      {/* EP14-S06 (AC6) : confirmation forte avant anonymisation (Art. 17). */}
+      <Dialog open={anonymizeOpen} onOpenChange={setAnonymizeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anonymiser ce client</DialogTitle>
+            <DialogDescription>
+              Le nom, le prenom, l&apos;email et le telephone seront remplaces de
+              maniere irreversible. Les montants et l&apos;historique commercial
+              sont conserves. Cette action est definitive.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setAnonymizeOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleAnonymize}
+              disabled={anonymizing}
+            >
+              {anonymizing ? "Anonymisation..." : "Anonymiser definitivement"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
