@@ -43,12 +43,16 @@ services:
       dockerfile: apps/backend/Dockerfile
       target: dev
     container_name: crm-commercial-backend
+    # EP14-S05 : AT_REST_KEY + EMAIL_SEARCH_KEY proviennent de apps/backend/.env.
+    # Les variables du bloc environment ci-dessous gardent la priorite (override).
+    env_file:
+      - ../apps/backend/.env
     ports:
       - "4100:4000"
     environment:
       - NODE_ENV=development
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-dev}@postgres:5432/${POSTGRES_DB:-crm_commercial}
-      - JWT_SECRET=${JWT_SECRET}
+      # JWT_SECRET vient de env_file (apps/backend/.env) : pas d override ${...} qui se vide hors shell.
       - JWT_EXPIRES_IN=7d
       - PORT=4000
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3301}
