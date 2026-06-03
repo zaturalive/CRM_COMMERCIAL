@@ -5,6 +5,7 @@ import {
   assertCanDeleteOwnAccount,
   type TenantUserSnapshot,
 } from "../lib/rgpd";
+import { updateProfileSchema } from "../schemas/me";
 
 /**
  * Router self-service RGPD du compte utilisateur courant (EP14-S06).
@@ -119,6 +120,32 @@ router.delete(
     });
 
     res.json({ success: true, data: { message: "Account anonymized" } });
+  }),
+);
+
+/**
+ * PATCH /api/me/profile — mise a jour du PROPRE profil (nom/prenom uniquement).
+ *
+ * Self-service strict : agit sur req.user.userId (aucun id de cible lu dans la
+ * requete -> pas d'acces cross-tenant, pas de modification d'un autre profil).
+ * Le data est construit en LISTE BLANCHE (jamais de spread du body) et le schema
+ * est .strict() : role / active / email / mfaEnabled -> 400 (anti-mass-assignment
+ * et anti-escalade). L'email reste read-only. Tenant-scope via req.prisma.
+ * Mutation auditee (ADR-0009 D3). N'expose aucun secret (ME_PUBLIC_SELECT).
+ */
+router.patch(
+  "/profile",
+  asyncHandler(async (req, res) => {
+    const data = updateProfileSchema.parse(req.body);
+    const updated = await req.prisma!.user.update({
+      where: { id: req.user!.userId },
+      data: {
+        ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
+        ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
+      },
+      select: ME_PUBLIC_SELECT,
+    });
+    res.json({ success: true, data: updated });
   }),
 );
 

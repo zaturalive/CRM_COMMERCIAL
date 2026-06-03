@@ -15,6 +15,7 @@ import {
   Mail,
   FileSignature,
   Activity,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -154,7 +155,12 @@ export function Sidebar() {
 
       {/* Footer : user + role switcher demo */}
       <div className="border-t border-white/10 p-4">
-        <div className="mb-3 flex items-center gap-2">
+        <Link
+          href="/account/profile"
+          data-testid="nav-profil"
+          title="Mon profil"
+          className="mb-3 flex items-center gap-2 rounded-md p-1 transition-colors hover:bg-sidebar-hover"
+        >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 font-display text-xs font-semibold text-white">
             {session.user.firstName?.[0]}
             {session.user.lastName?.[0]}
@@ -163,9 +169,10 @@ export function Sidebar() {
             <div className="truncate text-sm text-white">
               {session.user.firstName} {session.user.lastName}
             </div>
-            <div className="text-[11px] text-white/50">{session.role}</div>
+            <div className="text-[11px] text-white/50">{session.role} &middot; Mon profil</div>
           </div>
-        </div>
+          <UserCog size={16} className="text-white/50" />
+        </Link>
         <RoleSwitcher />
         <LanguageSwitcher />
         <ThemeSwitcher />
