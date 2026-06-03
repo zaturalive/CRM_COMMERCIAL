@@ -7,7 +7,6 @@ import Link from "next/link";
 const SECTIONS = [
   { href: "/admin/tenants", label: "Tenants", desc: "Gestion des cabinets", story: "EP17-S02" },
   { href: "/admin/users", label: "Utilisateurs", desc: "Comptes plateforme", story: "EP17-S03" },
-  { href: "/admin/support", label: "Acces support", desc: "Observation bornee d'un tenant", story: "EP17-S04" },
   { href: "/admin/logs", label: "Logs", desc: "Journal d'audit", story: "EP17-S05" },
 ];
 

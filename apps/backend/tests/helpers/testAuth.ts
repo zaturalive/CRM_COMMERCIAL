@@ -25,7 +25,7 @@ const PASSWORD = "test-password-123";
 /**
  * EP14-S02 : champs CGU d'un tenant deja onboarde (CGU acceptee a la version
  * courante). A epandre dans le `data` d'un prisma.tenant.create direct des
- * suites qui exercent des routes tenant nominales (impersonation, editeur), pour
+ * suites qui exercent des routes tenant nominales (editeur), pour
  * que le gate requireCguAccepted ne les refuse pas. Source unique pour eviter de
  * dupliquer la version dans chaque test.
  */

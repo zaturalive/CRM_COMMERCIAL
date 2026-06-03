@@ -70,29 +70,6 @@ function signEditorToken(editorId: string): string {
   });
 }
 
-/**
- * Jeton d'impersonation (kind "impersonation"), borne a un tenant, conforme
- * ADR-0009 D2. Sert a verifier qu'une session d'observation (lecture nominale
- * d'un tenant) ne franchit PAS la surface BO cross-tenant /api/admin/* (viewer
- * d'audit). C'est la representation legitime d'un token d'impersonation, aucun
- * contournement de signature (secret reel, HS256).
- */
-function signImpersonationToken(opts: {
-  editorId: string;
-  tenantId: string;
-}): string {
-  return jwt.sign(
-    {
-      kind: "impersonation",
-      editorId: opts.editorId,
-      tenantId: opts.tenantId,
-      scope: "read",
-    },
-    env.JWT_SECRET,
-    { algorithm: "HS256", expiresIn: "1h" },
-  );
-}
-
 // POURQUOI : l'ecriture d'audit est fire-and-forget en res.on("finish") (ADR-0009
 // D3). On laisse un court delai au flush avant de lire/consulter les lignes.
 async function waitForFlush(ms = 250): Promise<void> {
@@ -542,91 +519,6 @@ describe("Security — Audit log viewer /api/admin/audit-logs (EP17-S05)", () =>
         .get("/api/admin/audit-logs/export?format=json")
         .set("Authorization", `Bearer ${adminAJwt}`);
       expect(res.status).toBe(403);
-    });
-  });
-
-  /**
-   * SECURITE — remediation fuite cross-tenant du viewer d'audit (reviewers
-   * compliance, EP17-S05 / ADR-0009 D1).
-   *
-   * DEFAUT corrige : un jeton kind "impersonation" borne au tenant X passait
-   * requireEditor (qui ne testait que `if (!req.editor)`) et lisait
-   * /api/admin/audit-logs(/stats|/export|/:id), donc les AuditLog de TOUS les
-   * tenants = fuite cross-tenant. La surface BO /api/admin/* doit exiger kind
-   * "editor" : un jeton d'impersonation y est refuse en 403, et ne voit en
-   * particulier AUCUNE ligne d'audit d'un autre tenant.
-   *
-   * L'acces LECTURE du jeton d'impersonation aux donnees nominales du tenant
-   * cible (routes /api/* tenant-scope) n'est pas concerne : il transite par
-   * req.user, pas par la surface /api/admin/*.
-   */
-  describe("SEC : un jeton d'impersonation ne lit PAS le viewer d'audit cross-tenant", () => {
-    it("impersonation (tenant A) -> GET /api/admin/audit-logs => 403 (et ne voit pas les lignes du tenant B)", async () => {
-      const impersonationJwt = signImpersonationToken({
-        editorId,
-        tenantId: tenantAId,
-      });
-      const res = await request(app)
-        .get("/api/admin/audit-logs?limit=200")
-        .set("Authorization", `Bearer ${impersonationJwt}`);
-      expect(res.status).toBe(403);
-      // Aucune ligne d'audit n'est renvoyee : pas de fuite cross-tenant (B) ni
-      // meme du tenant observe (A) par cette surface BO.
-      expect(res.body.data).toBeUndefined();
-    });
-
-    it("impersonation (tenant A) -> GET /api/admin/audit-logs?tenantId=B => 403 (pas de lecture d'un autre tenant)", async () => {
-      const impersonationJwt = signImpersonationToken({
-        editorId,
-        tenantId: tenantAId,
-      });
-      const res = await request(app)
-        .get(`/api/admin/audit-logs?tenantId=${tenantBId}`)
-        .set("Authorization", `Bearer ${impersonationJwt}`);
-      expect(res.status).toBe(403);
-      expect(res.body.data).toBeUndefined();
-    });
-
-    it("impersonation (tenant A) -> GET /api/admin/audit-logs/stats => 403", async () => {
-      const impersonationJwt = signImpersonationToken({
-        editorId,
-        tenantId: tenantAId,
-      });
-      const res = await request(app)
-        .get("/api/admin/audit-logs/stats")
-        .set("Authorization", `Bearer ${impersonationJwt}`);
-      expect(res.status).toBe(403);
-    });
-
-    it("impersonation (tenant A) -> GET /api/admin/audit-logs/export => 403 (et pas de marqueur sensible)", async () => {
-      const impersonationJwt = signImpersonationToken({
-        editorId,
-        tenantId: tenantAId,
-      });
-      const res = await request(app)
-        .get(`/api/admin/audit-logs/export?format=json&tenantId=${tenantBId}`)
-        .set("Authorization", `Bearer ${impersonationJwt}`);
-      expect(res.status).toBe(403);
-    });
-
-    it("impersonation (tenant A) -> GET /api/admin/audit-logs/:id => 403 (pas de detail cross-tenant)", async () => {
-      // On recupere un id reel via l'editeur legitime, puis on verifie que le
-      // jeton d'impersonation ne peut pas lire ce detail par la surface BO.
-      const list = await request(app)
-        .get("/api/admin/audit-logs?limit=1")
-        .set("Authorization", `Bearer ${editorJwt}`);
-      const first = (list.body.data as AuditLogRow[])[0];
-      expect(first).toBeDefined();
-
-      const impersonationJwt = signImpersonationToken({
-        editorId,
-        tenantId: tenantAId,
-      });
-      const res = await request(app)
-        .get(`/api/admin/audit-logs/${first.id}`)
-        .set("Authorization", `Bearer ${impersonationJwt}`);
-      expect(res.status).toBe(403);
-      expect(res.body.data).toBeUndefined();
     });
   });
 });

@@ -122,6 +122,14 @@ Nouveau middleware `requireEditor` (`apps/backend/src/middleware/requireEditor.t
 
 ## D2 — Jeton d'impersonation editeur (support EP17-S04)
 
+> **RETIRE (2026-06-03)** — La feature EP17-S04 (acces support / observation) a ete
+> supprimee a la demande du porteur. Le jeton d'impersonation (kind "impersonation"),
+> sa reconnaissance dans `requireJWT`, la garde `requireWriteScope`, les routes
+> `/enter` + `/leave` et les tests d'escalade associes ont ete retires du code.
+> `requireJWT` ne discrimine plus que deux `kind` (`user`, `editor`). Le champ
+> `AuditLog.actorId` (D3) est conserve : il trace toujours l'editeur nominal. La
+> decision ci-dessous reste pour memoire historique.
+
 ### Option retenue
 
 Jeton d'impersonation distinct du JWT editeur nominal, de forme `{ kind: "impersonation", editorId, tenantId, scope, expiresAt }`, scope `read` par defaut, courte duree de vie. Emis par une route editeur explicite (EP17-S04, hors socle), reconnu par `requireJWT`.

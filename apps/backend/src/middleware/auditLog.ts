@@ -188,7 +188,7 @@ export function auditLog(req: Request, res: Response, next: NextFunction) {
     // etant best-effort, on isole entierement son ecriture : la reponse metier
     // est deja partie, l'echec d'audit est seulement loggue.
     try {
-      // Qui : user tenant et/ou acteur plateforme (editeur / impersonation).
+      // Qui : user tenant et/ou acteur plateforme (editeur).
       const userId = req.user?.userId ?? null;
       const actorId = req.editor?.editorId ?? null;
       const tenantId = req.user?.tenantId ?? null;

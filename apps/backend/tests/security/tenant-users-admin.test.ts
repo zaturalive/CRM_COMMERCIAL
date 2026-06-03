@@ -21,7 +21,7 @@ import { validatePassword } from "../../src/lib/passwordPolicy";
  * d'architecture liees : ADR-0009 D1 (PlatformAdmin + requireEditor + basePrisma
  * sur /api/admin/*), D2 (l'editeur n'herite PAS implicitement d'un acces aux
  * donnees metier d'un tenant : un jeton editeur nominal n'a pas de contexte
- * tenant ; l'observation passe par EP17-S04), D3 (audit global, actorId =
+ * tenant), D3 (audit global, actorId =
  * editorId), D5 (mustChangePassword + password policy partagee), D7 (reset
  * degrade : mot de passe temporaire renvoye, sans dependance email).
  *
@@ -476,12 +476,11 @@ describe("Security — CRUD users cross-tenant Back Office editeur (EP17-S03)", 
     });
   });
 
-  describe("Test securite 5 : l'editeur ne peut pas se faire passer pour un user du tenant sans EP17-S04 (acces support encadre)", () => {
+  describe("Test securite 5 : l'editeur ne peut pas se faire passer pour un user du tenant (pas d'heritage implicite)", () => {
     it("un jeton editeur nominal n'ouvre PAS le chemin metier tenant : GET /api/clients -> 4xx (pas d'heritage implicite)", async () => {
       // ADR-0009 D1/D2 : un jeton kind "editor" n'a pas de contexte tenant.
       // requireTenant exige req.user.tenantId ; l'editeur ne passe donc pas les
-      // routes metier nominales (/api/clients...). L'observation d'un tenant est
-      // une story dediee et encadree (EP17-S04, jeton d'impersonation borne).
+      // routes metier nominales (/api/clients...).
       const res = await request(app)
         .get("/api/clients")
         .set("Authorization", `Bearer ${editorJwt}`);
@@ -506,7 +505,7 @@ describe("Security — CRUD users cross-tenant Back Office editeur (EP17-S03)", 
       // L'editeur gere les comptes (CRUD) mais n'obtient pas, par cette route, un
       // jeton de session agissant AU NOM d'un user du tenant. La reponse de
       // creation ne renvoie ni JWT de session tenant ni cookie d'authentification
-      // au nom du user cible (l'impersonation est EP17-S04, hors de cette story).
+      // au nom du user cible.
       const res = await request(app)
         .post(`/api/admin/tenants/${tenantTarget.id}/users`)
         .set("Authorization", `Bearer ${editorJwt}`)
@@ -517,10 +516,8 @@ describe("Security — CRUD users cross-tenant Back Office editeur (EP17-S03)", 
           role: "COMMERCIAL",
         });
       expect(res.status).toBe(201);
-      const serialized = JSON.stringify(res.body);
       // Aucun jeton de session au nom du user cible n'est emis par le CRUD.
       expect(res.body.data.jwt).toBeUndefined();
-      expect(serialized).not.toContain('"kind":"impersonation"');
       // Pas de cookie de session pose au nom du user cible.
       expect(res.headers["set-cookie"]).toBeUndefined();
     });

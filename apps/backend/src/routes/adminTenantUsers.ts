@@ -128,7 +128,7 @@ router.get(
  * -> 201 { user, tempPassword }. Un role hors UserRole (EDITEUR...) -> 400 (schema
  * + service), aucune creation (escalade plateforme fermee, ADR-0009 D1). Le hash
  * n'est jamais serialise. C'est de la GESTION de compte : aucun jeton de session
- * au nom du user cible n'est emis (l'impersonation est EP17-S04).
+ * au nom du user cible n'est emis.
  */
 router.post(
   "/",

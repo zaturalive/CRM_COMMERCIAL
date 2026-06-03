@@ -217,8 +217,8 @@ model User {
 // ─── PLATFORM ADMIN (editeur) ─────────────────────────────────────────────────
 // ADR-0009 D1 : acteur plateforme hors modele tenant. Aucune FK vers Tenant —
 // l'editeur n'appartient a aucun cabinet et opere cross-tenant par des chemins
-// explicites et bornes (/api/admin/* via basePrisma, ou jeton d'impersonation
-// signe). PlatformAdmin reste hors de TENANT_BOUND_MODELS : l'extension tenant
+// explicites et bornes (/api/admin/* via basePrisma). PlatformAdmin reste hors
+// de TENANT_BOUND_MODELS : l'extension tenant
 // ne s'y applique pas, ce qui garde le modele User invariant (un User a toujours
 // un tenantId) et preserve l'isolation multi-tenant.
 model PlatformAdmin {
@@ -247,7 +247,7 @@ model PlatformAdmin {
 model AuditLog {
   id          String   @id @default(uuid())
   userId      String? // user tenant (null si editeur ou route publique)
-  actorId     String? // PlatformAdmin (editeur / impersonation), null sinon
+  actorId     String? // PlatformAdmin (editeur), null sinon
   actor       PlatformAdmin? @relation(fields: [actorId], references: [id], onDelete: SetNull)
   tenantId    String? // tenant concerne (null si route plateforme pure)
   method      String

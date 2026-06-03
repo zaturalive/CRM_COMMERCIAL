@@ -30,7 +30,7 @@
 | EP14 | Securite & conformite (prod) | 2FA, CGU, AuditLog, at-rest, RGPD | — | 6 |
 | EP15 | Provisioning & cycle de vie des comptes | gestion users intra-cabinet, reset/change pwd, demo-off (creation cabinet -> EP17) | — | 5 |
 | EP16 | Devis/PDF commercial utilisable | PDF legal, remise | — | 2 |
-| EP17 | Back Office editeur (console plateforme) | CRUD tenants, users cross-tenant, acces support, logs | — | 5 |
+| EP17 | Back Office editeur (console plateforme) | CRUD tenants, users cross-tenant, ~~acces support~~ (retire 2026-06-03), logs | — | 5 |
 | **Total** | | | | **77** |
 
 ---
@@ -390,20 +390,20 @@ regression (208 security + 18 unit).
 
 ## EP17 — Back Office editeur (console plateforme)
 
-**Valeur metier** : donner a l'editeur une console pour administrer le parc (tenants + users), depanner un cabinet (acces support encadre) et auditer l'activite. Surface **distincte** de l'app cabinet, protegee par un guard dedie (backend + frontend). Demande explicite 2026-06-01.
+**Valeur metier** : donner a l'editeur une console pour administrer le parc (tenants + users) et auditer l'activite. Surface **distincte** de l'app cabinet, protegee par un guard dedie (backend + frontend). Demande explicite 2026-06-01. (L'acces support / observation, initialement prevu en EP17-S04, a ete retire le 2026-06-03 — voir stories/EP17-S04.md.)
 
 **Scope** :
 - Socle BO + middleware admin backend + guard front (niveau editeur)
 - CRUD tenants (absorbe l'ancienne EP15-S01)
 - CRUD users de n'importe quel tenant (cross-tenant)
-- Compte temporaire de support chez un tenant (acces borne + trace)
+- ~~Compte temporaire de support chez un tenant (acces borne + trace)~~ — RETIRE (2026-06-03)
 - Visualisation/analyse des logs d'audit (consomme EP14-S04)
 
 **Stories** :
 - EP17-S01 : Socle Back Office + guard admin (back + front) — P0
 - EP17-S02 : CRUD tenants — P0 (supersede EP15-S01)
 - EP17-S03 : CRUD users des tenants (cross-tenant) — P0/P1
-- EP17-S04 : Compte temporaire de support chez un tenant — P1
+- EP17-S04 : Compte temporaire de support chez un tenant — **RETIREE (2026-06-03)** (voir stories/EP17-S04.md)
 - EP17-S05 : Visualisation/analyse des logs d'audit — P1
 
 > **Distinction a garder** : EP14-S04 *produit* les logs (middleware sur toutes les routes) ; EP17-S05 les *lit/analyse*. EP15-S02 = l'admin d'un cabinet gere SES users ; EP17-S03 = l'editeur gere les users de TOUT tenant depuis le BO.

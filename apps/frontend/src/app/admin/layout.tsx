@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
-import ObservationBanner from "@/components/admin/ObservationBanner";
 
 /**
  * Coquille Back Office editeur — EP17-S01 (AC 4 et 5).
@@ -22,7 +21,6 @@ import ObservationBanner from "@/components/admin/ObservationBanner";
 const NAV_ITEMS = [
   { href: "/admin/tenants", label: "Tenants", story: "EP17-S02" },
   { href: "/admin/users", label: "Utilisateurs", story: "EP17-S03" },
-  { href: "/admin/support", label: "Acces support", story: "EP17-S04" },
   { href: "/admin/logs", label: "Logs", story: "EP17-S05" },
 ];
 
@@ -82,8 +80,6 @@ export default async function AdminLayout({
             Back Office plateforme — acces editeur
           </h1>
         </header>
-        {/* EP17-S04 / AC3 : bandeau permanent pendant une session d'observation. */}
-        <ObservationBanner />
         <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>

@@ -171,7 +171,7 @@ describe("Security — A09 Logging and Monitoring Failures", () => {
   });
 
   describe("Audit log GAP — to address in V1.2", () => {
-    it("currently : aucun audit log d'action admin (DELETE / role changes / impersonation)", async () => {
+    it("currently : aucun audit log d'action admin (DELETE / role changes)", async () => {
       // Ce test documente le GAP. DELETE /api/clients/:id ne genere PAS de
       // log audit "user X deleted client Y at T from IP Z".
       // Pour V1.2 : middleware audit qui log structure tous les

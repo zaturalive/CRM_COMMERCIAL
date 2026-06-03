@@ -59,7 +59,7 @@ describe("Security — Back Office guard /api/admin (EP17-S01)", () => {
 
     // Un client du tenant A, pour verifier qu'un editeur ne lit pas la donnee
     // metier d'un tenant par le chemin nominal /api/clients (AC : pas d'heritage
-    // implicite d'acces aux donnees d'un tenant sans passer par S03/S04).
+    // implicite d'acces aux donnees d'un tenant).
     const res = await request(app)
       .post("/api/clients")
       .set("Authorization", `Bearer ${adminJwt}`)
@@ -116,8 +116,7 @@ describe("Security — Back Office guard /api/admin (EP17-S01)", () => {
     it("token editeur sur le chemin nominal tenant /api/clients → refuse (pas de contexte tenant)", async () => {
       // ADR-0009 D1 : requireTenant exige req.user.tenantId. Un token editeur n'a
       // pas de contexte tenant, il ne passe donc pas les routes tenant nominales.
-      // L'acces a un tenant est borne aux stories dediees (S03/S04, jeton
-      // d'impersonation signe). Statut attendu : refus (401/403), jamais 200.
+      // Statut attendu : refus (401/403), jamais 200.
       const res = await request(app)
         .get("/api/clients")
         .set("Authorization", `Bearer ${editorJwt}`);
