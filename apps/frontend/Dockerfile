@@ -1,8 +1,10 @@
 # ============================================================================
 # Frontend Dockerfile — Next.js 15 multi-stage
 # Targets :
-#   - dev   : hot reload, volumes montes depuis l'hote
-#   - prod  : standalone build, optimise
+#   - dev   : hot reload, volumes montes depuis l'hote, user non-root (UID hote)
+#   - prod  : standalone build, optimise, user nextjs:1001
+#
+# Monorepo npm workspaces : lock racine = source unique, `npm ci` reproductible.
 # ============================================================================
 
 # ─── Stage base ─────────────────────────────────────────────────────────────
@@ -12,16 +14,26 @@ RUN apk add --no-cache libc6-compat
 
 # ─── Stage deps ─────────────────────────────────────────────────────────────
 FROM base AS deps
-COPY package.json package-lock.json* ./
+# Manifestes de tous les workspaces pour que npm ci valide le lock racine complet.
+COPY package.json package-lock.json ./
 COPY apps/frontend/package.json ./apps/frontend/
-# npm install (pas ci) : robuste au premier build (pas de lock file encore)
-# Le lock sera genere au premier build et embarque dans l'image.
-RUN npm install --workspace=apps/frontend
+COPY apps/backend/package.json ./apps/backend/
+COPY packages/shared/package.json ./packages/shared/
+# Install reproductible scopee au frontend (+ root). npm ci consomme le lock sans le modifier.
+RUN npm ci --workspace=apps/frontend --include-workspace-root
 
 # ─── Stage dev ──────────────────────────────────────────────────────────────
 FROM base AS dev
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/frontend/package.json ./apps/frontend/package.json
+# UID/GID alignables sur l'hote (defaut 1000). Cf. HOST_UID/HOST_GID dans compose.
+ARG UID=1000
+ARG GID=1000
+COPY --from=deps --chown=${UID}:${GID} /app/node_modules ./node_modules
+COPY --from=deps --chown=${UID}:${GID} /app/apps/frontend/package.json ./apps/frontend/package.json
+# Pre-cree .next et l'attribue a l'UID : le volume anonyme .next (compose dev)
+# herite de cet ownership a sa creation. Sinon Next dev (non-root) ne peut pas
+# ecrire dans .next -> EACCES au boot.
+RUN mkdir -p /app/apps/frontend/.next && chown ${UID}:${GID} /app /app/apps /app/apps/frontend /app/apps/frontend/.next
+USER ${UID}:${GID}
 WORKDIR /app/apps/frontend
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
@@ -46,8 +58,7 @@ FROM base AS prod
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
 # Monorepo npm-workspace : Next standalone produit l'arborescence
 #   .next/standalone/apps/frontend/server.js + node_modules racine.

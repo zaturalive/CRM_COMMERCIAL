@@ -3,6 +3,11 @@
 # Pas de Traefik. Ports exposes directement (3301, 4100, 5432 interne).
 # Ports decales pour eviter conflit avec crm-chirurgien (3200) et autres
 # services dev locaux (autofront sur 3300). Pour prod : docker-compose.prod.yml
+#
+# node_modules : construit DANS l'image (npm ci au build), jamais bind-monte
+# depuis l'hote. Le user des conteneurs dev est aligne sur l'hote via
+# HOST_UID/HOST_GID (defaut 1000) -> aucun fichier root:root dans les mounts.
+# Si tu changes une dependance : `docker compose -f docker/docker-compose.yml up --build`.
 # ============================================================================
 
 name: crm-commercial
@@ -13,6 +18,9 @@ services:
       context: ..
       dockerfile: apps/frontend/Dockerfile
       target: dev
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
     container_name: crm-commercial-frontend
     # Port 3301 cote hote (3300 = autofront, 3200 = crm-chirurgien, 3100 = Loki).
     # Cote container : Next.js ecoute 3000, pas de changement interne.
@@ -42,6 +50,9 @@ services:
       context: ..
       dockerfile: apps/backend/Dockerfile
       target: dev
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
     container_name: crm-commercial-backend
     # EP14-S05 : AT_REST_KEY + EMAIL_SEARCH_KEY proviennent de apps/backend/.env.
     # Les variables du bloc environment ci-dessous gardent la priorite (override).
@@ -66,11 +77,11 @@ services:
       - MAIL_FROM=no-reply@vencor-crm.localhost
     volumes:
       - ../apps/backend:/app/apps/backend
-      # npm (hote) hoiste les deps backend a la racine node_modules ; le conteneur
-      # doit la voir, sinon Cannot find module otplib/nodemailer/etc.
-      - ../node_modules:/app/node_modules
-      # @crm/shared (workspace) monte pour que le conteneur dev voie src + dist
-      # compile (sinon require() resout le .ts source). Coherent avec l image prod.
+      # node_modules vient de l'image (npm ci au build) : NI bind-mount hote, NI
+      # volume anonyme (les deux masqueraient le node_modules de l'image, hoiste
+      # a /app/node_modules). Rebuild l'image si tu changes une dependance.
+      # @crm/shared : src bind-montee pour le hot-reload (resolu via export
+      # "development"). Maintenant dimitry-owned, plus de root:root.
       - ../packages/shared:/app/packages/shared
       - backend_uploads:/app/uploads
     networks:
