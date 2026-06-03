@@ -58,8 +58,17 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3301}
       - UPLOADS_DIR=/app/uploads
       - LOG_LEVEL=${LOG_LEVEL:-info}
+      # Email dev via Mailpit (SMTP interne mailpit:1025, UI sur :8025). Provider
+      # changeable par env (MAIL_PROVIDER=smtp|noop).
+      - MAIL_PROVIDER=smtp
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - MAIL_FROM=no-reply@vencor-crm.localhost
     volumes:
       - ../apps/backend:/app/apps/backend
+      # npm (hote) hoiste les deps backend a la racine node_modules ; le conteneur
+      # doit la voir, sinon Cannot find module otplib/nodemailer/etc.
+      - ../node_modules:/app/node_modules
       # @crm/shared (workspace) monte pour que le conteneur dev voie src + dist
       # compile (sinon require() resout le .ts source). Coherent avec l image prod.
       - ../packages/shared:/app/packages/shared
@@ -93,6 +102,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  # Mailpit : serveur SMTP local de test + UI web. Capture les mails (liens de
+  # reset / set-password) sans envoi externe. UI : http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: crm-commercial-mailpit
+    ports:
+      - "8025:8025"
+    networks:
+      - crm-network
     restart: unless-stopped
 
 networks:

@@ -11,7 +11,8 @@ import { requireWriteScope } from "./middleware/requireWriteScope";
 import { requireCguAccepted } from "./middleware/requireCguAccepted";
 import { auditLog } from "./middleware/auditLog";
 import { createAuthRouter } from "./routes/auth";
-import { NoopEmailSender, type EmailSender } from "./lib/email/EmailSender";
+import type { EmailSender } from "./lib/email/EmailSender";
+import { createEmailSender } from "./lib/email/createEmailSender";
 import adminRoutes from "./routes/admin";
 import adminLoginRoutes from "./routes/adminLogin";
 import usersRoutes from "./routes/users";
@@ -54,7 +55,7 @@ export interface BuildAppOptions {
  * Construit l'app Express sans ecouter — utilise par index.ts (prod) et les tests Supertest.
  */
 export function buildApp(options: BuildAppOptions = {}): Express {
-  const emailSender = options.emailSender ?? new NoopEmailSender();
+  const emailSender = options.emailSender ?? createEmailSender();
   const app = express();
 
   // SEC-04 : helmet pose les headers securite (X-Content-Type-Options, HSTS,

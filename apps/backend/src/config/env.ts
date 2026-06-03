@@ -28,6 +28,15 @@ const envSchema = z.object({
   // de recherche par egalite email Client. HMAC sale -> pas de dictionnaire par
   // force brute sur un hash nu.
   EMAIL_SEARCH_KEY: z.string().min(32, "EMAIL_SEARCH_KEY doit faire au moins 32 caracteres"),
+  // Email (reset/set-password par lien). Provider changeable par env sans toucher
+  // au code : "smtp" (Mailpit en dev, relais auto-heberge / Brevo en prod) ou "noop"
+  // (aucun envoi). Cf lib/email/createEmailSender.
+  MAIL_PROVIDER: z.enum(["noop", "smtp"]).default("noop"),
+  MAIL_HOST: z.string().default("localhost"),
+  MAIL_PORT: z.string().default("1025").transform(Number),
+  MAIL_FROM: z.string().default("no-reply@vencor-crm.localhost"),
+  MAIL_USER: z.string().optional(),
+  MAIL_PASS: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
