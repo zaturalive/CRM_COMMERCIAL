@@ -149,12 +149,12 @@ describe("Security — A08 Software and Data Integrity Failures", () => {
 
   describe("Supply chain integrity", () => {
     it("package-lock.json present a la racine du backend", () => {
-      expect(fs.existsSync(path.join(backendRoot, "package-lock.json"))).toBe(true);
+      expect(fs.existsSync(path.join(backendRoot, "..", "..", "package-lock.json"))).toBe(true);
     });
 
     it("package-lock.json non-vide et structure correcte", () => {
       const lock = JSON.parse(
-        fs.readFileSync(path.join(backendRoot, "package-lock.json"), "utf-8")
+        fs.readFileSync(path.join(backendRoot, "..", "..", "package-lock.json"), "utf-8")
       );
       expect(lock.lockfileVersion).toBeGreaterThanOrEqual(2);
       expect(lock.packages).toBeDefined();
@@ -163,7 +163,7 @@ describe("Security — A08 Software and Data Integrity Failures", () => {
 
     it("integrity SHA-512 present sur les dependances production (sample)", () => {
       const lock = JSON.parse(
-        fs.readFileSync(path.join(backendRoot, "package-lock.json"), "utf-8")
+        fs.readFileSync(path.join(backendRoot, "..", "..", "package-lock.json"), "utf-8")
       );
       // Echantillon : prisma, express, bcryptjs doivent avoir integrity.
       const critical = ["node_modules/express", "node_modules/bcryptjs", "node_modules/@prisma/client"];

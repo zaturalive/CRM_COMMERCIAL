@@ -44,8 +44,12 @@ describe("Security — A06 Vulnerable Components (npm audit)", () => {
 
     let stdout = "";
     try {
-      stdout = execSync("npm audit --omit=dev --json", {
-        cwd: backendRoot,
+      // Monorepo npm workspaces : le lockfile est a la RACINE. On audite donc
+      // depuis la racine du repo (backendRoot/../..) en scopant au workspace
+      // backend (--workspace=apps/backend) pour ne verifier QUE ses deps prod.
+      // Le suivi CVE du frontend (ex next) est un guard distinct (pas ce test).
+      stdout = execSync("npm audit --omit=dev --workspace=apps/backend --json", {
+        cwd: path.join(backendRoot, "..", ".."),
         encoding: "utf-8",
         stdio: ["ignore", "pipe", "pipe"],
       });
