@@ -60,6 +60,9 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
       - ../apps/backend:/app/apps/backend
+      # @crm/shared (workspace) monte pour que le conteneur dev voie src + dist
+      # compile (sinon require() resout le .ts source). Coherent avec l image prod.
+      - ../packages/shared:/app/packages/shared
       - backend_uploads:/app/uploads
     networks:
       - crm-network
