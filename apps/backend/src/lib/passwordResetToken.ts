@@ -20,6 +20,14 @@ import { randomBytes, createHash, timingSafeEqual } from "node:crypto";
  */
 export const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
+/**
+ * TTL du lien d'INVITATION / provisioning admin (EP15 — invitation par email).
+ * Plus long que le reset self-service : un nouvel utilisateur (ou un user qu'un
+ * admin reactive) ne clique pas forcement dans l'heure. 7 jours (decision D2).
+ * Le reset self-service (forgot-password, initie par l'utilisateur) reste a 1h.
+ */
+export const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export interface StoredResetToken {
   tokenHash: string;
   expiresAt: Date;

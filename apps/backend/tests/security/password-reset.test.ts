@@ -392,8 +392,8 @@ describe("Security — reset mot de passe oublie (EP15-S03)", () => {
 
   // ── AC7 + ADR-0009 D7 : chemin degrade (reset par admin / editeur, sans email)
   describe("AC7 / ADR-0009 D7 : chemin degrade reset par admin/editeur sans email", () => {
-    it("reset par l'ADMIN du cabinet (POST /api/users/:id/reset-password) -> 200, force-change, hash change, sans email", async () => {
-      // Cree un user cible via l'ADMIN, puis reset son mot de passe (degrade D7).
+    it("reset par l'ADMIN du cabinet (POST /api/users/:id/reset-password) -> 200, force-change, hash change, envoie un lien (D1)", async () => {
+      // Cree un user cible via l'ADMIN, puis reinitialise son acces (invitation D1).
       const created = await request(app)
         .post("/api/users")
         .set("Authorization", `Bearer ${ctx.admin.jwt}`)
@@ -417,14 +417,11 @@ describe("Security — reset mot de passe oublie (EP15-S03)", () => {
       expect(after!.passwordHash).not.toBe(before!.passwordHash);
       expect(after!.mustChangePassword).toBe(true);
 
-      // Chemin degrade : aucun email requis (non bloquant pour le go-live).
-      expect(recorder.messages.length).toBe(0);
-
-      // Le tempPassword renvoye respecte la policy partagee (D5) et ne fuit pas
-      // le hash bcrypt.
-      const temp = res.body?.data?.tempPassword;
-      expect(typeof temp).toBe("string");
-      expect(validatePassword(temp).valid).toBe(true);
+      // Decision D1 : un lien d'invitation est envoye par email ; aucun mot de
+      // passe en clair n'est renvoye, et le hash bcrypt ne fuit pas.
+      expect(recorder.messages.length).toBeGreaterThan(0);
+      expect("tempPassword" in (res.body?.data ?? {})).toBe(false);
+      expect(res.body.data.invitationSent).toBe(true);
       expect(JSON.stringify(res.body)).not.toMatch(/\$2[aby]\$/);
     });
 
@@ -458,10 +455,10 @@ describe("Security — reset mot de passe oublie (EP15-S03)", () => {
       expect(validatePassword(temp).valid).toBe(true);
     });
 
-    it("le chemin degrade ne necessite aucun EmailSender branche (default Noop, D7)", async () => {
-      // App montee SANS injection d'EmailSender : le default NoopEmailSender (D7)
-      // s'applique, et le reset par admin reste fonctionnel (aucune dependance
-      // email au demarrage).
+    it("sans EmailSender reel (Noop), aucun mot de passe n'est expose (D1)", async () => {
+      // App montee SANS injection d'EmailSender : le default NoopEmailSender
+      // s'applique. Le reset reste fonctionnel (200) mais n'expose JAMAIS de mot
+      // de passe en clair (D1) : la livraison reelle releve de la config email.
       const noEmailApp = buildApp();
       const localCtx = await setupTestTenant(noEmailApp, TENANT_SLUG);
       const created = await request(noEmailApp)
@@ -480,7 +477,8 @@ describe("Security — reset mot de passe oublie (EP15-S03)", () => {
         .post(`/api/users/${id}/reset-password`)
         .set("Authorization", `Bearer ${localCtx.admin.jwt}`);
       expect(res.status).toBe(200);
-      expect(res.body?.data?.tempPassword).toBeTruthy();
+      expect("tempPassword" in (res.body?.data ?? {})).toBe(false);
+      expect(JSON.stringify(res.body)).not.toMatch(/\$2[aby]\$/);
     });
   });
 });

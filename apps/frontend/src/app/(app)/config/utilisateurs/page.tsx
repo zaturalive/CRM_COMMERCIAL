@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { KeyRound, Loader2, UserPlus, Users } from "lucide-react";
+import { Loader2, Mail, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
@@ -31,14 +31,15 @@ import { toast } from "@/components/ui/Toast";
  * Scope = tenant courant (le backend /api/users filtre par tenantId via
  * l'extension Prisma ; un COMMERCIAL recoit 403). La page :
  *   - liste les users du cabinet (AC1),
- *   - cree un COMMERCIAL ou ADMIN avec mot de passe temporaire (AC2),
+ *   - cree un COMMERCIAL ou ADMIN (AC2),
  *   - desactive / reactive un compte (AC3),
- *   - reinitialise le mot de passe (AC4, chemin degrade D7 : le tempPassword
- *     est affiche une fois a l'admin, pas d'email branche au demarrage).
+ *   - renvoie l'invitation / reinitialise l'acces (AC4).
  *
- * Le mot de passe temporaire ne transite qu'une fois (creation / reset) ; il
- * n'est jamais re-affichable. L'admin le transmet a l'interesse, qui le change
- * au 1er login (mustChangePassword, gate EP15-S04).
+ * Provisioning par INVITATION email (decision D1) : aucun mot de passe n'est
+ * jamais affiche. A la creation (et au "renvoyer l'invitation"), le backend
+ * envoie un lien /set-password (token 7 jours) par email ; l'interesse definit
+ * lui-meme son mot de passe. Si l'email n'a pas pu partir (invitationSent=false),
+ * l'admin peut "renvoyer l'invitation".
  */
 
 type Role = "ADMIN" | "COMMERCIAL";
@@ -56,7 +57,7 @@ interface ManagedUser {
 
 interface CreatedUser {
   user: ManagedUser;
-  tempPassword: string;
+  invitationSent: boolean;
 }
 
 const EMPTY_FORM = {
@@ -75,7 +76,7 @@ export default function UsersManagementPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
-  // Id du user en cours de mutation (desactivation/reset) pour desactiver son bouton.
+  // Id du user en cours de mutation (desactivation/invitation) pour desactiver son bouton.
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -119,10 +120,15 @@ export default function UsersManagementPage() {
     });
     setSubmitting(false);
     if (res.success) {
-      // D7 : le mot de passe temporaire ne s'affiche qu'ici, une seule fois.
-      toast.success(
-        `Compte cree. Mot de passe temporaire (a transmettre) : ${res.data.tempPassword}`,
-      );
+      // Decision D1 : aucun mot de passe affiche. Le compte est active par
+      // l'interesse via le lien d'invitation recu par email.
+      if (res.data.invitationSent) {
+        toast.success(`Compte cree. Invitation envoyee a ${res.data.user.email}.`);
+      } else {
+        toast.error(
+          `Compte cree, mais l'invitation n'a pas pu etre envoyee. Utilisez "Renvoyer l'invitation".`,
+        );
+      }
       setForm(EMPTY_FORM);
       setDialogOpen(false);
       void load();
@@ -147,17 +153,21 @@ export default function UsersManagementPage() {
     }
   }
 
-  async function handleReset(user: ManagedUser) {
+  async function handleResend(user: ManagedUser) {
     setBusyId(user.id);
-    const res = await apiFetch<{ tempPassword: string }>(
+    // Reinitialise l'acces : invalide le mot de passe courant cote backend et
+    // envoie un nouveau lien /set-password par email. Aucun mot de passe affiche (D1).
+    const res = await apiFetch<{ invitationSent: boolean }>(
       `/api/users/${user.id}/reset-password`,
       { method: "POST" },
     );
     setBusyId(null);
     if (res.success) {
-      toast.success(
-        `Mot de passe reinitialise. Temporaire (a transmettre) : ${res.data.tempPassword}`,
-      );
+      if (res.data.invitationSent) {
+        toast.success(`Lien d'acces envoye a ${user.email}.`);
+      } else {
+        toast.error(`Echec de l'envoi du lien a ${user.email}. Reessayez.`);
+      }
       void load();
     } else {
       toast.error(res.error);
@@ -221,11 +231,11 @@ export default function UsersManagementPage() {
                         variant="ghost"
                         size="sm"
                         disabled={busyId === u.id}
-                        onClick={() => handleReset(u)}
+                        onClick={() => handleResend(u)}
                         data-testid={`users-reset-${u.id}`}
                       >
-                        <KeyRound size={14} />
-                        Reset MDP
+                        <Mail size={14} />
+                        Renvoyer l'acces
                       </Button>
                       <Button
                         variant={u.active ? "outline" : "secondary"}
@@ -261,6 +271,10 @@ export default function UsersManagementPage() {
             <DialogTitle>Nouveau compte</DialogTitle>
           </DialogHeader>
           <form className="space-y-4" onSubmit={handleCreate}>
+            <p className="text-xs text-text-secondary">
+              Un email d'invitation sera envoye a la personne pour qu'elle
+              definisse elle-meme son mot de passe.
+            </p>
             <div className="space-y-2">
               <Label htmlFor="user-email">Email</Label>
               <Input

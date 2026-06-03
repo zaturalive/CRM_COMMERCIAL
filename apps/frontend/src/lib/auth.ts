@@ -5,6 +5,17 @@ import { TOTP_REQUIRED_PREFIX } from "./twoFactorSession";
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://backend:4000";
 
 /**
+ * EP14-S03 (completion) — cookie de session partage entre l'apex et les
+ * sous-domaines de cabinet. Si AUTH_COOKIE_DOMAIN est defini (ex
+ * ".vencor-crm.localhost" en dev, ".vencor-crm.com" en prod), le login sur
+ * l'apex pose un cookie valable sur tous les sous-domaines : la redirection
+ * post-login vers <cabinet>.<domaine> conserve la session. Non defini -> cookie
+ * host-only (defaut NextAuth, ex localhost nu), zero changement.
+ */
+const COOKIE_DOMAIN = process.env.AUTH_COOKIE_DOMAIN;
+const USE_SECURE_COOKIES = process.env.NODE_ENV === "production";
+
+/**
  * Forme commune de la charge utile de login renvoyee par le backend (/login
  * nominal et /2fa/verify | /2fa/recovery apres le second facteur). buildSessionUser
  * la convertit en User NextAuth, source unique pour ne pas diverger.
@@ -142,6 +153,25 @@ async function recoveryStep(
 }
 
 export const authOptions: NextAuthOptions = {
+  // EP14-S03 : cookie de session partage cross-sous-domaine (opt-in via
+  // AUTH_COOKIE_DOMAIN). Nom prefixe __Secure- en prod (https), conforme a la
+  // convention NextAuth ; sinon defaut host-only (domaine non defini).
+  ...(COOKIE_DOMAIN
+    ? {
+        cookies: {
+          sessionToken: {
+            name: `${USE_SECURE_COOKIES ? "__Secure-" : ""}next-auth.session-token`,
+            options: {
+              httpOnly: true,
+              sameSite: "lax" as const,
+              path: "/",
+              domain: COOKIE_DOMAIN,
+              secure: USE_SECURE_COOKIES,
+            },
+          },
+        },
+      }
+    : {}),
   // Session maxAge aligne sur le JWT expiry backend (7 jours).
   // Evite les 401 silencieux cote API quand le cookie NextAuth est encore
   // valide mais le JWT backend a expire.

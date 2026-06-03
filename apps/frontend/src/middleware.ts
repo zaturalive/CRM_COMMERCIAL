@@ -74,6 +74,30 @@ export default withAuth(
       BASE_DOMAIN,
     );
 
+    // EP14-S03 (completion) — routage apex <-> sous-domaine de cabinet. Le cookie
+    // de session est partage (AUTH_COOKIE_DOMAIN), donc on aiguille l'utilisateur
+    // de cabinet vers le bon host :
+    //   - sur l'apex (tenantSlug null) : un user de cabinet connecte n'a rien a
+    //     faire ici -> redirige vers <son-cabinet>.<domaine> (l'app ne vit pas sur
+    //     l'apex) ;
+    //   - sur un mauvais sous-domaine : on corrige vers le sien (URL honnete).
+    // L'editeur plateforme (BO cross-tenant) vit sur l'apex -> exempte, et /admin/*
+    // (BO) reste sur l'apex. L'autorite reste le JWT (le host ne tranche rien).
+    const isAdminArea = path === "/admin" || path.startsWith("/admin/");
+    const jwtSlug =
+      typeof token?.tenantSlug === "string" ? token.tenantSlug : null;
+    if (
+      token != null &&
+      token.isEditor !== true &&
+      !isAdminArea &&
+      jwtSlug != null &&
+      tenantSlug !== jwtSlug
+    ) {
+      const url = req.nextUrl.clone();
+      url.hostname = `${jwtSlug}.${BASE_DOMAIN}`;
+      return NextResponse.redirect(url);
+    }
+
     // Gate 1 (priorite) : changement de mot de passe force.
     if (
       token?.mustChangePassword === true &&
@@ -138,10 +162,10 @@ export default withAuth(
 );
 
 export const config = {
-  // EP15-S03 : forgot-password et reset-password sont PUBLIQUES (l'utilisateur a
-  // oublie son mot de passe, il n'a pas de session). On les exclut du guard
-  // withAuth, comme /login, sinon withAuth redirige vers /login et casse le flux.
+  // EP15-S03 / invitation : forgot-password, reset-password et set-password sont
+  // PUBLIQUES (l'utilisateur n'a pas de session). On les exclut du guard withAuth,
+  // comme /login, sinon withAuth redirige vers /login et casse le flux.
   matcher: [
-    "/((?!login|forgot-password|reset-password|api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|forgot-password|reset-password|set-password|api/auth|_next/static|_next/image|favicon.ico).*)",
   ],
 };

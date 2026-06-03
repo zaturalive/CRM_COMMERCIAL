@@ -153,6 +153,17 @@ export default function LoginPage() {
     }
     if (typeof window !== "undefined") {
       window.localStorage.setItem(TENANT_STORAGE_KEY, tenantSlug);
+      // EP14-S03 : login depuis l'apex -> on bascule l'utilisateur sur le
+      // sous-domaine de son cabinet (cookie de session partage via
+      // AUTH_COOKIE_DOMAIN, donc la session suit). Depuis un sous-domaine, on
+      // reste sur place (navigation interne SPA).
+      if (subdomain.kind === "none") {
+        const dest = `${window.location.protocol}//${tenantSlug}.${BASE_DOMAIN}${
+          window.location.port ? `:${window.location.port}` : ""
+        }${callbackUrl.startsWith("/") ? callbackUrl : "/dashboard"}`;
+        window.location.assign(dest);
+        return;
+      }
     }
     router.push(callbackUrl);
     router.refresh();

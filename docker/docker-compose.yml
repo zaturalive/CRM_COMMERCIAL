@@ -31,6 +31,8 @@ services:
       - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:4100}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3301}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      # EP14-S03 : cookie de session partage apex <-> sous-domaines (valeur dans .env)
+      - AUTH_COOKIE_DOMAIN=${AUTH_COOKIE_DOMAIN:-}
       - BACKEND_URL=http://backend:4000
       - NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-true}
       - NEXT_PUBLIC_TENANT_SLUG=${NEXT_PUBLIC_TENANT_SLUG:-cabinet-test}

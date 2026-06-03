@@ -1,14 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import request from "supertest";
 import { PrismaClient } from "@prisma/client";
-import { hashSync } from "bcryptjs";
 import { buildApp } from "../../src/app";
 import {
   setupTestTenant,
   teardownTestTenant,
   disconnectPrisma,
 } from "../helpers/testAuth";
-import { validatePassword } from "../../src/lib/passwordPolicy";
+import {
+  RecordingEmailSender,
+  activateViaInvitation,
+} from "../helpers/invitation";
 
 /**
  * EP15-S02 — Tests de securite de la gestion des comptes users intra-cabinet
@@ -17,8 +19,14 @@ import { validatePassword } from "../../src/lib/passwordPolicy";
  * Reference : docs/product/stories/EP15-S02.md (section "Tests de securite
  * (obligatoires)"). Decisions d'architecture liees : ADR-0009 D1 (niveau
  * editeur hors de portee d'un ADMIN de cabinet), D5 (mustChangePassword +
- * password policy partagee), D7 (reset degrade par mot de passe temporaire,
- * sans dependance email).
+ * password policy partagee).
+ *
+ * Provisioning par INVITATION email (decision D1) : la creation et la
+ * reinitialisation n'affichent JAMAIS de mot de passe. Elles envoient un lien
+ * /set-password (token) par email ; l'interesse definit son mot de passe via
+ * POST /api/auth/reset-password (page /set-password), ce qui leve aussi le
+ * force-change (mustChangePassword repasse a false). Les tests injectent un
+ * RecordingEmailSender pour recuperer le token et activer le compte.
  *
  * Distinction de perimetre (story EP15-S02 + brief section 1 contrainte 11) :
  * la gestion intra-cabinet par l'ADMIN reste TENANT-SCOPE. Les routes vivent
@@ -28,29 +36,25 @@ import { validatePassword } from "../../src/lib/passwordPolicy";
  * voit ni ne modifie un user du tenant B (l'extension tenant filtre par
  * tenantId), d'ou un 404 (ressource hors de son scope), pas un 403.
  *
- * Phase TDD rouge : les routes /api/users (GET liste, POST creation, PATCH
- * desactiver/reactiver/changer role, POST reset-password), le champ
- * User.active et le refus de login d'un user desactive n'existent pas encore.
- * Ces tests echouent tant que la feature n'est pas implementee.
- *
  * Contrat d'implementation cible (derive des AC + ADR-0009) :
  *  - GET  /api/users               (ADMIN) -> 200 liste des users DU tenant courant.
  *  - POST /api/users               (ADMIN) body { email, firstName, lastName, role }
- *        -> 201 { data: { user: { id, email, role, active }, tempPassword } }
+ *        -> 201 { data: { user: { id, email, role, active }, invitationSent } }
  *        cree le compte dans le tenant de l'ADMIN, role COMMERCIAL ou ADMIN,
- *        mustChangePassword=true, mot de passe temporaire conforme a la policy.
+ *        mustChangePassword=true, AUCUN mot de passe renvoye (invitation par email).
  *  - PATCH /api/users/:id          (ADMIN) body { active?, role? }
  *        -> 200 ; desactive/reactive (User.active), change le role intra-cabinet.
  *        -> 404 si :id n'appartient pas au tenant de l'ADMIN (isolation).
  *        -> 409 si le changement enleve le dernier ADMIN actif (garde AC6).
  *  - POST /api/users/:id/reset-password (ADMIN)
- *        -> 200 ; reinitialise (chemin degrade D7 : nouveau mot de passe
- *        temporaire renvoye + mustChangePassword=true). 404 hors tenant.
+ *        -> 200 ; invalide l'acces courant (hash change) + mustChangePassword=true
+ *        + envoie un lien d'invitation par email (invitationSent). 404 hors tenant.
  *  - RBAC : un COMMERCIAL sur ces routes -> 403. Un ADMIN ne peut pas se
  *        promouvoir editeur (niveau plateforme hors de sa portee).
  */
 
-const app = buildApp();
+const recorder = new RecordingEmailSender();
+const app = buildApp({ emailSender: recorder });
 const prisma = new PrismaClient();
 
 const TENANT_A = "cabinet-um-a-ep15s02";
@@ -58,7 +62,7 @@ const TENANT_B = "cabinet-um-b-ep15s02";
 
 interface CreatedUserResponse {
   user: { id: string; email: string; role: string; active: boolean };
-  tempPassword: string;
+  invitationSent: boolean;
 }
 
 describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
@@ -113,11 +117,11 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
       });
       expect(created).not.toBeNull();
       expect(created!.tenantId).toBe(tenantA.id);
-      // EP15-S04 / D5 : le compte part en force-change au 1er login.
+      // EP15-S04 / D5 : le compte part en force-change tant qu'il n'est pas active.
       expect(created!.mustChangePassword).toBe(true);
     });
 
-    it("le mot de passe temporaire renvoye est conforme a la policy (D5) et permet le login", async () => {
+    it("aucun mot de passe n'est renvoye ; l'invitation permet d'activer puis de se connecter", async () => {
       const res = await request(app)
         .post("/api/users")
         .set("Authorization", `Bearer ${adminAJwt}`)
@@ -130,18 +134,26 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
       expect(res.status).toBe(201);
       const data = res.body.data as CreatedUserResponse;
 
-      // Chemin degrade D7 : pas d'email, le mot de passe temporaire est renvoye.
-      expect(typeof data.tempPassword).toBe("string");
-      expect(validatePassword(data.tempPassword).valid).toBe(true);
+      // Decision D1 : aucun mot de passe en clair renvoye ; une invitation est envoyee.
+      expect("tempPassword" in (res.body.data ?? {})).toBe(false);
+      expect(data.invitationSent).toBe(true);
+
+      // L'interesse definit son mot de passe via le lien recu (page /set-password
+      // -> POST /api/auth/reset-password). On recupere le token dans l'email capture.
+      const password = await activateViaInvitation(
+        app,
+        recorder,
+        "login-commercial@cabinet-a.fr",
+      );
 
       const login = await request(app).post("/api/auth/login").send({
         email: "login-commercial@cabinet-a.fr",
-        password: data.tempPassword,
+        password,
         tenantSlug: TENANT_A,
       });
       expect(login.status).toBe(200);
-      // Le login signale la gate force-change (EP15-S04 D5).
-      expect(login.body.data.mustChangePassword).toBe(true);
+      // Ayant choisi son mot de passe via l'invitation, le force-change est leve.
+      expect(login.body.data.mustChangePassword).toBe(false);
     });
 
     it("la reponse de creation ne fait jamais fuiter le hash de mot de passe", async () => {
@@ -340,7 +352,6 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
 
   describe("AC3 + login : un user desactive ne peut plus se connecter", () => {
     it("apres desactivation d'un COMMERCIAL, son login est refuse", async () => {
-      // Cree un commercial avec un mot de passe temporaire connu.
       const created = await request(app)
         .post("/api/users")
         .set("Authorization", `Bearer ${adminAJwt}`)
@@ -353,10 +364,17 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
       expect(created.status).toBe(201);
       const data = created.body.data as CreatedUserResponse;
 
+      // Active le compte via l'invitation (mot de passe choisi par l'interesse).
+      const password = await activateViaInvitation(
+        app,
+        recorder,
+        "desactive@cabinet-a.fr",
+      );
+
       // Le login fonctionne tant que le compte est actif.
       const loginActif = await request(app).post("/api/auth/login").send({
         email: "desactive@cabinet-a.fr",
-        password: data.tempPassword,
+        password,
         tenantSlug: TENANT_A,
       });
       expect(loginActif.status).toBe(200);
@@ -371,7 +389,7 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
       // Le login est desormais refuse (sans 200) : un compte inactif ne se connecte pas.
       const loginInactif = await request(app).post("/api/auth/login").send({
         email: "desactive@cabinet-a.fr",
-        password: data.tempPassword,
+        password,
         tenantSlug: TENANT_A,
       });
       expect(loginInactif.status).not.toBe(200);
@@ -396,6 +414,11 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
         });
       expect(created.status).toBe(201);
       const data = created.body.data as CreatedUserResponse;
+      const password = await activateViaInvitation(
+        app,
+        recorder,
+        "reactive@cabinet-a.fr",
+      );
 
       await request(app)
         .patch(`/api/users/${data.user.id}`)
@@ -410,7 +433,7 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
 
       const login = await request(app).post("/api/auth/login").send({
         email: "reactive@cabinet-a.fr",
-        password: data.tempPassword,
+        password,
         tenantSlug: TENANT_A,
       });
       expect(login.status).toBe(200);
@@ -486,8 +509,8 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
     });
   });
 
-  describe("AC4 : reset de mot de passe (chemin degrade D7)", () => {
-    it("POST /api/users/:id/reset-password (ADMIN) -> 200, force le force-change et change le hash", async () => {
+  describe("AC4 : reinitialisation de l'acces (invitation par email, D1)", () => {
+    it("POST /api/users/:id/reset-password (ADMIN) -> 200, invalide l'acces + envoie un lien, sans mot de passe en clair", async () => {
       const created = await request(app)
         .post("/api/users")
         .set("Authorization", `Bearer ${adminAJwt}`)
@@ -507,16 +530,17 @@ describe("Security — gestion users intra-cabinet (EP15-S02)", () => {
       expect(res.status).toBe(200);
 
       const after = await prisma.user.findUnique({ where: { id } });
-      // Chemin degrade : nouveau secret (hash change) + force-change au prochain login.
+      // L'acces courant est invalide (hash change) + force-change repositionne.
       expect(after!.passwordHash).not.toBe(before!.passwordHash);
       expect(after!.mustChangePassword).toBe(true);
 
-      // Si un mot de passe temporaire est renvoye, il respecte la policy.
-      if (typeof res.body?.data?.tempPassword === "string") {
-        expect(validatePassword(res.body.data.tempPassword).valid).toBe(true);
-        // Et il ne fuit jamais le hash.
-        expect(JSON.stringify(res.body)).not.toMatch(/\$2[aby]\$/);
-      }
+      // Decision D1 : aucun mot de passe en clair dans la reponse ; un lien est envoye.
+      expect("tempPassword" in (res.body.data ?? {})).toBe(false);
+      expect(res.body.data.invitationSent).toBe(true);
+      expect(JSON.stringify(res.body)).not.toMatch(/\$2[aby]\$/);
+
+      // Un email de reinitialisation a bien ete capture pour cet utilisateur.
+      expect(recorder.lastFor("reset@cabinet-a.fr")).toBeDefined();
     });
   });
 });
