@@ -10,11 +10,13 @@
   "exports": {
     "./devis/computeTotal": {
       "types": "./dist/devis/computeTotal.d.ts",
-      "default": "./src/devis/computeTotal.ts"
+      "development": "./src/devis/computeTotal.ts",
+      "default": "./dist/devis/computeTotal.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
+    "dist",
     "src"
   ],
   "license": "UNLICENSED"
