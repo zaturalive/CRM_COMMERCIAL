@@ -48,8 +48,13 @@ WORKDIR /app/apps/frontend
 # browser tape l'API de la machine locale en prod -> requetes cassees.
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_DEMO_MODE
+# EP14-S03 : domaine racine inline au build pour le parsing du sous-domaine
+# (defaut vencor-crm.localhost en dev ; passer vencor-crm.com au build prod,
+# sinon le parsing tenant defaute sur .localhost).
+ARG NEXT_PUBLIC_BASE_DOMAIN
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
+ENV NEXT_PUBLIC_BASE_DOMAIN=$NEXT_PUBLIC_BASE_DOMAIN
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

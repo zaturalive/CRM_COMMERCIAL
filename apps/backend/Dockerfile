@@ -87,4 +87,6 @@ COPY --from=build --chown=nodejs:nodejs /app/apps/backend/package.json ./
 
 USER nodejs
 EXPOSE 4000
-CMD ["node", "dist/index.js"]
+# Applique les migrations en attente avant le boot, puis demarre. Le boot echoue
+# si une migration echoue (fail-fast : pas de demarrage sur un schema partiel).
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
