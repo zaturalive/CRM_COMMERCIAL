@@ -49,12 +49,14 @@ export default function AdminLoginPage() {
       const isEmail = res.error.startsWith(EMAIL_OTP_REQUIRED_PREFIX);
       if (isTotp || isEmail) {
         const prefix = isTotp ? TOTP_REQUIRED_PREFIX : EMAIL_OTP_REQUIRED_PREFIX;
+        const [pendingToken, emailFlag] = res.error.slice(prefix.length).split("~");
         const ctx: Pending2faContext = {
           email,
           password,
-          pendingToken: res.error.slice(prefix.length),
+          pendingToken,
           callbackUrl: "/admin",
           method: isTotp ? "totp" : "email",
+          emailAvailable: isTotp ? emailFlag === "email" : true,
           kind: "editor",
         };
         sessionStorage.setItem(PENDING_2FA_KEY, JSON.stringify(ctx));

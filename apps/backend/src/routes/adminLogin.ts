@@ -68,6 +68,24 @@ export function createAdminLoginRouter(
       // en JWT par /api/admin/2fa/login/totp|recovery|email. La TOTP reste
       // prioritaire si les deux methodes sont actives.
       if (editor.mfaEnabled) {
+        // Methodes NON exclusives : si l'email est aussi actif, on envoie l'OTP pour
+        // que l'editeur saisisse indifferemment son code appli OU email (champ unifie).
+        if (editor.mfaEmailEnabled) {
+          const code = generateOtpCode();
+          await basePrisma.platformAdmin.update({
+            where: { id: editor.id },
+            data: {
+              loginOtpHash: hashOtpCode(code),
+              loginOtpExpiresAt: new Date(Date.now() + LOGIN_OTP_TTL_MS),
+              loginOtpAttempts: 0,
+            },
+          });
+          await sendLoginOtp(
+            emailSender,
+            { email: editor.email, firstName: editor.firstName },
+            code,
+          );
+        }
         const pendingToken = signPendingEditorTotpToken({ editorId: editor.id });
         logger.info(
           { editorId: editor.id, event: "editor.2fa.login_challenge" },
@@ -75,7 +93,7 @@ export function createAdminLoginRouter(
         );
         return res.json({
           success: true,
-          data: { step: "totp_required", pendingToken },
+          data: { step: "totp_required", pendingToken, emailEnabled: editor.mfaEmailEnabled },
         });
       }
 

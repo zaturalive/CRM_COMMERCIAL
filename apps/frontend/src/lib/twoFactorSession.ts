@@ -36,6 +36,9 @@ export interface Pending2faContext {
   callbackUrl: string;
   // Methode du second facteur a saisir. Absent => "totp" (retro-compat).
   method?: "totp" | "email";
+  // Methodes NON exclusives : en mode "totp", true si l'OTP email est AUSSI actif
+  // -> champ unifie (code appli OU email) + bouton "renvoyer par email".
+  emailAvailable?: boolean;
   // EP14-S01 (editeur) : "editor" route la page de saisie vers les endpoints
   // editeur (signIn avec kind:"editor"). Absent/"user" => flux user de cabinet.
   kind?: "user" | "editor";

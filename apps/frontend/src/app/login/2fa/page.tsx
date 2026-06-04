@@ -65,6 +65,10 @@ export default function TwoFactorLoginPage() {
   }, [router]);
 
   const isEmail = ctx?.method === "email";
+  // Methodes NON exclusives : en mode totp, l'OTP email peut etre AUSSI actif ->
+  // champ unifie (code appli OU email) + bouton renvoyer.
+  const emailAvailable = ctx?.emailAvailable === true;
+  const canResendEmail = isEmail || emailAvailable;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -148,7 +152,9 @@ export default function TwoFactorLoginPage() {
             ? "Saisissez le code a 6 chiffres que nous venons de vous envoyer par email."
             : useRecovery
               ? "Saisissez un de vos codes de secours."
-              : "Saisissez le code a 6 chiffres affiche par votre application d'authentification."}
+              : emailAvailable
+                ? "Saisissez le code de votre application d'authentification OU celui recu par email."
+                : "Saisissez le code a 6 chiffres affiche par votre application d'authentification."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
@@ -158,7 +164,9 @@ export default function TwoFactorLoginPage() {
                 ? "Code recu par email"
                 : useRecovery
                   ? "Code de secours"
-                  : "Code de verification"}
+                  : emailAvailable
+                    ? "Code (application ou email)"
+                    : "Code de verification"}
             </label>
             <input
               id="code"
@@ -185,29 +193,34 @@ export default function TwoFactorLoginPage() {
         </form>
 
         <div className="mt-6 space-y-2 text-center text-xs text-text-secondary">
-          {isEmail ? (
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resending}
-              className="underline disabled:opacity-60"
-            >
-              {resending ? "Envoi..." : "Renvoyer le code par email"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setUseRecovery((v) => !v);
-                setCode("");
-                setError(null);
-              }}
-              className="underline"
-            >
-              {useRecovery
-                ? "Utiliser le code de l'application d'authentification"
-                : "Authenticator perdu ? Utiliser un code de secours"}
-            </button>
+          {!isEmail && (
+            <p>
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRecovery((v) => !v);
+                  setCode("");
+                  setError(null);
+                }}
+                className="underline"
+              >
+                {useRecovery
+                  ? "Utiliser le code de l'application d'authentification"
+                  : "Authenticator perdu ? Utiliser un code de secours"}
+              </button>
+            </p>
+          )}
+          {canResendEmail && !useRecovery && (
+            <p>
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="underline disabled:opacity-60"
+              >
+                {resending ? "Envoi..." : "Renvoyer le code par email"}
+              </button>
+            </p>
           )}
           <p>
             <button

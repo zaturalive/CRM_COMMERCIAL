@@ -168,20 +168,37 @@ router.post(
     // configurer la 2FA" est portee par l'enrolement front (page setup forcee) ;
     // le backend ne fabrique pas de JWT mfaVerified sans passage par /2fa/verify.
     if (user.mfaEnabled) {
+      // Methodes NON exclusives : si l'email est AUSSI actif, on genere+envoie l'OTP
+      // pour que l'utilisateur puisse saisir indifferemment son code appli OU email
+      // dans le meme champ. Le flag emailEnabled pilote le bouton "renvoyer par email".
+      if (user.mfaEmailEnabled) {
+        const code = generateOtpCode();
+        await basePrisma.user.update({
+          where: { id: user.id },
+          data: {
+            loginOtpHash: hashOtpCode(code),
+            loginOtpExpiresAt: new Date(Date.now() + LOGIN_OTP_TTL_MS),
+            loginOtpAttempts: 0,
+          },
+        });
+        await sendLoginOtp(
+          emailSender,
+          { email: user.email, firstName: user.firstName },
+          code,
+        );
+      }
       const pendingToken = signPendingTotpToken({
         userId: user.id,
         tenantId: user.tenantId,
         role: user.role,
       });
-      // Trace degradee (AC9) tant qu'AuditLog ne couvre pas /api/auth/* : log
-      // applicatif structure, sans secret ni code.
       logger.info(
         { userId: user.id, tenantId: user.tenantId, event: "2fa.login_challenge" },
         "2FA challenge emis au login",
       );
       return res.json({
         success: true,
-        data: { step: "totp_required", pendingToken },
+        data: { step: "totp_required", pendingToken, emailEnabled: user.mfaEmailEnabled },
       });
     }
 
@@ -707,17 +724,12 @@ router.post(
       // Seuls les hashes bcrypt sont persistes ; le clair n'est renvoye qu'ici,
       // une seule fois (AC3).
       const recoveryCodes = generateRecoveryCodes();
-      // Methodes exclusives : activer la TOTP desactive l'OTP email et purge tout
-      // code en cours (symetrique de /2fa/email/enable).
+      // Methodes NON exclusives : on active la TOTP sans toucher a l'OTP email.
       await basePrisma.user.update({
         where: { id: user.id },
         data: {
           mfaEnabled: true,
           recoveryCodes: recoveryCodes.map(hashRecoveryCode),
-          mfaEmailEnabled: false,
-          loginOtpHash: null,
-          loginOtpExpiresAt: null,
-          loginOtpAttempts: 0,
         },
       });
       logger.info(
@@ -846,21 +858,15 @@ router.post(
     "/2fa/email/enable",
     requireJWT,
     asyncHandler(async (req, res) => {
-      // Methodes exclusives (une seule a la fois, cf. UI /account/2fa) : activer
-      // l'OTP email desactive la TOTP et purge son secret + ses recovery codes.
-      // Evite l'etat "les deux actives" ou le login ne propose qu'une methode.
+      // Methodes NON exclusives : on peut cumuler TOTP + email. Au login,
+      // l'utilisateur saisit indifferemment l'un ou l'autre code (champ unifie).
       await basePrisma.user.update({
         where: { id: req.user!.userId },
-        data: {
-          mfaEmailEnabled: true,
-          mfaEnabled: false,
-          totpSecret: null,
-          recoveryCodes: [],
-        },
+        data: { mfaEmailEnabled: true },
       });
       logger.info(
         { userId: req.user!.userId, event: "2fa.email_enabled" },
-        "2FA email activee (TOTP desactivee, methodes exclusives)",
+        "2FA email activee",
       );
       return res.json({ success: true, data: { mfaEmailEnabled: true } });
     }),

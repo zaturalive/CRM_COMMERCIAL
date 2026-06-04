@@ -134,7 +134,9 @@ async function editorLoginStep(
   // (meme mecanique que le login user), /admin/login le detecte et redirige vers
   // /admin/login/2fa.
   if (body.data?.step === "totp_required") {
-    throw new Error(`${TOTP_REQUIRED_PREFIX}${body.data.pendingToken}`);
+    throw new Error(
+      `${TOTP_REQUIRED_PREFIX}${body.data.pendingToken}${body.data.emailEnabled ? "~email" : ""}`,
+    );
   }
   if (body.data?.step === "email_otp_required") {
     throw new Error(`${EMAIL_OTP_REQUIRED_PREFIX}${body.data.pendingToken}`);
@@ -336,11 +338,16 @@ export const authOptions: NextAuthOptions = {
           creds?.pendingToken &&
           (creds.totpCode || creds.recoveryCode || creds.emailOtpCode)
         ) {
-          const verified = creds.recoveryCode
+          let verified = creds.recoveryCode
             ? await recoveryEditorStep(creds.pendingToken, creds.recoveryCode)
             : creds.emailOtpCode
               ? await verifyEditorEmailOtpStep(creds.pendingToken, creds.emailOtpCode)
               : await verifyEditorTotpStep(creds.pendingToken, creds.totpCode!);
+          // Methodes NON exclusives + champ unifie : si le code "totp" ne valide pas,
+          // on retente comme OTP email (l'editeur a pu saisir l'un ou l'autre).
+          if (!verified && creds.totpCode) {
+            verified = await verifyEditorEmailOtpStep(creds.pendingToken, creds.totpCode);
+          }
           if (!verified) return null;
           return buildEditorSessionUser(verified);
         }
@@ -362,11 +369,16 @@ export const authOptions: NextAuthOptions = {
           creds?.pendingToken &&
           (creds.totpCode || creds.recoveryCode || creds.emailOtpCode)
         ) {
-          const verified = creds.recoveryCode
+          let verified = creds.recoveryCode
             ? await recoveryStep(creds.pendingToken, creds.recoveryCode)
             : creds.emailOtpCode
               ? await verifyEmailOtpStep(creds.pendingToken, creds.emailOtpCode)
               : await verifyTotpStep(creds.pendingToken, creds.totpCode!);
+          // Methodes NON exclusives + champ unifie : si le code "totp" ne valide pas
+          // le TOTP, on retente comme OTP email (saisie indifferente dans un champ).
+          if (!verified && creds.totpCode) {
+            verified = await verifyEmailOtpStep(creds.pendingToken, creds.totpCode);
+          }
           if (!verified) return null;
           return buildSessionUser(verified);
         }
@@ -392,7 +404,11 @@ export const authOptions: NextAuthOptions = {
         // d'erreur (seul canal de retour d'authorize), avec un prefixe distinct
         // selon la methode ; /login le detecte et redirige vers /login/2fa.
         if (d.step === "totp_required") {
-          throw new Error(`${TOTP_REQUIRED_PREFIX}${d.pendingToken}`);
+          // Suffixe ~email : l'OTP email est AUSSI actif (methodes non exclusives) ->
+          // le front affiche un champ unifie + le bouton "renvoyer par email".
+          throw new Error(
+            `${TOTP_REQUIRED_PREFIX}${d.pendingToken}${d.emailEnabled ? "~email" : ""}`,
+          );
         }
         if (d.step === "email_otp_required") {
           throw new Error(`${EMAIL_OTP_REQUIRED_PREFIX}${d.pendingToken}`);

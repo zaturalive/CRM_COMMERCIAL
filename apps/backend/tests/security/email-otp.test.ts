@@ -197,8 +197,8 @@ describe("Security — 2FA par email (OTP)", () => {
     });
   });
 
-  describe("Methodes exclusives", () => {
-    it("activer l'OTP email desactive la TOTP et purge le secret", async () => {
+  describe("Methodes NON exclusives (cumulables)", () => {
+    it("activer l'OTP email NE desactive PAS la TOTP (les deux coexistent)", async () => {
       await prisma.user.update({
         where: { id: aCommId },
         data: { mfaEnabled: true, totpSecret: "dummy-secret" },
@@ -207,12 +207,15 @@ describe("Security — 2FA par email (OTP)", () => {
         .post("/api/auth/2fa/email/enable")
         .set("Authorization", `Bearer ${aCommJwt}`);
       const u = await prisma.user.findUnique({ where: { id: aCommId } });
-      expect(u?.mfaEnabled).toBe(false);
-      expect(u?.totpSecret).toBeNull();
+      // EP14-S01 (revision) : methodes cumulables -> la TOTP reste intacte ET
+      // l'email est actif. Au login, l'utilisateur saisit l'un OU l'autre code.
+      expect(u?.mfaEnabled).toBe(true);
+      expect(u?.totpSecret).toBe("dummy-secret");
       expect(u?.mfaEmailEnabled).toBe(true);
-      await request(app)
-        .post("/api/auth/2fa/email/disable")
-        .set("Authorization", `Bearer ${aCommJwt}`);
+      await prisma.user.update({
+        where: { id: aCommId },
+        data: { mfaEnabled: false, totpSecret: null, mfaEmailEnabled: false },
+      });
     });
   });
 

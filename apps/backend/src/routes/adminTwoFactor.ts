@@ -137,16 +137,12 @@ export function createAdminTwoFactorRouter(
         return res.status(401).json({ success: false, error: "Invalid TOTP code" });
       }
       const recoveryCodes = generateRecoveryCodes();
-      // Methodes exclusives : activer la TOTP desactive l'OTP email.
+      // Methodes NON exclusives : on active la TOTP sans toucher a l'OTP email.
       await basePrisma.platformAdmin.update({
         where: { id: editor.id },
         data: {
           mfaEnabled: true,
           recoveryCodes: recoveryCodes.map(hashRecoveryCode),
-          mfaEmailEnabled: false,
-          loginOtpHash: null,
-          loginOtpExpiresAt: null,
-          loginOtpAttempts: 0,
         },
       });
       logger.info({ editorId: editor.id, event: "editor.2fa.enabled" }, "2FA editeur activee");
@@ -196,9 +192,10 @@ export function createAdminTwoFactorRouter(
     requireJWT,
     requireEditor,
     asyncHandler(async (req, res) => {
+      // Methodes NON exclusives : on active l'email sans toucher a la TOTP.
       await basePrisma.platformAdmin.update({
         where: { id: req.editor!.editorId },
-        data: { mfaEmailEnabled: true, mfaEnabled: false, totpSecret: null, recoveryCodes: [] },
+        data: { mfaEmailEnabled: true },
       });
       logger.info({ editorId: req.editor!.editorId, event: "editor.2fa.email_enabled" }, "2FA editeur email activee");
       return res.json({ success: true, data: { mfaEmailEnabled: true } });

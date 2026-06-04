@@ -64,6 +64,8 @@ export default function AdminTwoFactorLoginPage() {
   }, [router]);
 
   const isEmail = ctx?.method === "email";
+  const emailAvailable = ctx?.emailAvailable === true;
+  const canResendEmail = isEmail || emailAvailable;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -137,14 +139,22 @@ export default function AdminTwoFactorLoginPage() {
               ? "Saisissez le code a 6 chiffres recu par email."
               : useRecovery
                 ? "Saisissez un de vos codes de secours."
-                : "Saisissez le code a 6 chiffres de votre application d'authentification."}
+                : emailAvailable
+                  ? "Saisissez le code de votre application d'authentification OU celui recu par email."
+                  : "Saisissez le code a 6 chiffres de votre application d'authentification."}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="code" className="block text-sm font-medium text-slate-300">
-              {isEmail ? "Code recu par email" : useRecovery ? "Code de secours" : "Code de verification"}
+              {isEmail
+                ? "Code recu par email"
+                : useRecovery
+                  ? "Code de secours"
+                  : emailAvailable
+                    ? "Code (application ou email)"
+                    : "Code de verification"}
             </label>
             <input
               id="code"
@@ -171,24 +181,29 @@ export default function AdminTwoFactorLoginPage() {
         </form>
 
         <div className="mt-6 space-y-2 text-center text-xs text-slate-400">
-          {isEmail ? (
-            <button type="button" onClick={handleResend} disabled={resending} className="underline disabled:opacity-60">
-              {resending ? "Envoi..." : "Renvoyer le code par email"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setUseRecovery((v) => !v);
-                setCode("");
-                setError(null);
-              }}
-              className="underline"
-            >
-              {useRecovery
-                ? "Utiliser le code de l'application d'authentification"
-                : "Authenticator perdu ? Utiliser un code de secours"}
-            </button>
+          {!isEmail && (
+            <p>
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRecovery((v) => !v);
+                  setCode("");
+                  setError(null);
+                }}
+                className="underline"
+              >
+                {useRecovery
+                  ? "Utiliser le code de l'application d'authentification"
+                  : "Authenticator perdu ? Utiliser un code de secours"}
+              </button>
+            </p>
+          )}
+          {canResendEmail && !useRecovery && (
+            <p>
+              <button type="button" onClick={handleResend} disabled={resending} className="underline disabled:opacity-60">
+                {resending ? "Envoi..." : "Renvoyer le code par email"}
+              </button>
+            </p>
           )}
           <p>
             <button
