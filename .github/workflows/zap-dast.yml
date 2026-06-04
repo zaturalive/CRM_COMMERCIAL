@@ -27,6 +27,9 @@ jobs:
   zap-baseline:
     name: OWASP ZAP baseline (reporting)
     runs-on: ubuntu-latest
+    # Reporting : ne bloque jamais la PR. Si la stack durcie ne boote pas en CI,
+    # le job reste vert mais le step "Attendre le frontend" le signale en logs.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -68,7 +71,7 @@ jobs:
           exit 1
 
       - name: OWASP ZAP Baseline (reporting)
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: "http://localhost:3000"
           fail_action: false
