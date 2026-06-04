@@ -36,7 +36,15 @@ export function Header() {
             // callbackUrl absolu base sur le current origin : en multi-tenant
             // (NEXTAUTH_URL non defini), NextAuth fallback sur le baseUrl du
             // build qui est localhost:3000 si on passe un path relatif.
-            signOut({ callbackUrl: `${window.location.origin}/login` })
+            // On garde le cabinet courant en query (?cabinet=) pour pre-remplir le
+            // champ au retour sur /login (au lieu du DEFAULT_TENANT generique).
+            signOut({
+              callbackUrl: `${window.location.origin}/login${
+                session?.tenantSlug
+                  ? `?cabinet=${encodeURIComponent(session.tenantSlug)}`
+                  : ""
+              }`,
+            })
           }
           className="inline-flex items-center gap-1.5 rounded-md border border-[color:var(--border)] px-3 py-1.5 text-sm text-[color:var(--text-primary)] hover:bg-[color:var(--surface-glass)]"
           aria-label={tCommon("logout")}
