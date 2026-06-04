@@ -19,6 +19,12 @@ const CGU_PATH = "/onboarding/cgu";
 const TWO_FA_SETUP_PATH = "/account/2fa";
 
 /**
+ * Chemin de la gate 2FA obligatoire EDITEUR (EP14-S01 / AC7). Page de configuration
+ * 2FA editeur (Back Office), distincte de celle du cabinet.
+ */
+const ADMIN_TWO_FA_SETUP_PATH = "/admin/settings/2fa";
+
+/**
  * Domaine racine du deploiement (EP14-S03 AC3). Injecte par variable
  * d'environnement pour servir le local (.localhost, RFC 6761 6.3) et la prod
  * (.com) avec le meme code, sans wildcard DNS en dev. Defaut local pour ne pas
@@ -123,12 +129,29 @@ export default withAuth(
     // TOTP/email sur /account/2fa). Le backend impose la meme regle (require2faEnrolled).
     if (
       token?.setup2fa === true &&
+      token.isEditor !== true &&
       token.mustChangePassword !== true &&
       path !== TWO_FA_SETUP_PATH &&
       !path.startsWith(`${TWO_FA_SETUP_PATH}/`)
     ) {
       const url = req.nextUrl.clone();
       url.pathname = TWO_FA_SETUP_PATH;
+      return NextResponse.redirect(url);
+    }
+
+    // Gate 1.6 (EP14-S01 editeur / AC7) : 2FA obligatoire pour l'editeur plateforme.
+    // Distincte de la gate cabinet : page d'enrolement /admin/settings/2fa (propre au
+    // Back Office). Tant que setup2fa est true pour un editeur, on l'y redirige. Le
+    // backend impose la meme regle (requireEditor2faEnrolled sur /api/admin/*).
+    if (
+      token?.isEditor === true &&
+      token?.setup2fa === true &&
+      token.mustChangePassword !== true &&
+      path !== ADMIN_TWO_FA_SETUP_PATH &&
+      !path.startsWith(`${ADMIN_TWO_FA_SETUP_PATH}/`)
+    ) {
+      const url = req.nextUrl.clone();
+      url.pathname = ADMIN_TWO_FA_SETUP_PATH;
       return NextResponse.redirect(url);
     }
 
@@ -172,7 +195,9 @@ export default withAuth(
         // EP17 (completion) : la page de login editeur est PUBLIQUE (l'editeur n'a
         // pas encore de session). Elle est sous /admin mais exemptee de la garde
         // editeur, sinon withAuth la redirige vers /login (boucle d'acces au BO).
-        if (path === "/admin/login") {
+        // EP14-S01 (editeur) : /admin/login ET /admin/login/2fa (etape 2 du login
+        // 2FA) sont PUBLIQUES — l'editeur n'a pas encore de session a ces etapes.
+        if (path === "/admin/login" || path.startsWith("/admin/login/")) {
           return true;
         }
         // Zone Back Office : reservee a l'editeur plateforme.

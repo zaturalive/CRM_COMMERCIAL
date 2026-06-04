@@ -28,9 +28,17 @@ export interface UserJWTPayload {
 // verifie, cf. 2fa.test.ts "Anti-bypass").
 export const TOTP_PENDING_PURPOSE = "totp_pending";
 
+// EP14-S01 (extension editeur) : purpose du jeton intermediaire d'etape 2FA pour
+// l'editeur plateforme. Distinct du purpose user (porte editorId, pas userId).
+// requireJWT le refuse aussi (anti-bypass) : ce n'est pas un jeton d'acces.
+export const EDITOR_TOTP_PENDING_PURPOSE = "editor_totp_pending";
+
 export interface EditorJWTPayload {
   kind: "editor";
   editorId: string;
+  // EP14-S01 / AC5 : true uniquement sur un JWT editeur emis APRES verification du
+  // second facteur. Absent/false sur un login editeur nominal sans MFA.
+  mfaVerified?: boolean;
   iat: number;
   exp: number;
 }
@@ -54,8 +62,18 @@ export function signJWT(
  * Signe un jeton editeur (kind: "editor"). Utilise par le login editeur
  * (story EP17-S02). Le socle expose le helper pour la symetrie avec signJWT.
  */
-export function signEditorJWT(editorId: string): string {
-  return jwt.sign({ kind: "editor", editorId }, env.JWT_SECRET, {
+export function signEditorJWT(
+  editorId: string,
+  opts?: { mfaVerified?: boolean },
+): string {
+  const payload: { kind: "editor"; editorId: string; mfaVerified?: boolean } = {
+    kind: "editor",
+    editorId,
+  };
+  // EP14-S01 / AC5 : ne pose mfaVerified que s'il est vrai (login editeur post-2FA),
+  // pour ne pas alourdir les jetons nominaux et rester retro-compatible.
+  if (opts?.mfaVerified) payload.mfaVerified = true;
+  return jwt.sign(payload, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRES_IN,
   } as jwt.SignOptions);
 }
@@ -100,7 +118,11 @@ export function requireJWT(req: Request, res: Response, next: NextFunction) {
     // (pour etre verifiable par /2fa/verify) mais ne doit JAMAIS franchir une
     // route protegee tant que le second facteur n'est pas verifie. On le refuse
     // ici, au point unique de verification.
-    if ((payload as { purpose?: string }).purpose === TOTP_PENDING_PURPOSE) {
+    const pendingPurpose = (payload as { purpose?: string }).purpose;
+    if (
+      pendingPurpose === TOTP_PENDING_PURPOSE ||
+      pendingPurpose === EDITOR_TOTP_PENDING_PURPOSE
+    ) {
       return res.status(401).json({ success: false, error: "Unauthorized" });
     }
 

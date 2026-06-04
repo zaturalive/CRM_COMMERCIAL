@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/admin/tenants", label: "Tenants", story: "EP17-S02" },
   { href: "/admin/users", label: "Utilisateurs", story: "EP17-S03" },
   { href: "/admin/logs", label: "Logs", story: "EP17-S05" },
+  { href: "/admin/settings/2fa", label: "Securite 2FA", story: "EP14-S01" },
 ];
 
 export default async function AdminLayout({
@@ -35,7 +36,10 @@ export default async function AdminLayout({
   // le chemin courant via l'en-tete pose par middleware.ts et on rend la page de
   // login telle quelle (elle porte sa propre mise en page).
   const pathname = (await headers()).get("x-pathname") ?? "";
-  if (pathname === "/admin/login") {
+  // EP14-S01 (editeur) : /admin/login ET /admin/login/2fa (etape 2 du login 2FA)
+  // sont publiques et portent leur propre mise en page (pas de shell BO, pas de
+  // garde isEditor : l'editeur n'a pas encore de session a ces etapes).
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/login/")) {
     return <>{children}</>;
   }
 

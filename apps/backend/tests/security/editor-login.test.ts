@@ -5,6 +5,7 @@ import { hashSync } from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { buildApp } from "../../src/app";
 import { env } from "../../src/config/env";
+import { hashOtpCode } from "../../src/lib/emailOtp";
 import {
   setupTestTenant,
   teardownTestTenant,
@@ -109,16 +110,44 @@ describe("Security — Login editeur POST /api/admin/login (EP17)", () => {
       expect(decoded.editorId).toBeTruthy();
     });
 
-    it("le JWT editeur franchit /api/admin/* (ni 401 ni 403)", async () => {
+    it("le JWT editeur (apres 2FA) franchit /api/admin/* (ni 401 ni 403)", async () => {
+      // EP14-S01 (extension editeur) : la 2FA est OBLIGATOIRE pour l'editeur, donc
+      // un JWT editeur non enrole est desormais bloque par le gate (403). On deroule
+      // le vrai flux : enrolement email OTP -> login (challenge) -> verify -> JWT
+      // mfaVerified, qui lui franchit le Back Office. On desactive la 2FA en fin de
+      // test pour ne pas polluer l'etat des cas de login nominal.
+      await prisma.platformAdmin.update({
+        where: { email: EDITOR_EMAIL },
+        data: { mfaEmailEnabled: true },
+      });
       const login = await request(app)
         .post("/api/admin/login")
         .send({ email: EDITOR_EMAIL, password: EDITOR_PASSWORD });
-      const editorJwt = login.body.data.jwt;
+      expect(login.body.data.step).toBe("email_otp_required");
+      const pendingToken = login.body.data.pendingToken;
+      // Le login a genere un OTP aleatoire (envoye par email) ; on pose un code connu.
+      await prisma.platformAdmin.update({
+        where: { email: EDITOR_EMAIL },
+        data: {
+          loginOtpHash: hashOtpCode("123456"),
+          loginOtpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+          loginOtpAttempts: 0,
+        },
+      });
+      const verify = await request(app)
+        .post("/api/admin/2fa/login/email")
+        .send({ pendingToken, code: "123456" });
+      const editorJwt = verify.body.data.jwt;
       const res = await request(app)
         .get("/api/admin/tenants")
         .set("Authorization", `Bearer ${editorJwt}`);
       expect(res.status).not.toBe(401);
       expect(res.status).not.toBe(403);
+      // Cleanup : on remet l'editeur non enrole pour les cas de login nominal.
+      await prisma.platformAdmin.update({
+        where: { email: EDITOR_EMAIL },
+        data: { mfaEmailEnabled: false, loginOtpHash: null, loginOtpExpiresAt: null, loginOtpAttempts: 0 },
+      });
     });
   });
 

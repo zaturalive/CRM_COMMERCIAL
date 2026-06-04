@@ -3,7 +3,10 @@ import { hashSync, compareSync } from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
-import { TOTP_PENDING_PURPOSE } from "../middleware/requireJWT";
+import {
+  TOTP_PENDING_PURPOSE,
+  EDITOR_TOTP_PENDING_PURPOSE,
+} from "../middleware/requireJWT";
 
 /**
  * EP14-S01 — primitives 2FA TOTP (RFC 6238) et codes de secours.
@@ -89,6 +92,48 @@ export function verifyPendingTotpToken(
       tenantId: decoded.tenantId,
       role: decoded.role,
     };
+  } catch {
+    return null;
+  }
+}
+
+interface PendingEditorTotpClaims {
+  purpose: typeof EDITOR_TOTP_PENDING_PURPOSE;
+  editorId: string;
+}
+
+/**
+ * EP14-S01 (extension editeur) — jeton intermediaire d'etape 2FA pour l'editeur
+ * plateforme. Miroir de signPendingTotpToken mais porte editorId (l'editeur n'a
+ * pas de tenantId/role). Purpose distinct refuse par requireJWT (anti-bypass).
+ */
+export function signPendingEditorTotpToken(claims: { editorId: string }): string {
+  return jwt.sign(
+    { purpose: EDITOR_TOTP_PENDING_PURPOSE, ...claims },
+    env.JWT_SECRET,
+    { expiresIn: PENDING_TOKEN_TTL } as jwt.SignOptions,
+  );
+}
+
+/**
+ * Verifie/decode un pendingToken editeur (HS256, purpose editor_totp_pending).
+ * Retourne null sur signature invalide, expiration, mauvais purpose ou forme
+ * incorrecte — l'etape 2 doit alors echouer sans emettre de JWT.
+ */
+export function verifyPendingEditorTotpToken(
+  token: string,
+): { editorId: string } | null {
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET, {
+      algorithms: ["HS256"],
+    }) as Partial<PendingEditorTotpClaims>;
+    if (
+      decoded.purpose !== EDITOR_TOTP_PENDING_PURPOSE ||
+      typeof decoded.editorId !== "string"
+    ) {
+      return null;
+    }
+    return { editorId: decoded.editorId };
   } catch {
     return null;
   }

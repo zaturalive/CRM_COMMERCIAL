@@ -30,10 +30,13 @@ export const EMAIL_OTP_REQUIRED_PREFIX = "EMAIL_OTP_REQUIRED:";
 export interface Pending2faContext {
   email: string;
   password: string;
-  tenantSlug: string;
+  // Cabinet : present pour un user. Absent pour l'editeur plateforme (sans cabinet).
+  tenantSlug?: string;
   pendingToken: string;
   callbackUrl: string;
-  // Methode du second facteur a saisir sur /login/2fa. Absent => "totp"
-  // (retro-compat : l'ancien flux TOTP ne posait pas ce champ).
+  // Methode du second facteur a saisir. Absent => "totp" (retro-compat).
   method?: "totp" | "email";
+  // EP14-S01 (editeur) : "editor" route la page de saisie vers les endpoints
+  // editeur (signIn avec kind:"editor"). Absent/"user" => flux user de cabinet.
+  kind?: "user" | "editor";
 }

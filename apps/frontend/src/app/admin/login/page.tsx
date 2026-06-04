@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import {
+  PENDING_2FA_KEY,
+  TOTP_REQUIRED_PREFIX,
+  EMAIL_OTP_REQUIRED_PREFIX,
+  type Pending2faContext,
+} from "@/lib/twoFactorSession";
 
 /**
  * EP17 (completion) — page de login editeur plateforme.
@@ -36,6 +42,25 @@ export default function AdminLoginPage() {
     });
     setLoading(false);
     if (res?.error) {
+      // EP14-S01 (editeur) : second facteur requis. Le pendingToken est transporte
+      // dans le message d'erreur (prefixe). On stocke le contexte cote client
+      // (ephemere) et on bascule sur la page de saisie du code.
+      const isTotp = res.error.startsWith(TOTP_REQUIRED_PREFIX);
+      const isEmail = res.error.startsWith(EMAIL_OTP_REQUIRED_PREFIX);
+      if (isTotp || isEmail) {
+        const prefix = isTotp ? TOTP_REQUIRED_PREFIX : EMAIL_OTP_REQUIRED_PREFIX;
+        const ctx: Pending2faContext = {
+          email,
+          password,
+          pendingToken: res.error.slice(prefix.length),
+          callbackUrl: "/admin",
+          method: isTotp ? "totp" : "email",
+          kind: "editor",
+        };
+        sessionStorage.setItem(PENDING_2FA_KEY, JSON.stringify(ctx));
+        router.push("/admin/login/2fa");
+        return;
+      }
       // Message volontairement generique : ni l'existence de l'email editeur ni
       // l'etat du compte ne sont distingues cote UI (le backend egalise deja le
       // timing, SEC-11).

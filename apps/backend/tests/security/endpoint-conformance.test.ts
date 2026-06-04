@@ -168,6 +168,16 @@ const PUBLIC_ROUTES = new Set<string>([
   // explicitement pour rester "secure by default" : c'est la seule route
   // /api/admin/* non gardee, et ce choix est conscient.
   "POST /api/admin/login",
+  // EP14-S01 (extension editeur) : etape 2 du login editeur (2FA). PUBLIQUES par
+  // conception — l'identite vient du pendingToken signe (l'editeur n'a pas encore
+  // de JWT d'acces a ce stade), montees AVANT requireEditor (app.ts). Les routes
+  // de SETUP (/api/admin/2fa/setup, /confirm, /status, /disable, /email/enable,
+  // /email/disable) NE sont PAS ici : elles portent requireJWT + requireEditor et
+  // doivent satisfaire la baseline B (401 sans auth, 403 avec JWT tenant).
+  "POST /api/admin/2fa/login/totp",
+  "POST /api/admin/2fa/login/recovery",
+  "POST /api/admin/2fa/login/email",
+  "POST /api/admin/2fa/login/email/resend",
 ]);
 
 /**

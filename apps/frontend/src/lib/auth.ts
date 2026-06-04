@@ -74,6 +74,8 @@ interface EditorLoginData {
   lastName: string;
   jwt: string;
   mustChangePassword?: boolean;
+  // EP14-S01 (editeur) / AC7 : true si l'editeur doit configurer sa 2FA (non enrole).
+  setup2fa?: boolean;
 }
 
 /**
@@ -101,9 +103,11 @@ function buildEditorSessionUser(d: EditorLoginData): User {
     isEditor: true,
     mustChangePassword: d.mustChangePassword === true,
     cguAccepted: true,
-    // EP14-S01 / AC7 : l'editeur plateforme est hors du gate 2FA cabinet (il a son
-    // propre flux d'auth, sans contexte tenant) -> jamais redirige vers /account/2fa.
-    setup2fa: false,
+    // EP14-S01 (editeur) / AC7 : la 2FA est OBLIGATOIRE pour l'editeur. setup2fa
+    // vient du backend (login nominal : true si non enrole ; post-2FA : false). Le
+    // middleware redirige vers /admin/settings/2fa (et non /account/2fa, propre au
+    // cabinet) tant que setup2fa est true.
+    setup2fa: d.setup2fa === true,
   };
 }
 
@@ -121,6 +125,66 @@ async function editorLoginStep(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  // EP14-S01 (editeur) / AC4 : mot de passe valide mais second facteur requis.
+  // AUCUN JWT a ce stade : on transporte le pendingToken dans le message d'erreur
+  // (meme mecanique que le login user), /admin/login le detecte et redirige vers
+  // /admin/login/2fa.
+  if (body.data?.step === "totp_required") {
+    throw new Error(`${TOTP_REQUIRED_PREFIX}${body.data.pendingToken}`);
+  }
+  if (body.data?.step === "email_otp_required") {
+    throw new Error(`${EMAIL_OTP_REQUIRED_PREFIX}${body.data.pendingToken}`);
+  }
+  return body.data as EditorLoginData;
+}
+
+/**
+ * EP14-S01 (editeur) — etape 2 du second facteur editeur. Echange pendingToken +
+ * code contre la charge utile de login editeur (JWT mfaVerified). null sur code
+ * invalide / challenge expire (401 backend). Endpoints /api/admin/2fa/login/*.
+ */
+async function verifyEditorTotpStep(
+  pendingToken: string,
+  totpCode: string,
+): Promise<EditorLoginData | null> {
+  const res = await fetch(`${BACKEND_URL_EDITOR}/api/admin/2fa/login/totp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pendingToken, token: totpCode }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  return body.data as EditorLoginData;
+}
+
+async function verifyEditorEmailOtpStep(
+  pendingToken: string,
+  code: string,
+): Promise<EditorLoginData | null> {
+  const res = await fetch(`${BACKEND_URL_EDITOR}/api/admin/2fa/login/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pendingToken, code }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  return body.data as EditorLoginData;
+}
+
+async function recoveryEditorStep(
+  pendingToken: string,
+  recoveryCode: string,
+): Promise<EditorLoginData | null> {
+  const res = await fetch(`${BACKEND_URL_EDITOR}/api/admin/2fa/login/recovery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pendingToken, recoveryCode }),
   });
   if (!res.ok) return null;
   const body = await res.json();
@@ -263,6 +327,24 @@ export const authOptions: NextAuthOptions = {
         // EP17 (completion) : chemin editeur. Discrimine par kind === "editor",
         // AVANT le check tenantSlug (un editeur n'en fournit pas). Le login
         // cabinet reste strictement inchange en dessous.
+        // EP14-S01 (editeur) : etape 2 du second facteur editeur. kind "editor" +
+        // pendingToken + code -> verification directe contre /api/admin/2fa/login/*
+        // (l'identite vient du pendingToken). AVANT la branche editeur nominale pour
+        // ne pas rejouer /api/admin/login (qui regenererait l'OTP email).
+        if (
+          creds?.kind === "editor" &&
+          creds?.pendingToken &&
+          (creds.totpCode || creds.recoveryCode || creds.emailOtpCode)
+        ) {
+          const verified = creds.recoveryCode
+            ? await recoveryEditorStep(creds.pendingToken, creds.recoveryCode)
+            : creds.emailOtpCode
+              ? await verifyEditorEmailOtpStep(creds.pendingToken, creds.emailOtpCode)
+              : await verifyEditorTotpStep(creds.pendingToken, creds.totpCode!);
+          if (!verified) return null;
+          return buildEditorSessionUser(verified);
+        }
+
         if (creds?.kind === "editor") {
           if (!creds.email || !creds.password) return null;
           const editor = await editorLoginStep(creds.email, creds.password);
