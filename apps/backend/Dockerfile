@@ -87,6 +87,9 @@ COPY --from=build --chown=nodejs:nodejs /app/apps/backend/package.json ./
 
 USER nodejs
 EXPOSE 4000
+# Healthcheck TCP (node present, pas de dependance curl/wget ; OK avec read_only).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "require('net').connect(4000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"
 # Applique les migrations en attente avant le boot, puis demarre. Le boot echoue
 # si une migration echoue (fail-fast : pas de demarrage sur un schema partiel).
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
