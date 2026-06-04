@@ -10,6 +10,11 @@ import { readFileSync } from "node:fs";
 
 config({ path: resolve(__dirname, "../.env") });
 
+// Secret partage Google (SSO) pour les tests : valeur par defaut si le .env local
+// ne la definit pas, afin que les tests de /api/auth/google puissent exercer le
+// chemin de succes (env.GOOGLE_SSO_SHARED_SECRET est parse au chargement du module).
+process.env.GOOGLE_SSO_SHARED_SECRET ||= "test-google-sso-shared-secret";
+
 // POURQUOI : certains tests appellent require() au runtime sur un module source
 // TypeScript (ex. tests/unit/demoDataSeedTarget.test.ts require
 // "../../src/lib/passwordPolicy"). Le require natif de Node ne sait pas charger
