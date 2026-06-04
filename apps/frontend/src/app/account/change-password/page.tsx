@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSession, useSession } from "next-auth/react";
+import { getSession, useSession, signOut } from "next-auth/react";
 
 /**
  * EP15-S04 / ADR-0009 D5 (AC4) — changer son mot de passe.
@@ -166,6 +166,21 @@ export default function ChangePasswordPage() {
             {loading ? "Enregistrement..." : "Changer le mot de passe"}
           </button>
         </form>
+
+        {/* Cette page est une "gate" bloquante (mustChangePassword) : pas de retour
+            vers l'app tant que le mot de passe n'est pas change. On laisse au moins
+            une porte de sortie pour changer de compte. */}
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() =>
+              signOut({ callbackUrl: `${window.location.origin}/login` })
+            }
+            className="text-xs text-text-secondary underline hover:text-text-primary"
+          >
+            Se deconnecter
+          </button>
+        </div>
       </div>
     </main>
   );

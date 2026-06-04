@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSession, useSession } from "next-auth/react";
+import { getSession, useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { ArrowLeft, Mail, Smartphone, ShieldCheck } from "lucide-react";
 
@@ -191,12 +191,27 @@ export default function TwoFactorSetupPage() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-6 md:p-10" data-testid="twofactor-page">
-      <Link
-        href="/account/profile"
-        className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
-      >
-        <ArrowLeft size={16} /> Retour
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        {/* En mode force (setup2fa), "Retour" boucle vers cette gate : on le cache et
+            on laisse une vraie porte de sortie (changer de compte). */}
+        {session?.setup2fa === true ? (
+          <span />
+        ) : (
+          <Link
+            href="/account/profile"
+            className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
+          >
+            <ArrowLeft size={16} /> Retour
+          </Link>
+        )}
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
+          className="text-sm text-text-secondary underline hover:text-text-primary"
+        >
+          Se deconnecter
+        </button>
+      </div>
 
       <h1 className="font-display text-2xl font-bold text-text-primary">
         Authentification a deux facteurs

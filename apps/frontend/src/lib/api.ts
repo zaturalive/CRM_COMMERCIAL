@@ -55,6 +55,31 @@ export async function apiFetch<T = unknown>(
     return { success: false, error: "Session expired" };
   }
 
+  // EP14-S01 / EP14-S02 : gates post-login (2FA obligatoire, CGU). Le backend
+  // refuse les routes metier avec un code machine. Plutot que de laisser chaque
+  // composant toaster "2FA setup required" / "CGU acceptance required" en boucle,
+  // on redirige vers la page d'enrolement/onboarding (comme le 401 -> signOut). Le
+  // middleware fait deja la redirection a la navigation ; ceci couvre les fetch de
+  // donnees qui partent avant/pendant la redirection.
+  if (res.status === 403 && typeof window !== "undefined") {
+    const gate = (await res
+      .clone()
+      .json()
+      .catch(() => null)) as { code?: string; error?: string } | null;
+    if (gate?.code === "2FA_SETUP_REQUIRED" || gate?.code === "CGU_NOT_ACCEPTED") {
+      const target =
+        gate.code === "CGU_NOT_ACCEPTED"
+          ? "/onboarding/cgu"
+          : window.location.pathname.startsWith("/admin")
+            ? "/admin/settings/2fa"
+            : "/account/2fa";
+      if (!window.location.pathname.startsWith(target)) {
+        window.location.assign(target);
+      }
+      return { success: false, error: gate.error ?? "Action requise" };
+    }
+  }
+
   // 204 No Content / 205 Reset Content : pas de body a parser.
   // Les DELETE backend renvoient 204 → sans ce cas, res.json() throw et on
   // retournait faussement { success: false }, les UI ne reloadaient pas.
