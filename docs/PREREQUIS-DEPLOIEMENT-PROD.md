@@ -142,8 +142,12 @@ mais le **client Prisma vient de l'image** → après le changement de schéma 2
 **rebuild** (le Dockerfile dev relance `prisma generate`). La BDD du conteneur a déjà les
 colonnes 2FA (migration appliquée). Emails capturés par **Mailpit** (http://localhost:8025).
 ```bash
-# Depuis la racine du repo CRM_commercial :
-docker compose -f docker/docker-compose.yml up -d --build
+# Depuis la racine du repo CRM_commercial.
+# ⚠️ --env-file .env OBLIGATOIRE : le .env est à la RACINE, mais `-f docker/...` fait
+# que compose cherche le .env dans docker/ (absent) -> sans --env-file, NEXTAUTH_SECRET
+# arrive VIDE et NextAuth plante avec "error=Configuration" / `ikm must be at least one
+# byte` (rien à voir avec la 2FA).
+docker compose -f docker/docker-compose.yml --env-file .env up -d --build
 # ~1-2 min (npm ci + prisma generate au build du backend). Suivre le boot :
 docker compose -f docker/docker-compose.yml logs -f backend
 ```
