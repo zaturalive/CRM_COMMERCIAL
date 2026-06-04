@@ -156,6 +156,34 @@ interface Calculation {
   groups: CalcGroup[];
 }
 
+/**
+ * Sauvegarde debouncee : declenche `save(rawValue)` ~400ms apres la derniere
+ * frappe -> le total se rafraichit en direct pendant la saisie, sans attendre le
+ * blur ("il faut cliquer hors du champ"). `flush` force la sauvegarde immediate
+ * (au blur). Les inputs restent non controles (defaultValue) : pas de re-render
+ * qui ferait perdre le focus (cf. note du builder).
+ */
+function useDebouncedSave(save: (raw: string) => void, delay = 400) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef(save);
+  latest.current = save;
+  const trigger = useCallback(
+    (raw: string) => {
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => latest.current(raw), delay);
+    },
+    [delay],
+  );
+  const flush = useCallback((raw: string) => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    latest.current(raw);
+  }, []);
+  return { trigger, flush };
+}
+
 export function DevisBuilder({ devisId }: { devisId: string }) {
   const { data: session } = useSession();
   const role = session?.role ?? "ADMIN";
@@ -418,10 +446,25 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
     return Array.from(map.values());
   }, [devis]);
 
-  if (loading || !devis) {
+  if (loading) {
     return (
       <div className="p-10 text-center text-[color:var(--text-secondary)]">
         Chargement du devis…
+      </div>
+    );
+  }
+  // Chargement termine mais aucun devis -> l'ID n'existe pas / pas d'acces (404).
+  // On affiche un etat explicite au lieu du spinner infini (le silent refresh ne
+  // touche pas a ce cas : il garde le devis courant en cas d'echec transitoire).
+  if (!devis) {
+    return (
+      <div className="p-10 text-center" data-testid="devis-not-found">
+        <p className="text-lg font-semibold text-[color:var(--text-primary)]">
+          Devis introuvable
+        </p>
+        <p className="mt-1 text-sm text-[color:var(--text-secondary)]">
+          Ce devis n&apos;existe pas ou vous n&apos;y avez pas acces.
+        </p>
       </div>
     );
   }
@@ -944,6 +987,16 @@ function FeeRow({
   onPatch: (body: Record<string, unknown>) => void | Promise<boolean | void>;
   onDelete: () => void;
 }) {
+  // Total live : on sauve en frappe (debounce) en plus du blur.
+  const priceSave = useDebouncedSave((raw) => {
+    const centimes = Math.round(Number(raw) * 100);
+    if (!Number.isNaN(centimes) && centimes !== fee.price) onPatch({ price: centimes });
+  });
+  const qtySave = useDebouncedSave((raw) => {
+    const v = Number(raw);
+    if (Number.isInteger(v) && v >= 1 && v !== fee.quantity) onPatch({ quantity: v });
+  });
+
   return (
     <div className="flex items-center gap-2 text-xs">
       <input
@@ -965,11 +1018,8 @@ function FeeRow({
             min={0}
             step={0.01}
             defaultValue={(fee.price / 100).toFixed(2)}
-            onBlur={(e) => {
-              const euros = Number(e.target.value);
-              const centimes = Math.round(euros * 100);
-              if (centimes !== fee.price) onPatch({ price: centimes });
-            }}
+            onChange={(e) => priceSave.trigger(e.target.value)}
+            onBlur={(e) => priceSave.flush(e.target.value)}
             className="w-24 rounded border border-[color:var(--border)] bg-white/80 py-0.5 pl-2 pr-5 text-right font-mono"
           />
           <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary">
@@ -983,10 +1033,8 @@ function FeeRow({
           type="number"
           min={1}
           defaultValue={fee.quantity}
-          onBlur={(e) => {
-            const v = Number(e.target.value);
-            if (v !== fee.quantity) onPatch({ quantity: v });
-          }}
+          onChange={(e) => qtySave.trigger(e.target.value)}
+          onBlur={(e) => qtySave.flush(e.target.value)}
           className="w-10 rounded border border-[color:var(--border)] bg-white/80 px-1 py-0.5 text-right font-mono"
         />
       </label>
@@ -1311,6 +1359,9 @@ function DiscountEditor({
     void onApply(value, type);
   };
 
+  // Total net live pendant la saisie de la remise (debounce) + flush au blur.
+  const remiseSave = useDebouncedSave((raw) => apply(raw));
+
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="vc-segmented flex overflow-hidden rounded-md border border-[color:var(--border)]">
@@ -1342,14 +1393,15 @@ function DiscountEditor({
       <label className="flex items-center gap-1 text-sm">
         <span className="text-[color:var(--text-secondary)]">Remise</span>
         <input
-          key={`${type}-${discount}`}
+          key={type}
           data-testid="devis-remise-value"
           type="number"
           min={0}
           max={type === "PERCENT" ? 100 : undefined}
           step={type === "PERCENT" ? 1 : 0.01}
           defaultValue={displayValue}
-          onBlur={(e) => apply(e.target.value)}
+          onChange={(e) => remiseSave.trigger(e.target.value)}
+          onBlur={(e) => remiseSave.flush(e.target.value)}
           className="w-28 rounded border border-[color:var(--border)] bg-white/80 px-2 py-1 text-right font-mono"
         />
         <span className="text-[color:var(--text-secondary)]">
@@ -1374,6 +1426,16 @@ function CustomOptionRow({
   onPatch: (body: Record<string, unknown>) => void | Promise<boolean | void>;
   onDelete: () => void;
 }) {
+  // Total live : sauve en frappe (debounce) + au blur.
+  const priceSave = useDebouncedSave((raw) => {
+    const centimes = Math.round(Number(raw) * 100);
+    if (!Number.isNaN(centimes) && centimes !== opt.price) onPatch({ price: centimes });
+  });
+  const qtySave = useDebouncedSave((raw) => {
+    const v = Number(raw);
+    if (Number.isInteger(v) && v >= 1 && v !== opt.quantity) onPatch({ quantity: v });
+  });
+
   return (
     <div className="flex items-center gap-2 text-sm">
       <input
@@ -1388,11 +1450,8 @@ function CustomOptionRow({
           min={0}
           step={0.01}
           defaultValue={(opt.price / 100).toFixed(2)}
-          onBlur={(e) => {
-            const euros = Number(e.target.value);
-            const centimes = Math.round(euros * 100);
-            if (centimes !== opt.price) onPatch({ price: centimes });
-          }}
+          onChange={(e) => priceSave.trigger(e.target.value)}
+          onBlur={(e) => priceSave.flush(e.target.value)}
           className="w-28 rounded border border-[color:var(--border)] bg-white/80 py-1 pl-2 pr-6 text-right font-mono"
         />
         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-text-secondary">
@@ -1405,10 +1464,8 @@ function CustomOptionRow({
           type="number"
           min={1}
           defaultValue={opt.quantity}
-          onBlur={(e) => {
-            const v = Number(e.target.value);
-            if (v !== opt.quantity) onPatch({ quantity: v });
-          }}
+          onChange={(e) => qtySave.trigger(e.target.value)}
+          onBlur={(e) => qtySave.flush(e.target.value)}
           className="w-12 rounded border border-[color:var(--border)] bg-white/80 px-1 py-1 text-right font-mono"
         />
       </label>

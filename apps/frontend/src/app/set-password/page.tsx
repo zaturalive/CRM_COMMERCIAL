@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -55,6 +55,32 @@ function SetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // Pre-validation du token au chargement : "lien invalide" sans attendre le
+  // submit (null = verification en cours, true = formulaire, false = lien KO).
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!token) {
+      setTokenValid(false);
+      return;
+    }
+    let cancelled = false;
+    fetch(`${resolveBase()}/api/auth/reset-password/check`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    })
+      .then((r) => r.json())
+      .then((b) => {
+        if (!cancelled) setTokenValid(b?.data?.valid === true);
+      })
+      .catch(() => {
+        if (!cancelled) setTokenValid(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -115,13 +141,17 @@ function SetPasswordForm() {
           {MIN_CLASSES} types parmi minuscules, majuscules, chiffres et symboles.
         </p>
 
-        {!token && (
-          <p className="mt-4 text-sm text-danger">
-            Ce lien est invalide ou incomplet. Demandez une nouvelle invitation a
-            votre administrateur.
+        {tokenValid === null && (
+          <p className="mt-4 text-sm text-text-secondary">Verification du lien…</p>
+        )}
+        {tokenValid === false && (
+          <p className="mt-4 text-sm text-danger" data-testid="set-password-invalid">
+            Ce lien est invalide, expire ou deja utilise. Demandez une nouvelle
+            invitation a votre administrateur.
           </p>
         )}
 
+        {tokenValid === true && (
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
             <label
@@ -171,6 +201,7 @@ function SetPasswordForm() {
             {loading ? "Enregistrement..." : "Definir mon mot de passe"}
           </button>
         </form>
+        )}
 
         <p className="mt-6 text-xs text-text-secondary">
           <Link href="/login" className="underline">

@@ -521,6 +521,31 @@ router.post(
   );
 
   /**
+   * POST /api/auth/reset-password/check (public) — verifie si un token est encore
+   * utilisable (existe, non expire, non consomme) SANS le consommer. Permet a la
+   * page /set-password d'afficher "lien invalide" des le chargement plutot qu'au
+   * submit. Reponse minimale { valid } : le token etant a haute entropie (32 octets
+   * CSPRNG), reveler sa validite n'aide pas une enumeration. Meme rate-limit que reset.
+   */
+  router.post(
+    "/reset-password/check",
+    resetPasswordLimiter,
+    asyncHandler(async (req, res) => {
+      const token = typeof req.body?.token === "string" ? req.body.token : "";
+      if (!token) {
+        return res.json({ success: true, data: { valid: false } });
+      }
+      const stored = await basePrisma.passwordResetToken.findUnique({
+        where: { tokenHash: hashResetToken(token) },
+      });
+      return res.json({
+        success: true,
+        data: { valid: !!stored && isResetTokenUsable(stored) },
+      });
+    }),
+  );
+
+  /**
    * POST /api/auth/2fa/setup (authentifie) — EP14-S01 AC2.
    *
    * Genere un secret TOTP (RFC 6238) pour le compte du token (req.user.userId),
