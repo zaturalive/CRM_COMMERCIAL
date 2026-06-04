@@ -91,6 +91,16 @@ services:
       - DEMO_MODE=${DEMO_MODE:-false}
       - UPLOADS_DIR=/app/uploads
       - LOG_LEVEL=warn
+      # Email prod via Brevo (SMTP). Sans ces variables, MAIL_PROVIDER tombe sur
+      # "noop" -> AUCUN email envoye. Defauts Brevo (host/port) ; identifiants dans
+      # .env.prod : MAIL_USER = login Brevo, MAIL_PASS = cle SMTP, MAIL_FROM =
+      # expediteur verifie dans Brevo.
+      - MAIL_PROVIDER=${MAIL_PROVIDER:-smtp}
+      - MAIL_HOST=${MAIL_HOST:-smtp-relay.brevo.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_FROM=${MAIL_FROM}
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASS=${MAIL_PASS}
     volumes:
       - backend_uploads:/app/uploads
     networks:

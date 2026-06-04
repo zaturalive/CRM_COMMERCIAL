@@ -77,12 +77,16 @@ services:
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3301}
       - UPLOADS_DIR=/app/uploads
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      # Email dev via Mailpit (SMTP interne mailpit:1025, UI sur :8025). Provider
-      # changeable par env (MAIL_PROVIDER=smtp|noop).
-      - MAIL_PROVIDER=smtp
-      - MAIL_HOST=mailpit
-      - MAIL_PORT=1025
-      - MAIL_FROM=no-reply@vencor-crm.localhost
+      # Email dev : Mailpit par defaut (SMTP interne mailpit:1025, UI :8025). Pour
+      # tester un VRAI envoi (Brevo) sans changer de code : definir MAIL_HOST/PORT/
+      # USER/PASS/FROM dans .env (ex : smtp-relay.brevo.com / 587 / login / cle SMTP)
+      # puis recreer le conteneur. Non defini -> Mailpit (rien ne part dehors).
+      - MAIL_PROVIDER=${MAIL_PROVIDER:-smtp}
+      - MAIL_HOST=${MAIL_HOST:-mailpit}
+      - MAIL_PORT=${MAIL_PORT:-1025}
+      - MAIL_FROM=${MAIL_FROM:-no-reply@vencor-crm.localhost}
+      - MAIL_USER=${MAIL_USER:-}
+      - MAIL_PASS=${MAIL_PASS:-}
       # Connexion Google (SSO) : secret partage pour valider l'echange depuis le
       # serveur NextAuth (POST /api/auth/google). Valeur dans .env (racine).
       - GOOGLE_SSO_SHARED_SECRET=${GOOGLE_SSO_SHARED_SECRET:-}
