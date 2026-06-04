@@ -369,7 +369,7 @@ export function createAdminTwoFactorRouter(
           loginOtpAttempts: 0,
         },
       });
-      await sendLoginOtp(emailSender, { email: editor.email, firstName: editor.firstName }, code);
+      void sendLoginOtp(emailSender, { email: editor.email, firstName: editor.firstName }, code);
       return res.json({ success: true, data: { resent: true } });
     }),
   );

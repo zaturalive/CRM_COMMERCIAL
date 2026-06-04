@@ -80,7 +80,7 @@ export function createAdminLoginRouter(
               loginOtpAttempts: 0,
             },
           });
-          await sendLoginOtp(
+          void sendLoginOtp(
             emailSender,
             { email: editor.email, firstName: editor.firstName },
             code,
@@ -107,7 +107,7 @@ export function createAdminLoginRouter(
             loginOtpAttempts: 0,
           },
         });
-        await sendLoginOtp(
+        void sendLoginOtp(
           emailSender,
           { email: editor.email, firstName: editor.firstName },
           code,

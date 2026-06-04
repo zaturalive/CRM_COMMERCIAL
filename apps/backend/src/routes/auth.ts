@@ -181,7 +181,7 @@ router.post(
             loginOtpAttempts: 0,
           },
         });
-        await sendLoginOtp(
+        void sendLoginOtp(
           emailSender,
           { email: user.email, firstName: user.firstName },
           code,
@@ -219,7 +219,7 @@ router.post(
           loginOtpAttempts: 0,
         },
       });
-      await sendLoginOtp(
+      void sendLoginOtp(
         emailSender,
         { email: user.email, firstName: user.firstName },
         code,
@@ -1005,7 +1005,7 @@ router.post(
           loginOtpAttempts: 0,
         },
       });
-      await sendLoginOtp(
+      void sendLoginOtp(
         emailSender,
         { email: user.email, firstName: user.firstName },
         code,

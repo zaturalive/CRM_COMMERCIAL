@@ -60,6 +60,12 @@ export function verifyOtpCode(candidate: string, hash: string): boolean {
  * Envoie le code OTP par email. Retourne true si parti, false sinon (aucun
  * provider branche ou envoi en echec). Le code transite uniquement par l'email,
  * pas par la reponse HTTP ; le corps consigne ne contient ni hash ni secret.
+ *
+ * IMPORTANT : a appeler en FIRE-AND-FORGET (`void`, sans `await`) depuis le login.
+ * L'envoi SMTP (Brevo) peut prendre plusieurs secondes ; le bloquer ferait depasser
+ * le delai de la requete NextAuth cote client -> NS_BINDING_ABORTED. Le code OTP est
+ * deja persiste (loginOtpHash) AVANT l'envoi, donc rien n'est perdu. Cette fonction
+ * ne rejette jamais (try/catch interne) -> `void sendLoginOtp(...)` est sur.
  */
 export async function sendLoginOtp(
   emailSender: EmailSender,

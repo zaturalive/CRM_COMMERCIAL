@@ -99,6 +99,7 @@ export default withAuth(
     const jwtSlug =
       typeof token?.tenantSlug === "string" ? token.tenantSlug : null;
     if (
+      BASE_DOMAIN &&
       token != null &&
       token.isEditor !== true &&
       !isAdminArea &&

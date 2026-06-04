@@ -109,7 +109,7 @@ export default function TwoFactorLoginPage() {
     // cabinet (port correct via window.location.port), plutot que de laisser le
     // middleware rediriger (qui, en dev, reconstruit le port interne du conteneur).
     // Depuis un sous-domaine, navigation interne classique.
-    if (parseTenantSubdomain(window.location.hostname, BASE_DOMAIN) == null) {
+    if (BASE_DOMAIN && parseTenantSubdomain(window.location.hostname, BASE_DOMAIN) == null) {
       const port = window.location.port ? `:${window.location.port}` : "";
       window.location.assign(
         `${window.location.protocol}//${ctx.tenantSlug}.${BASE_DOMAIN}${port}${target}`,

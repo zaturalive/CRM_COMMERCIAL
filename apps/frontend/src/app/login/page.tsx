@@ -183,7 +183,10 @@ export default function LoginPage() {
       // sous-domaine de son cabinet (cookie de session partage via
       // AUTH_COOKIE_DOMAIN, donc la session suit). Depuis un sous-domaine, on
       // reste sur place (navigation interne SPA).
-      if (subdomain.kind === "none") {
+      // Bascule sous-domaine UNIQUEMENT si le mode sous-domaines est configure
+      // (BASE_DOMAIN non vide). En mode apex (BASE_DOMAIN vide), on RESTE sur l'apex
+      // (sinon on construirait "demo." sans domaine -> "site introuvable").
+      if (subdomain.kind === "none" && BASE_DOMAIN) {
         const dest = `${window.location.protocol}//${tenantSlug}.${BASE_DOMAIN}${
           window.location.port ? `:${window.location.port}` : ""
         }${callbackUrl.startsWith("/") ? callbackUrl : "/dashboard"}`;
