@@ -1,14 +1,17 @@
 # Déploiement Scaleway — guide pratique
 
-> Version MVP + demo vitrine. Référence historique pour la mise en ligne du CRM
-> Chirurgien sur `crm-chirurgie.a3n.fr`.
+> Version MVP + demo vitrine. Runbook adapte du repo source (CRM Chirurgien).
 >
-> **MAJ 2026-05-20 (fork commercial)** : ce guide a ete ecrit pour le repo source. Pour le fork commercial :
-> - Repo path : `/opt/crm-commercial` (au lieu de `/opt/crm-chirurgien`)
+> **Valeurs canoniques de ce fork (Vencor)** :
+> - Domaine : `vencor-crm.com`
+> - Repo path serveur : `/opt/crm-commercial`
 > - DB : `crm_commercial`
-> - Sous-domaine cible : `crm-commercial.<editeur>.com` (a definir avec Florian)
-> - Comptes demo : `admin@cabinet-demo.fr` et `commercial@cabinet-demo.fr` uniquement (ADR-0002 retire `chirurgien@`)
-> Les commandes ci-dessous restent valables avec ces substitutions.
+> - Comptes demo : `admin@cabinet-demo.fr` / `commercial@cabinet-demo.fr` (ADR-0002 retire `chirurgien@`)
+> - Config prod : `.env.prod` (cf. `.env.prod.example`) + `docker/docker-compose.prod.yml`
+>
+> Les exemples de tenant/sous-domaine ci-dessous (`delobaux`) viennent du repo
+> source — remplacer par tes tenants reels. Checklist de mise en ligne a jour :
+> `docs/product/CHECKLIST-PRE-PROD.md`.
 
 ## 1. Prérequis serveur
 
@@ -37,10 +40,10 @@ cabinet** + le root :
 
 | Nom | Type | Cible |
 |---|---|---|
-| `crm-chirurgie.a3n.fr` | CNAME ou A | `stark.a3n.fr` ou IP directe |
-| `demo.crm-chirurgie.a3n.fr` | CNAME | `stark.a3n.fr` |
-| `delobaux.crm-chirurgie.a3n.fr` | CNAME | `stark.a3n.fr` |
-| `{slug}.crm-chirurgie.a3n.fr` | CNAME | `stark.a3n.fr` |
+| `vencor-crm.com` | CNAME ou A | `stark.a3n.fr` ou IP directe |
+| `demo.vencor-crm.com` | CNAME | `stark.a3n.fr` |
+| `delobaux.vencor-crm.com` | CNAME | `stark.a3n.fr` |
+| `{slug}.vencor-crm.com` | CNAME | `stark.a3n.fr` |
 
 → Cert Let's Encrypt **HTTP-01** simple, émis à la demande.
 
@@ -48,17 +51,17 @@ cabinet** + le root :
 
 | Nom | Type | Cible |
 |---|---|---|
-| `crm-chirurgie.a3n.fr` | A | IP Scaleway |
-| `*.crm-chirurgie.a3n.fr` | A | IP Scaleway |
+| `vencor-crm.com` | A | IP Scaleway |
+| `*.vencor-crm.com` | A | IP Scaleway |
 
 → Nécessite **DNS-01** côté Traefik (provider DNS configuré avec
 credentials). Plus complexe mais zéro action lors de l'onboarding.
 
 Vérifier la propagation avant la suite :
 ```bash
-dig +short demo.crm-chirurgie.a3n.fr
-dig +short delobaux.crm-chirurgie.a3n.fr
-dig +short crm-chirurgie.a3n.fr
+dig +short demo.vencor-crm.com
+dig +short delobaux.vencor-crm.com
+dig +short vencor-crm.com
 ```
 Les 3 doivent répondre avec l'IP Scaleway de `stark`.
 
@@ -68,7 +71,7 @@ Les 3 doivent répondre avec l'IP Scaleway de `stark`.
 # Depuis ton poste
 rsync -av --exclude node_modules --exclude .git \
   /home/dimitry/Documents/Perso/Projets/CRM_chirurgien/ \
-  scaleway-host:/opt/crm-chirurgien/
+  scaleway-host:/opt/crm-commercial/
 ```
 
 Alternative : `git clone` sur le serveur si tu as un repo GitHub privé
@@ -81,13 +84,13 @@ serveur. Deux options :
 
 ### 3.1. Transférer celui généré localement
 ```bash
-scp .env.prod scaleway-host:/opt/crm-chirurgien/.env.prod
-ssh scaleway-host 'chmod 600 /opt/crm-chirurgien/.env.prod'
+scp .env.prod scaleway-host:/opt/crm-commercial/.env.prod
+ssh scaleway-host 'chmod 600 /opt/crm-commercial/.env.prod'
 ```
 
 ### 3.2. Ou régénérer sur le serveur
 ```bash
-cd /opt/crm-chirurgien
+cd /opt/crm-commercial
 cp .env.prod.example .env.prod
 
 # Générer les secrets
@@ -101,8 +104,8 @@ chmod 600 .env.prod
 ```
 
 Vérifier :
-- `DOMAIN=crm-chirurgie.a3n.fr`
-- `NEXT_PUBLIC_BACKEND_URL=https://delobaux.crm-chirurgie.a3n.fr` (peut
+- `DOMAIN=vencor-crm.com`
+- `NEXT_PUBLIC_BACKEND_URL=https://delobaux.vencor-crm.com` (peut
   pointer sur n'importe quel sous-domaine, api.ts passe en relatif en
   prod grâce au même domaine racine)
 - `DEMO_MODE=true` et `NEXT_PUBLIC_DEMO_MODE=true` **pour l'instance vitrine
@@ -113,7 +116,7 @@ Vérifier :
 ## 4. Build + démarrage
 
 ```bash
-cd /opt/crm-chirurgien
+cd /opt/crm-commercial
 docker compose -f docker/docker-compose.prod.yml --env-file .env.prod build
 docker compose -f docker/docker-compose.prod.yml --env-file .env.prod up -d
 ```
@@ -167,17 +170,17 @@ devis dans le tenant `cabinet-delobaux`. Idempotent (re-run = purge
 ## 6. Smoke tests à faire dans ton navigateur
 
 ### 6.1. Landing
-- Aller sur `https://crm-chirurgie.a3n.fr`
+- Aller sur `https://vencor-crm.com`
 - Vérifier : titre "CRM Chirurgien", input slug, bouton violet
 - Taper `delobaux` + Entrée → redirige vers
-  `https://delobaux.crm-chirurgie.a3n.fr`
+  `https://delobaux.vencor-crm.com`
 
 ### 6.2. Login tenant demo
-- `https://demo.crm-chirurgie.a3n.fr` → page login
+- `https://demo.vencor-crm.com` → page login
 - Email `admin@cabinet-demo.fr`, tenantSlug `demo`, mdp `demo` → dashboard
 
 ### 6.3. Login tenant delobaux
-- `https://delobaux.crm-chirurgie.a3n.fr` → page login
+- `https://delobaux.vencor-crm.com` → page login
 - Email `julie@cabinet-delobaux.fr`, tenantSlug `cabinet-delobaux`,
   mdp `demo` → dashboard
 
@@ -203,7 +206,7 @@ devis dans le tenant `cabinet-delobaux`. Idempotent (re-run = purge
 ### 6.6. Certificats
 ```bash
 # Vérifier que Let's Encrypt a bien émis les certs
-curl -I https://delobaux.crm-chirurgie.a3n.fr/ | grep -i "strict-transport"
+curl -I https://delobaux.vencor-crm.com/ | grep -i "strict-transport"
 # Doit répondre 200 avec HSTS (Helmet)
 ```
 
@@ -229,7 +232,7 @@ Si un déploiement casse :
 docker compose -f docker/docker-compose.prod.yml --env-file .env.prod down
 
 # Redéployer la version précédente
-git -C /opt/crm-chirurgien checkout <hash-commit-stable>
+git -C /opt/crm-commercial checkout <hash-commit-stable>
 docker compose -f docker/docker-compose.prod.yml --env-file .env.prod \
   up -d --build
 ```
@@ -241,7 +244,7 @@ perdue).
 
 Quand tu merges un fix :
 ```bash
-cd /opt/crm-chirurgien
+cd /opt/crm-commercial
 git pull
 docker compose -f docker/docker-compose.prod.yml --env-file .env.prod \
   up -d --build
@@ -305,7 +308,7 @@ l'image, pas au runtime.
   surface doit être absente = 404) :
   ```bash
   curl -s -o /dev/null -w "%{http_code}\n" \
-    -X POST https://<cabinet>.crm-chirurgie.a3n.fr/api/demo/switch-role \
+    -X POST https://<cabinet>.vencor-crm.com/api/demo/switch-role \
     -H "Content-Type: application/json" -d '{"role":"ADMIN"}'
   # Attendu : 404 (la route n'est pas montée en production)
   ```
