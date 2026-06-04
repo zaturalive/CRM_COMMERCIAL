@@ -8,6 +8,7 @@ import { requireJWT } from "./middleware/requireJWT";
 import { requireTenant } from "./middleware/requireTenant";
 import { requireEditor } from "./middleware/requireEditor";
 import { requireCguAccepted } from "./middleware/requireCguAccepted";
+import { require2faEnrolled } from "./middleware/require2faEnrolled";
 import { auditLog } from "./middleware/auditLog";
 import { createAuthRouter } from "./routes/auth";
 import type { EmailSender } from "./lib/email/EmailSender";
@@ -154,6 +155,15 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // + requireTenant (req.user / req.editor deja peuples) et avant la declaration
   // des routers tenant, de sorte qu'il couvre toutes les routes mutantes /api/*.
   app.use("/api", auditLog);
+
+  // EP14-S01 / AC7 — gate 2FA obligatoire pour l'ADMIN (couche post-login
+  // requirements, garde back). Montee APRES requireTenant (req.user.userId peuple)
+  // + audit, et AVANT le gate CGU : securite du compte d'abord, consentement legal
+  // ensuite (meme ordre que change-password -> CGU dans postLoginRequirements).
+  // Tant qu'un ADMIN n'a pas enrole TOTP ou email OTP, toute route metier est
+  // refusee en 403 (code 2FA_SETUP_REQUIRED) ; le front redirige vers /account/2fa.
+  // Les endpoints d'enrolement (/api/auth/2fa/*) sont montes avant cette chaine.
+  app.use("/api", require2faEnrolled);
 
   // EP14-S02 / ADR-0009 D5 — gate CGU (couche post-login requirements, garde
   // back). Montee APRES requireTenant (req.user.tenantId peuple) et APRES l'audit

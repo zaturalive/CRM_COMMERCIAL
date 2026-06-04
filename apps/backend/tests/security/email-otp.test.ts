@@ -180,6 +180,10 @@ describe("Security — 2FA par email (OTP)", () => {
     });
 
     it("enable sur commercial A ne touche ni admin A ni le commercial du tenant B", async () => {
+      // EP14-S01 / AC7 : le harness enrole l'ADMIN en email OTP par defaut. On le
+      // remet a false ici pour prouver l'ISOLATION (l'action du commercial A ne doit
+      // pas reactiver/toucher l'admin A) a partir d'un etat de reference connu.
+      await prisma.user.update({ where: { id: aAdminId }, data: { mfaEmailEnabled: false } });
       await request(app)
         .post("/api/auth/2fa/email/enable")
         .set("Authorization", `Bearer ${aCommJwt}`);

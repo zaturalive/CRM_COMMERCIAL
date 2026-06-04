@@ -37,11 +37,13 @@ const INACTIVE_EDITOR_EMAIL = "editor-inactive@vencor.local";
 
 describe("Security — Login editeur POST /api/admin/login (EP17)", () => {
   let adminEmail: string;
+  let commercialEmail: string;
   let adminTenantSlug: string;
 
   beforeAll(async () => {
     const A = await setupTestTenant(app, TA);
     adminEmail = A.admin.email;
+    commercialEmail = A.commercial.email;
     adminTenantSlug = A.tenant.slug;
 
     const passwordHash = hashSync(EDITOR_PASSWORD, 10);
@@ -178,10 +180,13 @@ describe("Security — Login editeur POST /api/admin/login (EP17)", () => {
     });
 
     it("un JWT user nominal ne franchit pas /api/admin/* (403), meme apres login user", async () => {
+      // EP14-S01 / AC7 : COMMERCIAL (login nominal, JWT immediat) car l'ADMIN est
+      // enrole 2FA par defaut. Le test verifie qu'un JWT user cabinet (role-agnostique)
+      // ne franchit pas la zone editeur ; le commercial est un user cabinet valide.
       const A = await request(app)
         .post("/api/auth/login")
         .send({
-          email: adminEmail,
+          email: commercialEmail,
           password: "test-password-123",
           tenantSlug: adminTenantSlug,
         });

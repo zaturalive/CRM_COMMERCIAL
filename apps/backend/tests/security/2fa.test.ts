@@ -97,9 +97,13 @@ describe("Security — 2FA TOTP admin (EP14-S01)", () => {
   // Reinitialise l'etat MFA des comptes avant chaque test pour l'independance de
   // l'ordre d'execution (les tests qui activent/desactivent la MFA ne fuitent pas).
   beforeEach(async () => {
+    // EP14-S01 / AC7 : on reset AUSSI mfaEmailEnabled (le harness enrole l'ADMIN en
+    // email OTP par defaut pour le gate require2faEnrolled). Sans ce reset, le login
+    // de l'ADMIN renverrait un challenge email au lieu d'un JWT nominal, et les
+    // tests de setup TOTP (qui partent d'un compte non enrole) echoueraient.
     await prisma.user.updateMany({
       where: { tenantId: ctx.tenant.id },
-      data: { totpSecret: null, mfaEnabled: false, recoveryCodes: [] },
+      data: { totpSecret: null, mfaEnabled: false, mfaEmailEnabled: false, recoveryCodes: [] },
     });
   });
 

@@ -41,6 +41,7 @@ interface BackendLoginData {
   jwt: string;
   mustChangePassword?: boolean;
   cguAccepted?: boolean;
+  setup2fa?: boolean;
 }
 
 function buildSessionUser(d: BackendLoginData): User {
@@ -57,6 +58,8 @@ function buildSessionUser(d: BackendLoginData): User {
     mustChangePassword: d.mustChangePassword === true,
     // EP14-S02 / ADR-0009 D5 : etat CGU expose par le backend au login.
     cguAccepted: d.cguAccepted === true,
+    // EP14-S01 / AC7 : gate 2FA obligatoire (true pour un ADMIN non enrole).
+    setup2fa: d.setup2fa === true,
   };
 }
 
@@ -98,6 +101,9 @@ function buildEditorSessionUser(d: EditorLoginData): User {
     isEditor: true,
     mustChangePassword: d.mustChangePassword === true,
     cguAccepted: true,
+    // EP14-S01 / AC7 : l'editeur plateforme est hors du gate 2FA cabinet (il a son
+    // propre flux d'auth, sans contexte tenant) -> jamais redirige vers /account/2fa.
+    setup2fa: false,
   };
 }
 
@@ -351,6 +357,8 @@ export const authOptions: NextAuthOptions = {
         token.jwt = user.jwt;
         token.mustChangePassword = user.mustChangePassword === true;
         token.cguAccepted = user.cguAccepted === true;
+        // EP14-S01 / AC7 : gate 2FA obligatoire ADMIN propagee dans le token.
+        token.setup2fa = user.setup2fa === true;
         // EP17 (completion) : flag editeur plateforme propage dans le token de
         // session. Seul vecteur d'autorisation de la garde /admin (middleware +
         // layout). Absent / false pour une session de cabinet.
@@ -365,6 +373,9 @@ export const authOptions: NextAuthOptions = {
         if (session.jwt) token.jwt = session.jwt;
         if (session.mustChangePassword === false) token.mustChangePassword = false;
         if (session.cguAccepted === true) token.cguAccepted = true;
+        // EP14-S01 / AC7 : leve la gate 2FA apres un enrolement reussi (TOTP/email)
+        // sans imposer de re-login (la page /account/2fa appelle update({setup2fa:false})).
+        if (session.setup2fa === false) token.setup2fa = false;
       }
       return token;
     },
@@ -378,6 +389,8 @@ export const authOptions: NextAuthOptions = {
       session.jwt = token.jwt;
       session.mustChangePassword = token.mustChangePassword === true;
       session.cguAccepted = token.cguAccepted === true;
+      // EP14-S01 / AC7 : expose la gate 2FA dans la session (lue par middleware.ts).
+      session.setup2fa = token.setup2fa === true;
       // EP17 (completion) : expose le flag editeur dans la session (lu par
       // admin/layout.tsx getServerSession et la garde middleware).
       session.isEditor = token.isEditor === true;

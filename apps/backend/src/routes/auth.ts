@@ -14,7 +14,7 @@ import {
   googleSsoSchema,
 } from "../schemas/auth";
 import { validatePassword } from "../lib/passwordPolicy";
-import { isCguSatisfied } from "../lib/postLoginRequirements";
+import { isCguSatisfied, requires2faSetup } from "../lib/postLoginRequirements";
 import { signJWT, requireJWT, verifyUserAccessToken } from "../middleware/requireJWT";
 import {
   loginLimiter,
@@ -244,6 +244,16 @@ router.post(
         cguAccepted: isCguSatisfied({
           cguAcceptedAt: tenant.cguAcceptedAt,
           cguVersion: tenant.cguVersion,
+        }),
+        // EP14-S01 / AC7 : true si cet ADMIN doit configurer la 2FA avant d'acceder
+        // aux routes metier (non encore enrole). A ce stade mfaEnabled =
+        // mfaEmailEnabled = false (sinon on aurait emis un challenge plus haut),
+        // donc setup2fa <=> role ADMIN. Le front redirige vers /account/2fa ; le
+        // backend l'impose via require2faEnrolled (le flag n'est qu'un confort UX).
+        setup2fa: requires2faSetup({
+          role: user.role,
+          mfaEnabled: user.mfaEnabled,
+          mfaEmailEnabled: user.mfaEmailEnabled,
         }),
         jwt,
       },
@@ -1138,6 +1148,10 @@ function buildMfaLoginSuccess(user: {
       cguAcceptedAt: user.tenant.cguAcceptedAt,
       cguVersion: user.tenant.cguVersion,
     }),
+    // EP14-S01 / AC7 : on n'atteint ce builder qu'APRES verification d'un second
+    // facteur (TOTP, recovery ou email OTP), donc le compte est enrole par
+    // definition -> jamais de gate setup-2fa a poser ici.
+    setup2fa: false,
     mfaVerified: true,
     jwt,
   };

@@ -13,6 +13,12 @@ const CHANGE_PASSWORD_PATH = "/account/change-password";
 const CGU_PATH = "/onboarding/cgu";
 
 /**
+ * Chemin de la gate 2FA obligatoire ADMIN (EP14-S01 / AC7). Page de configuration
+ * 2FA existante, reutilisee comme page d'enrolement force.
+ */
+const TWO_FA_SETUP_PATH = "/account/2fa";
+
+/**
  * Domaine racine du deploiement (EP14-S03 AC3). Injecte par variable
  * d'environnement pour servir le local (.localhost, RFC 6761 6.3) et la prod
  * (.com) avec le meme code, sans wildcard DNS en dev. Defaut local pour ne pas
@@ -109,12 +115,31 @@ export default withAuth(
       return NextResponse.redirect(url);
     }
 
-    // Gate 2 : acceptation des CGU du cabinet. POURQUOI apres la gate 1 : la
-    // securite du compte passe avant le consentement (ordre ADR-0009 D5).
+    // Gate 1.5 (EP14-S01 / AC7) : 2FA obligatoire pour l'ADMIN. POURQUOI apres la
+    // gate force-change et avant la CGU : on securise le compte (mot de passe puis
+    // second facteur) avant le consentement legal. setup2fa n'est vrai que pour un
+    // ADMIN non enrole -> un COMMERCIAL n'est jamais redirige ici. La gate est levee
+    // quand le token repasse setup2fa a false (useSession().update apres enrolement
+    // TOTP/email sur /account/2fa). Le backend impose la meme regle (require2faEnrolled).
+    if (
+      token?.setup2fa === true &&
+      token.mustChangePassword !== true &&
+      path !== TWO_FA_SETUP_PATH &&
+      !path.startsWith(`${TWO_FA_SETUP_PATH}/`)
+    ) {
+      const url = req.nextUrl.clone();
+      url.pathname = TWO_FA_SETUP_PATH;
+      return NextResponse.redirect(url);
+    }
+
+    // Gate 2 : acceptation des CGU du cabinet. POURQUOI apres les gates 1 et 1.5 :
+    // la securite du compte (mot de passe + 2FA) passe avant le consentement
+    // (ordre ADR-0009 D5).
     if (
       token != null &&
       token.cguAccepted !== true &&
       token.mustChangePassword !== true &&
+      token.setup2fa !== true &&
       path !== CGU_PATH &&
       !path.startsWith(`${CGU_PATH}/`)
     ) {

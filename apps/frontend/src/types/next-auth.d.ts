@@ -25,6 +25,9 @@ declare module "next-auth" {
     // /onboarding/cgu (cf. middleware.ts). true une fois la version courante
     // acceptee par un ADMIN du cabinet.
     cguAccepted?: boolean;
+    // EP14-S01 / AC7 : gate 2FA obligatoire ADMIN. Tant que true, l'app redirige
+    // vers /account/2fa (cf. middleware.ts). true pour un ADMIN non encore enrole.
+    setup2fa?: boolean;
   }
 
   interface User extends DefaultUser {
@@ -38,6 +41,7 @@ declare module "next-auth" {
     jwt: string;
     mustChangePassword?: boolean;
     cguAccepted?: boolean;
+    setup2fa?: boolean;
     // EP17 (completion) : flag editeur plateforme pose au login editeur. Absent /
     // false pour un user de cabinet.
     isEditor?: boolean;
@@ -60,5 +64,7 @@ declare module "next-auth/jwt" {
     mustChangePassword?: boolean;
     // EP14-S02 / ADR-0009 D5 : gate CGU (cf. types Session/User).
     cguAccepted?: boolean;
+    // EP14-S01 / AC7 : gate 2FA obligatoire ADMIN (cf. types Session/User).
+    setup2fa?: boolean;
   }
 }

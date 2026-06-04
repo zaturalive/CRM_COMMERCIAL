@@ -76,7 +76,10 @@ export async function setupTestTenant(
   for (const role of roles) {
     await prisma.user.upsert({
       where: { tenantId_email: { tenantId: tenant.id, email: emails[role] } },
-      update: {},
+      // EP14-S01 / AC7 : on RESET l'etat 2FA sur update pour que le login ci-dessous
+      // soit nominal (JWT immediat) meme sur un re-run ou l'ADMIN serait deja enrole
+      // (sinon login renvoie un challenge et le JWT du harness serait absent).
+      update: { mfaEnabled: false, mfaEmailEnabled: false, totpSecret: null, recoveryCodes: [] },
       create: {
         tenantId: tenant.id,
         email: emails[role],
@@ -88,7 +91,8 @@ export async function setupTestTenant(
     });
   }
 
-  // Login chaque role pour obtenir les JWT
+  // Login chaque role pour obtenir les JWT (nominal : l'ADMIN n'est pas encore
+  // enrole 2FA a cet instant, donc JWT immediat sans challenge).
   const [admin, commercial] = await Promise.all(
     roles.map(async (role) => {
       const res = await request(app)
@@ -104,6 +108,18 @@ export async function setupTestTenant(
       };
     })
   );
+
+  // EP14-S01 / AC7 : le gate require2faEnrolled refuse 403 toute route metier a un
+  // ADMIN non enrole 2FA. Comme les tenants de test sont crees CGU-acceptee, on
+  // enrole l'ADMIN par defaut (email OTP) APRES avoir capture son JWT, pour que les
+  // suites metier existantes restent vertes. Le JWT reste valide (le gate relit la
+  // base, qui montre desormais l'enrolement). Les tests du gate 2FA
+  // (2fa-setup-gate.test.ts) reinitialisent explicitement cet etat pour observer le
+  // refus. Mirroir exact du pattern onboardedCguFields pour le gate CGU.
+  await prisma.user.update({
+    where: { tenantId_email: { tenantId: tenant.id, email: emails.ADMIN } },
+    data: { mfaEmailEnabled: true },
+  });
 
   return { tenant: { id: tenant.id, slug: tenant.slug }, admin, commercial };
 }
