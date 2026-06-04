@@ -37,6 +37,12 @@ services:
       - NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-true}
       - NEXT_PUBLIC_TENANT_SLUG=${NEXT_PUBLIC_TENANT_SLUG:-cabinet-test}
       - NEXT_PUBLIC_DEFAULT_TENANT=${NEXT_PUBLIC_DEFAULT_TENANT:-cabinet-delobaux}
+      # Connexion Google (SSO) : client OAuth (NextAuth GoogleProvider) + secret
+      # partage serveur-a-serveur. Valeurs dans .env (racine). Absents -> bouton
+      # Google inactif, login mot de passe inchange.
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_SSO_SHARED_SECRET=${GOOGLE_SSO_SHARED_SECRET:-}
     volumes:
       - ../apps/frontend:/app/apps/frontend
       # Volume anonyme pour .next (evite pollution hot-reload de l'hote)
@@ -77,6 +83,9 @@ services:
       - MAIL_HOST=mailpit
       - MAIL_PORT=1025
       - MAIL_FROM=no-reply@vencor-crm.localhost
+      # Connexion Google (SSO) : secret partage pour valider l'echange depuis le
+      # serveur NextAuth (POST /api/auth/google). Valeur dans .env (racine).
+      - GOOGLE_SSO_SHARED_SECRET=${GOOGLE_SSO_SHARED_SECRET:-}
     volumes:
       - ../apps/backend:/app/apps/backend
       # node_modules vient de l'image (npm ci au build) : NI bind-mount hote, NI

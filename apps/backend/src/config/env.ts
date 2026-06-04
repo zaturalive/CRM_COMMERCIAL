@@ -37,6 +37,10 @@ const envSchema = z.object({
   MAIL_FROM: z.string().default("no-reply@vencor-crm.localhost"),
   MAIL_USER: z.string().optional(),
   MAIL_PASS: z.string().optional(),
+  // Connexion Google (SSO) : secret partage serveur-a-serveur (serveur NextAuth
+  // frontend -> POST /api/auth/google). Optionnel : absent -> l'endpoint Google
+  // refuse (SSO non configure). N'est pas expose au navigateur.
+  GOOGLE_SSO_SHARED_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

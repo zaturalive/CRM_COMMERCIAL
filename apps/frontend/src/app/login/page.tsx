@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getProviders } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ThemeSwitcher } from "@/components/layout/ThemeSwitcher";
-import { TOTP_REQUIRED_PREFIX, PENDING_2FA_KEY } from "@/lib/twoFactorSession";
+import {
+  TOTP_REQUIRED_PREFIX,
+  EMAIL_OTP_REQUIRED_PREFIX,
+  PENDING_2FA_KEY,
+} from "@/lib/twoFactorSession";
 import { parseTenantSubdomain } from "@/lib/tenantHost";
 
 const DEFAULT_TENANT = process.env.NEXT_PUBLIC_DEFAULT_TENANT ?? "demo";
@@ -48,6 +52,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [subdomain, setSubdomain] = useState<SubdomainState>({ kind: "none" });
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  // Affiche le bouton "Se connecter avec Google" uniquement si le provider Google
+  // est configure cote serveur (getProviders reflete authOptions.providers).
+  useEffect(() => {
+    getProviders().then((p) => setGoogleEnabled(Boolean(p && "google" in p)));
+  }, []);
 
   // EP14-S03 AC3/AC4 : resolution du tenant depuis le sous-domaine de l'hote.
   // Priorite sur ?cabinet=/localStorage : si l'URL est mon-cabinet.vencor-crm.com,
@@ -132,17 +143,29 @@ export default function LoginPage() {
       // encode le pendingToken dans le message d'erreur ; on memorise le contexte
       // (cabinet pre-rempli) et on bascule vers la page de saisie du code TOTP.
       // AUCUN JWT n'a ete emis a ce stade : pas de session ouverte.
-      if (res.error.startsWith(TOTP_REQUIRED_PREFIX)) {
-        const pendingToken = res.error.slice(TOTP_REQUIRED_PREFIX.length);
+      // Second facteur requis : TOTP ou code par email selon le prefixe encode
+      // par authorize. Meme relais (sessionStorage) ; on memorise la methode pour
+      // que /login/2fa affiche le bon ecran (code email + renvoyer, ou TOTP).
+      const isTotp = res.error.startsWith(TOTP_REQUIRED_PREFIX);
+      const isEmailOtp = res.error.startsWith(EMAIL_OTP_REQUIRED_PREFIX);
+      if (isTotp || isEmailOtp) {
+        const prefix = isTotp ? TOTP_REQUIRED_PREFIX : EMAIL_OTP_REQUIRED_PREFIX;
+        const pendingToken = res.error.slice(prefix.length);
         if (typeof window !== "undefined") {
           window.localStorage.setItem(TENANT_STORAGE_KEY, tenantSlug);
-          // POURQUOI sessionStorage et pas l'URL : le mot de passe et le
-          // pendingToken ne doivent pas transiter par la query string (historique
-          // navigateur, logs proxy). sessionStorage est efface a la fermeture de
-          // l'onglet et reste cote client. /login/2fa les relit puis les purge.
+          // sessionStorage (pas l'URL) : le mot de passe et le pendingToken ne
+          // doivent pas transiter par la query string (historique, logs proxy).
+          // Efface a la fermeture de l'onglet ; /login/2fa le relit puis le purge.
           window.sessionStorage.setItem(
             PENDING_2FA_KEY,
-            JSON.stringify({ email, password, tenantSlug, pendingToken, callbackUrl }),
+            JSON.stringify({
+              email,
+              password,
+              tenantSlug,
+              pendingToken,
+              callbackUrl,
+              method: isTotp ? "totp" : "email",
+            }),
           );
         }
         router.push("/login/2fa");
@@ -303,6 +326,24 @@ export default function LoginPage() {
               </Link>
             </p>
           </form>
+
+          {googleEnabled && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 text-xs text-text-secondary">
+                <span className="h-px flex-1 bg-[color:var(--border)]" />
+                ou
+                <span className="h-px flex-1 bg-[color:var(--border)]" />
+              </div>
+              <button
+                type="button"
+                onClick={() => signIn("google", { callbackUrl })}
+                data-testid="login-google"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] py-2.5 text-sm font-medium text-text-primary transition-colors hover:border-accent"
+              >
+                Se connecter avec Google
+              </button>
+            </div>
+          )}
 
           <div className="mt-6 space-y-1.5 text-xs text-text-secondary">
             <p className="font-semibold">{t("demoAccountsTitle")}</p>

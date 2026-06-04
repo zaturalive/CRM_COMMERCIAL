@@ -90,3 +90,38 @@ export const twoFactorRecoverySchema = z.object({
 });
 
 export type TwoFactorRecoveryInput = z.infer<typeof twoFactorRecoverySchema>;
+
+/**
+ * 2FA par email — etape 2 du login : pendingToken (emis a l'etape 1) + code OTP
+ * a 6 chiffres recu par email. La route emet le JWT d'acces sur succes. Le code
+ * est strictement 6 chiffres (l'OTP est numerique, cf. lib/emailOtp.ts).
+ */
+export const twoFactorVerifyEmailSchema = z.object({
+  pendingToken: z.string().min(1),
+  code: z.string().trim().regex(/^\d{6}$/),
+});
+
+export type TwoFactorVerifyEmailInput = z.infer<typeof twoFactorVerifyEmailSchema>;
+
+/**
+ * 2FA par email — renvoi d'un nouveau code OTP (email perdu / code expire).
+ * Seul le pendingToken de l'etape 1 est requis : la route regenere et renvoie.
+ */
+export const twoFactorEmailResendSchema = z.object({
+  pendingToken: z.string().min(1),
+});
+
+export type TwoFactorEmailResendInput = z.infer<typeof twoFactorEmailResendSchema>;
+
+/**
+ * Connexion Google (SSO) — echange serveur-a-serveur. Le serveur NextAuth a deja
+ * verifie le jeton Google ; il transmet l'email verifie + le secret partage. Pas
+ * d'autre champ : l'identite vient de l'email Google, le tenant est resolu cote
+ * backend.
+ */
+export const googleSsoSchema = z.object({
+  email: z.string().email(),
+  secret: z.string().min(1),
+});
+
+export type GoogleSsoInput = z.infer<typeof googleSsoSchema>;

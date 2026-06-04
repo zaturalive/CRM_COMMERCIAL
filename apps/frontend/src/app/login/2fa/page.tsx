@@ -4,21 +4,40 @@ import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PENDING_2FA_KEY, type Pending2faContext } from "@/lib/twoFactorSession";
+import { parseTenantSubdomain } from "@/lib/tenantHost";
 
 /**
- * EP14-S01 / AC4-AC6 — etape 2 du login a deux facteurs.
+ * Etape 2 du login a deux facteurs. Deux methodes selon ctx.method :
+ *   - "totp"  : code a 6 chiffres d'une appli authenticator (+ repli code de secours).
+ *   - "email" : code a 6 chiffres recu par email (+ bouton renvoyer). Pas d'appli,
+ *               pas d'horloge — le chemin simple pour les profils non-tech.
  *
  * Atteinte uniquement apres une etape 1 ou le backend a repondu
- * { step: "totp_required" } (mot de passe valide, aucun JWT emis). La page
- * /login a depose le contexte (email, mot de passe, tenant, pendingToken) dans
- * sessionStorage ; on le relit puis on le purge. Sans contexte, on renvoie vers
- * /login (acces direct a l'URL).
+ * { step: "totp_required" } ou { step: "email_otp_required" } (mot de passe
+ * valide, aucun JWT emis). /login a depose le contexte (email, mot de passe,
+ * tenant, pendingToken, method) dans sessionStorage ; on le relit puis on le
+ * purge. Sans contexte -> retour /login (acces direct a l'URL).
  *
- * On rappelle signIn("credentials") avec le pendingToken et SOIT le code TOTP
- * (AC5), SOIT un code de secours (AC6). authorize echange ce second facteur
- * contre le JWT mfaVerified et ouvre la session. Un code invalide -> erreur de
- * formulaire (res.error), aucune session.
+ * On rappelle signIn("credentials") avec le pendingToken et le code ; authorize
+ * echange le second facteur contre le JWT mfaVerified et ouvre la session. Un
+ * code invalide -> erreur de formulaire, aucune session.
  */
+const BACKEND_BASE =
+  process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+const BASE_DOMAIN =
+  process.env.NEXT_PUBLIC_BASE_DOMAIN ?? "vencor-crm.localhost";
+
+function resolveBase(): string {
+  if (typeof window === "undefined") return BACKEND_BASE;
+  try {
+    const backend = new URL(BACKEND_BASE);
+    if (window.location.host === backend.host) return "";
+    return BACKEND_BASE;
+  } catch {
+    return BACKEND_BASE;
+  }
+}
+
 export default function TwoFactorLoginPage() {
   const router = useRouter();
 
@@ -27,6 +46,8 @@ export default function TwoFactorLoginPage() {
   const [useRecovery, setUseRecovery] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -43,6 +64,8 @@ export default function TwoFactorLoginPage() {
     }
   }, [router]);
 
+  const isEmail = ctx?.method === "email";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!ctx) return;
@@ -54,28 +77,64 @@ export default function TwoFactorLoginPage() {
       password: ctx.password,
       tenantSlug: ctx.tenantSlug,
       pendingToken: ctx.pendingToken,
-      // Un seul des deux champs est transmis selon le mode choisi.
-      ...(useRecovery ? { recoveryCode: code } : { totpCode: code }),
+      // Un seul champ transmis selon la methode (email) ou le mode (totp/secours).
+      ...(isEmail
+        ? { emailOtpCode: code }
+        : useRecovery
+          ? { recoveryCode: code }
+          : { totpCode: code }),
       redirect: false,
     });
     setLoading(false);
 
     if (res?.error) {
       setError(
-        useRecovery
-          ? "Code de secours invalide ou deja utilise."
-          : "Code de verification invalide ou expire.",
+        isEmail
+          ? "Code invalide ou expire. Verifiez votre email ou renvoyez un code."
+          : useRecovery
+            ? "Code de secours invalide ou deja utilise."
+            : "Code de verification invalide ou expire.",
       );
       return;
     }
 
-    // Succes : le second facteur est valide, la session est ouverte. On purge le
-    // contexte sensible (mot de passe, pendingToken) et on rejoint la cible.
-    if (typeof window !== "undefined") {
-      window.sessionStorage.removeItem(PENDING_2FA_KEY);
+    // Succes : second facteur valide, session ouverte. Purge du contexte sensible.
+    window.sessionStorage.removeItem(PENDING_2FA_KEY);
+    const target = ctx.callbackUrl?.startsWith("/") ? ctx.callbackUrl : "/dashboard";
+    // Comme /login : depuis l'apex, on bascule cote client sur le sous-domaine du
+    // cabinet (port correct via window.location.port), plutot que de laisser le
+    // middleware rediriger (qui, en dev, reconstruit le port interne du conteneur).
+    // Depuis un sous-domaine, navigation interne classique.
+    if (parseTenantSubdomain(window.location.hostname, BASE_DOMAIN) == null) {
+      const port = window.location.port ? `:${window.location.port}` : "";
+      window.location.assign(
+        `${window.location.protocol}//${ctx.tenantSlug}.${BASE_DOMAIN}${port}${target}`,
+      );
+      return;
     }
-    router.push(ctx.callbackUrl || "/dashboard");
+    router.push(target);
     router.refresh();
+  }
+
+  async function handleResend() {
+    if (!ctx) return;
+    setResending(true);
+    setResendMsg(null);
+    setError(null);
+    try {
+      await fetch(`${resolveBase()}/api/auth/2fa/email/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pendingToken: ctx.pendingToken }),
+      });
+      // Reponse volontairement uniforme : on confirme l'envoi sans reveler l'etat
+      // du compte (le backend renvoie le meme resultat quoi qu'il arrive).
+      setResendMsg("Un nouveau code vient d'etre envoye par email.");
+    } catch {
+      setResendMsg("Envoi impossible pour le moment. Reessayez.");
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
@@ -85,15 +144,21 @@ export default function TwoFactorLoginPage() {
           Verification en deux etapes
         </h1>
         <p className="mt-1 text-sm text-text-secondary">
-          {useRecovery
-            ? "Saisissez un de vos codes de secours."
-            : "Saisissez le code a 6 chiffres affiche par votre application d'authentification."}
+          {isEmail
+            ? "Saisissez le code a 6 chiffres que nous venons de vous envoyer par email."
+            : useRecovery
+              ? "Saisissez un de vos codes de secours."
+              : "Saisissez le code a 6 chiffres affiche par votre application d'authentification."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <div>
             <label htmlFor="code" className="block text-sm font-medium text-text-primary">
-              {useRecovery ? "Code de secours" : "Code de verification"}
+              {isEmail
+                ? "Code recu par email"
+                : useRecovery
+                  ? "Code de secours"
+                  : "Code de verification"}
             </label>
             <input
               id="code"
@@ -102,13 +167,14 @@ export default function TwoFactorLoginPage() {
               onChange={(e) => setCode(e.target.value)}
               required
               autoFocus
-              inputMode={useRecovery ? "text" : "numeric"}
+              inputMode={isEmail || !useRecovery ? "numeric" : "text"}
               autoComplete="one-time-code"
-              placeholder={useRecovery ? "RECOV-XXXX-XXXX" : "123456"}
+              placeholder={isEmail || !useRecovery ? "123456" : "RECOV-XXXX-XXXX"}
               className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
+          {resendMsg && <p className="text-sm text-emerald-500">{resendMsg}</p>}
           <button
             type="submit"
             disabled={loading || !ctx}
@@ -119,19 +185,30 @@ export default function TwoFactorLoginPage() {
         </form>
 
         <div className="mt-6 space-y-2 text-center text-xs text-text-secondary">
-          <button
-            type="button"
-            onClick={() => {
-              setUseRecovery((v) => !v);
-              setCode("");
-              setError(null);
-            }}
-            className="underline"
-          >
-            {useRecovery
-              ? "Utiliser le code de l'application d'authentification"
-              : "Authenticator perdu ? Utiliser un code de secours"}
-          </button>
+          {isEmail ? (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resending}
+              className="underline disabled:opacity-60"
+            >
+              {resending ? "Envoi..." : "Renvoyer le code par email"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setUseRecovery((v) => !v);
+                setCode("");
+                setError(null);
+              }}
+              className="underline"
+            >
+              {useRecovery
+                ? "Utiliser le code de l'application d'authentification"
+                : "Authenticator perdu ? Utiliser un code de secours"}
+            </button>
+          )}
           <p>
             <button
               type="button"

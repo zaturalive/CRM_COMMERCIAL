@@ -9,6 +9,9 @@ import {
   resetPasswordSchema,
   twoFactorVerifySchema,
   twoFactorRecoverySchema,
+  twoFactorVerifyEmailSchema,
+  twoFactorEmailResendSchema,
+  googleSsoSchema,
 } from "../schemas/auth";
 import { validatePassword } from "../lib/passwordPolicy";
 import { isCguSatisfied } from "../lib/postLoginRequirements";
@@ -30,6 +33,14 @@ import {
   signPendingTotpToken,
   verifyPendingTotpToken,
 } from "../lib/twoFactor";
+import {
+  generateOtpCode,
+  hashOtpCode,
+  verifyOtpCode,
+  sendLoginOtp,
+  LOGIN_OTP_TTL_MS,
+  LOGIN_OTP_MAX_ATTEMPTS,
+} from "../lib/emailOtp";
 import { asyncHandler } from "../middleware/errorHandler";
 import { env } from "../config/env";
 import { logger } from "../lib/logger";
@@ -40,6 +51,19 @@ import {
   RESET_TOKEN_TTL_MS,
 } from "../lib/passwordResetToken";
 import { NoopEmailSender, type EmailSender } from "../lib/email/EmailSender";
+import { timingSafeEqual } from "node:crypto";
+
+/**
+ * Comparaison constant-time de deux secrets (longueurs egales requises, sinon
+ * false). Pour le secret partage Google : evite un oracle temporel meme si le
+ * risque est marginal sur un canal serveur-a-serveur.
+ */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}
 
 /**
  * Router auth — EP15-S03 le transforme en factory pour injecter l'EmailSender
@@ -158,6 +182,43 @@ router.post(
       return res.json({
         success: true,
         data: { step: "totp_required", pendingToken },
+      });
+    }
+
+    // 2FA par email — alternative simple au TOTP (profils non-tech). Traitee
+    // APRES la TOTP (qui reste prioritaire si les deux sont actives) et apres les
+    // memes gardes SUSPENDED/inactif. Si activee : on genere un code OTP, on le
+    // stocke hashe + TTL (essais remis a 0), on l'envoie par email, et on repond
+    // { step: "email_otp_required", pendingToken } SANS emettre de JWT — l'etape 2
+    // (/2fa/verify-email) emet le JWT d'acces. L'envoi est best-effort (un echec
+    // d'email ne change pas la reponse : pas de fuite d'etat du compte).
+    if (user.mfaEmailEnabled) {
+      const code = generateOtpCode();
+      await basePrisma.user.update({
+        where: { id: user.id },
+        data: {
+          loginOtpHash: hashOtpCode(code),
+          loginOtpExpiresAt: new Date(Date.now() + LOGIN_OTP_TTL_MS),
+          loginOtpAttempts: 0,
+        },
+      });
+      await sendLoginOtp(
+        emailSender,
+        { email: user.email, firstName: user.firstName },
+        code,
+      );
+      const pendingToken = signPendingTotpToken({
+        userId: user.id,
+        tenantId: user.tenantId,
+        role: user.role,
+      });
+      logger.info(
+        { userId: user.id, tenantId: user.tenantId, event: "2fa.email_challenge" },
+        "2FA email challenge emis au login",
+      );
+      return res.json({
+        success: true,
+        data: { step: "email_otp_required", pendingToken },
       });
     }
 
@@ -480,10 +541,19 @@ router.post(
       const userId = req.user!.userId;
       const user = await basePrisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true },
+        select: { id: true, email: true, mfaEnabled: true },
       });
       if (!user) {
         return res.status(404).json({ success: false, error: "User not found" });
+      }
+      // Anti-rotation (corrige le bug "code TOTP refuse / recovery OK") : un compte
+      // deja en 2FA TOTP ne regenere PAS un secret en silence — cela desync
+      // l'authenticator deja enrole tout en laissant les recovery codes valides.
+      // Pour re-enroler, il faut d'abord desactiver (POST /2fa/disable).
+      if (user.mfaEnabled) {
+        return res
+          .status(409)
+          .json({ success: false, error: "2FA already enabled" });
       }
 
       const secret = generateTotpSecret();
@@ -602,9 +672,18 @@ router.post(
       // Seuls les hashes bcrypt sont persistes ; le clair n'est renvoye qu'ici,
       // une seule fois (AC3).
       const recoveryCodes = generateRecoveryCodes();
+      // Methodes exclusives : activer la TOTP desactive l'OTP email et purge tout
+      // code en cours (symetrique de /2fa/email/enable).
       await basePrisma.user.update({
         where: { id: user.id },
-        data: { mfaEnabled: true, recoveryCodes: recoveryCodes.map(hashRecoveryCode) },
+        data: {
+          mfaEnabled: true,
+          recoveryCodes: recoveryCodes.map(hashRecoveryCode),
+          mfaEmailEnabled: false,
+          loginOtpHash: null,
+          loginOtpExpiresAt: null,
+          loginOtpAttempts: 0,
+        },
       });
       logger.info(
         { userId: user.id, event: "2fa.enabled" },
@@ -674,6 +753,309 @@ router.post(
         "2FA recovery code consomme",
       );
       return res.json({ success: true, data: buildMfaLoginSuccess(user) });
+    }),
+  );
+
+  /**
+   * GET /api/auth/2fa/status (authentifie) — etat des seconds facteurs du compte
+   * courant, pour que le front affiche l'etat reel (active/desactive) au lieu de
+   * proposer un enrolement a l'aveugle. Aucun secret expose.
+   */
+  router.get(
+    "/2fa/status",
+    requireJWT,
+    asyncHandler(async (req, res) => {
+      const user = await basePrisma.user.findUnique({
+        where: { id: req.user!.userId },
+        select: { mfaEnabled: true, mfaEmailEnabled: true },
+      });
+      if (!user) {
+        return res.status(404).json({ success: false, error: "User not found" });
+      }
+      return res.json({
+        success: true,
+        data: { mfaEnabled: user.mfaEnabled, mfaEmailEnabled: user.mfaEmailEnabled },
+      });
+    }),
+  );
+
+  /**
+   * POST /api/auth/2fa/disable (authentifie) — desactive la 2FA TOTP du compte
+   * courant et purge le secret + les recovery codes. Permet de re-enroler proprement
+   * (le setup etant verrouille tant que la 2FA TOTP est active, anti-rotation).
+   * Agit uniquement sur le compte authentifie.
+   */
+  router.post(
+    "/2fa/disable",
+    requireJWT,
+    asyncHandler(async (req, res) => {
+      await basePrisma.user.update({
+        where: { id: req.user!.userId },
+        data: { mfaEnabled: false, totpSecret: null, recoveryCodes: [] },
+      });
+      logger.info(
+        { userId: req.user!.userId, event: "2fa.totp_disabled" },
+        "2FA TOTP desactivee",
+      );
+      return res.json({ success: true, data: { mfaEnabled: false } });
+    }),
+  );
+
+  /**
+   * POST /api/auth/2fa/email/enable (authentifie) — active la 2FA par email sur le
+   * compte courant. Aucun secret a stocker, aucune appli a installer : a chaque
+   * login un code a 6 chiffres part vers l'email du compte. Agit uniquement sur le
+   * compte authentifie (aucun id de cible lu).
+   */
+  router.post(
+    "/2fa/email/enable",
+    requireJWT,
+    asyncHandler(async (req, res) => {
+      // Methodes exclusives (une seule a la fois, cf. UI /account/2fa) : activer
+      // l'OTP email desactive la TOTP et purge son secret + ses recovery codes.
+      // Evite l'etat "les deux actives" ou le login ne propose qu'une methode.
+      await basePrisma.user.update({
+        where: { id: req.user!.userId },
+        data: {
+          mfaEmailEnabled: true,
+          mfaEnabled: false,
+          totpSecret: null,
+          recoveryCodes: [],
+        },
+      });
+      logger.info(
+        { userId: req.user!.userId, event: "2fa.email_enabled" },
+        "2FA email activee (TOTP desactivee, methodes exclusives)",
+      );
+      return res.json({ success: true, data: { mfaEmailEnabled: true } });
+    }),
+  );
+
+  /**
+   * POST /api/auth/2fa/email/disable (authentifie) — desactive la 2FA par email et
+   * purge tout code OTP en cours.
+   */
+  router.post(
+    "/2fa/email/disable",
+    requireJWT,
+    asyncHandler(async (req, res) => {
+      await basePrisma.user.update({
+        where: { id: req.user!.userId },
+        data: {
+          mfaEmailEnabled: false,
+          loginOtpHash: null,
+          loginOtpExpiresAt: null,
+          loginOtpAttempts: 0,
+        },
+      });
+      logger.info(
+        { userId: req.user!.userId, event: "2fa.email_disabled" },
+        "2FA email desactivee",
+      );
+      return res.json({ success: true, data: { mfaEmailEnabled: false } });
+    }),
+  );
+
+  /**
+   * POST /api/auth/2fa/verify-email — etape 2 du login pour la 2FA par email.
+   * pendingToken (etape 1) + code OTP. Un code valide, non expire et sous le
+   * plafond d'essais emet le JWT d'acces (mfaVerified: true, comme la TOTP). Code
+   * faux -> 401 + incrementation des essais ; au-dela de LOGIN_OTP_MAX_ATTEMPTS le
+   * code est invalide (resend requis). One-shot : le hash est efface au succes.
+   * Rate-limit dedie (twoFactorVerifyLimiter), en tete de chaine.
+   */
+  router.post(
+    "/2fa/verify-email",
+    twoFactorVerifyLimiter,
+    asyncHandler(async (req, res) => {
+      const { pendingToken, code } = twoFactorVerifyEmailSchema.parse(req.body);
+
+      const pending = verifyPendingTotpToken(pendingToken);
+      if (!pending) {
+        return res
+          .status(401)
+          .json({ success: false, error: "Invalid or expired challenge" });
+      }
+      const user = await basePrisma.user.findUnique({
+        where: { id: pending.userId },
+        select: {
+          ...MFA_LOGIN_USER_SELECT,
+          mfaEmailEnabled: true,
+          loginOtpHash: true,
+          loginOtpExpiresAt: true,
+          loginOtpAttempts: true,
+        },
+      });
+      if (
+        !user ||
+        !user.mfaEmailEnabled ||
+        !user.loginOtpHash ||
+        !user.loginOtpExpiresAt
+      ) {
+        return res.status(401).json({ success: false, error: "Invalid challenge" });
+      }
+      // Code expire -> purge + refus (resend requis).
+      if (user.loginOtpExpiresAt.getTime() < Date.now()) {
+        await basePrisma.user.update({
+          where: { id: user.id },
+          data: { loginOtpHash: null, loginOtpExpiresAt: null, loginOtpAttempts: 0 },
+        });
+        return res.status(401).json({ success: false, error: "Code expired" });
+      }
+      // Plafond d'essais atteint -> on invalide le code (resend requis).
+      if (user.loginOtpAttempts >= LOGIN_OTP_MAX_ATTEMPTS) {
+        await basePrisma.user.update({
+          where: { id: user.id },
+          data: { loginOtpHash: null, loginOtpExpiresAt: null, loginOtpAttempts: 0 },
+        });
+        return res
+          .status(401)
+          .json({ success: false, error: "Too many attempts, request a new code" });
+      }
+      if (!verifyOtpCode(code, user.loginOtpHash)) {
+        await basePrisma.user.update({
+          where: { id: user.id },
+          data: { loginOtpAttempts: { increment: 1 } },
+        });
+        return res.status(401).json({ success: false, error: "Invalid code" });
+      }
+      // Succes : one-shot (on efface le code) puis JWT d'acces (mfaVerified: true).
+      await basePrisma.user.update({
+        where: { id: user.id },
+        data: { loginOtpHash: null, loginOtpExpiresAt: null, loginOtpAttempts: 0 },
+      });
+      logger.info(
+        { userId: user.id, tenantId: user.tenantId, event: "2fa.email_verified" },
+        "2FA email verifiee (login)",
+      );
+      return res.json({ success: true, data: buildMfaLoginSuccess(user) });
+    }),
+  );
+
+  /**
+   * POST /api/auth/2fa/email/resend — renvoie un nouveau code OTP (etape 2 du
+   * login). pendingToken de l'etape 1. Regenere un code (essais remis a 0) et
+   * l'envoie. Meme rate-limit que la verification (anti-spam d'emails).
+   */
+  router.post(
+    "/2fa/email/resend",
+    twoFactorVerifyLimiter,
+    asyncHandler(async (req, res) => {
+      const { pendingToken } = twoFactorEmailResendSchema.parse(req.body);
+      const pending = verifyPendingTotpToken(pendingToken);
+      if (!pending) {
+        return res
+          .status(401)
+          .json({ success: false, error: "Invalid or expired challenge" });
+      }
+      const user = await basePrisma.user.findUnique({
+        where: { id: pending.userId },
+        select: { id: true, email: true, firstName: true, mfaEmailEnabled: true },
+      });
+      if (!user || !user.mfaEmailEnabled) {
+        return res.status(401).json({ success: false, error: "Invalid challenge" });
+      }
+      const code = generateOtpCode();
+      await basePrisma.user.update({
+        where: { id: user.id },
+        data: {
+          loginOtpHash: hashOtpCode(code),
+          loginOtpExpiresAt: new Date(Date.now() + LOGIN_OTP_TTL_MS),
+          loginOtpAttempts: 0,
+        },
+      });
+      await sendLoginOtp(
+        emailSender,
+        { email: user.email, firstName: user.firstName },
+        code,
+      );
+      return res.json({ success: true, data: { resent: true } });
+    }),
+  );
+
+  /**
+   * POST /api/auth/google — echange serveur-a-serveur pour la connexion Google (SSO).
+   *
+   * Appele UNIQUEMENT par le serveur NextAuth (frontend) APRES qu'il a verifie le
+   * jeton Google (signature + audience). Le frontend transmet l'email Google verifie
+   * + le secret partage (GOOGLE_SSO_SHARED_SECRET, hors navigateur, meme domaine de
+   * confiance que JWT_SECRET). On ne refait pas de mot de passe : Google est le
+   * facteur d'authentification. Pas de self-signup : l'email doit correspondre a un
+   * compte cabinet existant et actif.
+   *
+   * Resolution du tenant : la connexion Google se fait sur l'apex (sans contexte de
+   * cabinet), donc on cherche l'email sur l'ensemble des cabinets. Exactement un
+   * compte actif -> session ; 0 ou plusieurs -> 401 (introuvable ou ambigu, on
+   * bascule vers le login cabinet classique).
+   *
+   * Securite (decision MVP, Ockham) : confiance serveur-a-serveur par secret partage
+   * plutot que verification du id_token cote backend (qui ajouterait une dependance +
+   * le fetch JWKS). Le secret ne transite pas par le navigateur. Durcissement futur
+   * possible : verifier le id_token Google cote backend.
+   */
+  router.post(
+    "/google",
+    loginLimiter,
+    asyncHandler(async (req, res) => {
+      const { email, secret } = googleSsoSchema.parse(req.body);
+
+      const expected = env.GOOGLE_SSO_SHARED_SECRET;
+      if (!expected || !timingSafeEqualStr(secret, expected)) {
+        return res.status(401).json({ success: false, error: "Unauthorized" });
+      }
+
+      const users = await basePrisma.user.findMany({
+        where: { email, active: true },
+        select: {
+          id: true,
+          email: true,
+          tenantId: true,
+          role: true,
+          firstName: true,
+          lastName: true,
+          mustChangePassword: true,
+          tenant: {
+            select: { slug: true, status: true, cguAcceptedAt: true, cguVersion: true },
+          },
+        },
+      });
+      // 0 (pas de compte) ou plusieurs (email present dans plusieurs cabinets) ->
+      // on refuse : pas de self-signup, pas de choix de tenant a ce stade.
+      if (users.length !== 1) {
+        return res.status(401).json({ success: false, error: "No matching account" });
+      }
+      const user = users[0];
+      if (user.tenant.status === "SUSPENDED") {
+        return res.status(403).json({ success: false, error: "Tenant suspended" });
+      }
+
+      const jwt = signJWT({
+        userId: user.id,
+        tenantId: user.tenantId,
+        role: user.role,
+      });
+      logger.info(
+        { userId: user.id, tenantId: user.tenantId, event: "auth.google_sso" },
+        "Connexion Google (SSO) reussie",
+      );
+      return res.json({
+        success: true,
+        data: {
+          userId: user.id,
+          email: user.email,
+          tenantId: user.tenantId,
+          tenantSlug: user.tenant.slug,
+          role: user.role,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          mustChangePassword: user.mustChangePassword,
+          cguAccepted: isCguSatisfied({
+            cguAcceptedAt: user.tenant.cguAcceptedAt,
+            cguVersion: user.tenant.cguVersion,
+          }),
+          jwt,
+        },
+      });
     }),
   );
 

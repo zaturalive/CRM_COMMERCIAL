@@ -1,22 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSession } from "next-auth/react";
+import Link from "next/link";
+import { ArrowLeft, Mail, Smartphone, ShieldCheck } from "lucide-react";
 
 /**
- * EP14-S01 / AC2-AC3 — enrolement du second facteur (cote compte).
+ * Gestion du second facteur du compte courant (deux methodes, exclusives a l'usage
+ * mais cumulables techniquement — la TOTP reste prioritaire au login) :
  *
- * Flux : POST /api/auth/2fa/setup (authentifie) renvoie le secret + l'URL
- * otpauth:// a scanner ; l'utilisateur scanne (ou saisit le secret manuellement),
- * puis confirme un premier code -> POST /api/auth/2fa/verify (authentifie) active
- * la MFA et renvoie les 10 codes de secours AFFICHES UNE SEULE FOIS (AC3).
+ *  - Par email (recommande) : un code a 6 chiffres part par email a chaque
+ *    connexion. Aucune appli, aucune horloge a synchroniser — le chemin simple
+ *    pour les profils non-tech. Activation immediate (l'email du compte est deja
+ *    valide, il a recu l'invitation).
+ *  - Par application TOTP (avance) : secret a scanner + code de confirmation, puis
+ *    10 codes de secours one-shot affiches une seule fois.
  *
- * On appelle le backend directement (pas apiFetch) : un 401 ici signifie "code
- * TOTP invalide", pas "session expiree" — il ne doit pas declencher un signOut.
+ * La page LIT d'abord l'etat reel (GET /2fa/status) et l'affiche : fini l'ecran
+ * qui proposait "Activer" en boucle et regenerait un secret a chaque visite (ce
+ * qui desynchronisait l'authenticator). Le setup TOTP est verrouille cote backend
+ * si la 2FA est deja active (409, anti-rotation) ; ici on propose "Desactiver".
  *
- * Note : le rendu QR (image) n'embarque pas de dependance ; on affiche l'URL
- * otpauth:// (ouvrable par les apps authenticator) et le secret en saisie
- * manuelle. Le QR visuel est un fast-follow UX (aucune regression de securite).
+ * On appelle le backend en direct (pas apiFetch) : un 401 sur la confirmation de
+ * code signifie "code invalide", pas "session expiree" — il ne doit pas declencher
+ * un signOut.
  */
 const BACKEND_BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
@@ -32,30 +39,109 @@ function resolveBase(): string {
   }
 }
 
-type Stage = "idle" | "setup" | "done";
+interface TwoFactorStatus {
+  mfaEnabled: boolean; // TOTP (appli authenticator)
+  mfaEmailEnabled: boolean; // code par email
+}
+
+type TotpStage = "none" | "setup" | "done";
 
 export default function TwoFactorSetupPage() {
-  const [stage, setStage] = useState<Stage>("idle");
+  const [status, setStatus] = useState<TwoFactorStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // Flux d'enrolement TOTP (uniquement quand l'utilisateur choisit l'appli).
+  const [totpStage, setTotpStage] = useState<TotpStage>("none");
   const [secret, setSecret] = useState("");
   const [otpauthUrl, setOtpauthUrl] = useState("");
   const [code, setCode] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function startSetup() {
-    setLoading(true);
-    setError(null);
+  async function authedFetch(path: string, init?: RequestInit): Promise<Response> {
     const session = await getSession();
-    const res = await fetch(`${resolveBase()}/api/auth/2fa/setup`, {
-      method: "POST",
+    return fetch(`${resolveBase()}${path}`, {
+      ...init,
       headers: {
         "Content-Type": "application/json",
         ...(session?.jwt ? { Authorization: `Bearer ${session.jwt}` } : {}),
+        ...(init?.headers ?? {}),
       },
+    });
+  }
+
+  async function loadStatus() {
+    setLoadingStatus(true);
+    const res = await authedFetch("/api/auth/2fa/status", { method: "GET" });
+    setLoadingStatus(false);
+    if (res.ok) {
+      const body = await res.json();
+      setStatus(body.data as TwoFactorStatus);
+    } else {
+      setError("Impossible de charger l'etat de la double authentification.");
+    }
+  }
+
+  useEffect(() => {
+    void loadStatus();
+  }, []);
+
+  async function enableEmail() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const res = await authedFetch("/api/auth/2fa/email/enable", { method: "POST" });
+    setBusy(false);
+    if (res.ok) {
+      setNotice(
+        "Verification par email activee (toute autre methode a ete desactivee). A votre prochaine connexion, un code vous sera envoye par email.",
+      );
+      await loadStatus();
+    } else {
+      setError("Action impossible pour le moment. Reessayez.");
+    }
+  }
+
+  async function disableEmail() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const res = await authedFetch("/api/auth/2fa/email/disable", { method: "POST" });
+    setBusy(false);
+    if (res.ok) {
+      await loadStatus();
+    } else {
+      setError("Action impossible pour le moment. Reessayez.");
+    }
+  }
+
+  async function disableTotp() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const res = await authedFetch("/api/auth/2fa/disable", { method: "POST" });
+    setBusy(false);
+    if (res.ok) {
+      setTotpStage("none");
+      setRecoveryCodes([]);
+      setCode("");
+      await loadStatus();
+    } else {
+      setError("Action impossible pour le moment. Reessayez.");
+    }
+  }
+
+  async function startTotpSetup() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const res = await authedFetch("/api/auth/2fa/setup", {
+      method: "POST",
       body: JSON.stringify({}),
     });
-    setLoading(false);
+    setBusy(false);
     if (!res.ok) {
       setError("Impossible de demarrer la configuration. Reessayez.");
       return;
@@ -63,118 +149,229 @@ export default function TwoFactorSetupPage() {
     const body = await res.json();
     setSecret(body.data.secret);
     setOtpauthUrl(body.data.otpauthUrl);
-    setStage("setup");
+    setTotpStage("setup");
   }
 
-  async function confirm(e: React.FormEvent) {
+  async function confirmTotp(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
+    setBusy(true);
     setError(null);
-    const session = await getSession();
-    const res = await fetch(`${resolveBase()}/api/auth/2fa/verify`, {
+    const res = await authedFetch("/api/auth/2fa/verify", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(session?.jwt ? { Authorization: `Bearer ${session.jwt}` } : {}),
-      },
       body: JSON.stringify({ token: code }),
     });
-    setLoading(false);
+    setBusy(false);
     if (!res.ok) {
-      setError("Code invalide. Verifiez l'heure de votre appareil et reessayez.");
+      setError("Code invalide. Verifiez le code affiche par votre application et reessayez.");
       return;
     }
     const body = await res.json();
     setRecoveryCodes(body.data.recoveryCodes ?? []);
-    setStage("done");
+    setTotpStage("done");
+    await loadStatus();
   }
 
+  const cardClass =
+    "rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] p-5";
+  const primaryBtn =
+    "rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-60";
+  const ghostBtn =
+    "rounded-md border border-[color:var(--border)] px-4 py-2 text-sm font-medium text-text-primary hover:border-accent disabled:opacity-60";
+
   return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="w-full max-w-md">
-        <h1 className="font-display text-2xl font-bold text-text-primary">
-          Authentification a deux facteurs
-        </h1>
+    <main className="mx-auto max-w-2xl space-y-4 p-6 md:p-10" data-testid="twofactor-page">
+      <Link
+        href="/account/profile"
+        className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
+      >
+        <ArrowLeft size={16} /> Retour
+      </Link>
 
-        {stage === "idle" && (
-          <>
-            <p className="mt-1 text-sm text-text-secondary">
-              Protegez votre compte avec un code temporaire genere par une
-              application d'authentification (Google Authenticator, 1Password...).
-            </p>
-            {error && <p className="mt-4 text-sm text-danger">{error}</p>}
-            <button
-              type="button"
-              onClick={startSetup}
-              disabled={loading}
-              className="mt-6 w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60"
-            >
-              {loading ? "Preparation..." : "Activer la double authentification"}
-            </button>
-          </>
-        )}
+      <h1 className="font-display text-2xl font-bold text-text-primary">
+        Authentification a deux facteurs
+      </h1>
+      <p className="text-sm text-text-secondary">
+        Une etape de verification supplementaire a la connexion, en plus de votre
+        mot de passe. Choisissez la methode qui vous convient.
+      </p>
 
-        {stage === "setup" && (
-          <form onSubmit={confirm} className="mt-6 space-y-4">
-            <p className="text-sm text-text-secondary">
-              Ajoutez ce compte a votre application d'authentification, puis saisissez
-              le code a 6 chiffres pour confirmer.
-            </p>
-            <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] p-3 text-sm">
-              <p className="text-text-secondary">Cle de configuration (saisie manuelle) :</p>
-              <code className="mt-1 block break-all font-mono text-text-primary">
-                {secret}
-              </code>
-              <a href={otpauthUrl} className="mt-2 block break-all text-xs text-accent underline">
-                Ouvrir dans l'application d'authentification
-              </a>
+      {error && <p className="text-sm text-danger">{error}</p>}
+      {notice && <p className="text-sm text-emerald-500">{notice}</p>}
+
+      {loadingStatus || !status ? (
+        <p className="text-sm text-text-secondary">Chargement...</p>
+      ) : (
+        <>
+          {/* Methode 1 : email (recommandee) */}
+          <section className={cardClass} data-testid="2fa-email-card">
+            <div className="flex items-start gap-3">
+              <Mail size={20} className="mt-0.5 text-accent" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-text-primary">
+                    Par email
+                  </h2>
+                  <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                    Recommande
+                  </span>
+                  {status.mfaEmailEnabled && (
+                    <span
+                      data-testid="2fa-email-active"
+                      className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+                    >
+                      Activee
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-text-secondary">
+                  Recevez un code a 6 chiffres par email a chaque connexion. Aucune
+                  application a installer, rien a synchroniser.
+                </p>
+                <div className="mt-3">
+                  {status.mfaEmailEnabled ? (
+                    <button
+                      type="button"
+                      onClick={disableEmail}
+                      disabled={busy}
+                      className={ghostBtn}
+                      data-testid="2fa-email-disable"
+                    >
+                      Desactiver
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={enableEmail}
+                      disabled={busy}
+                      className={primaryBtn}
+                      data-testid="2fa-email-enable"
+                    >
+                      Activer la verification par email
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <label htmlFor="code" className="block text-sm font-medium text-text-primary">
-                Code de verification
-              </label>
-              <input
-                id="code"
-                type="text"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-                autoFocus
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="123456"
-                className="mt-1 w-full rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
-              />
-            </div>
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-accent py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60"
-            >
-              {loading ? "Verification..." : "Confirmer et activer"}
-            </button>
-          </form>
-        )}
+          </section>
 
-        {stage === "done" && (
-          <div className="mt-6 space-y-4">
-            <p className="text-sm text-emerald-500">
-              Double authentification activee.
-            </p>
-            <p className="text-sm text-text-secondary">
-              Conservez ces codes de secours en lieu sur. Ils ne seront affiches
-              qu'une seule fois et chacun n'est utilisable qu'une fois si vous
-              perdez votre application d'authentification.
-            </p>
-            <ul className="grid grid-cols-2 gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] p-3 font-mono text-sm text-text-primary">
-              {recoveryCodes.map((rc) => (
-                <li key={rc}>{rc}</li>
-              ))}
-            </ul>
+          {/* Methode 2 : application TOTP (avancee) */}
+          <section className={cardClass} data-testid="2fa-totp-card">
+            <div className="flex items-start gap-3">
+              <Smartphone size={20} className="mt-0.5 text-text-secondary" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-semibold text-text-primary">
+                    Par application d&apos;authentification
+                  </h2>
+                  <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                    Avance
+                  </span>
+                  {status.mfaEnabled && (
+                    <span
+                      data-testid="2fa-totp-active"
+                      className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-medium text-accent"
+                    >
+                      Activee
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-text-secondary">
+                  Code temporaire genere par une application (Google Authenticator,
+                  1Password...). Necessite une appli et une horloge a l&apos;heure.
+                </p>
+
+                {/* Etat active -> desactiver (le setup est verrouille tant que c'est actif) */}
+                {status.mfaEnabled && totpStage !== "done" && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={disableTotp}
+                      disabled={busy}
+                      className={ghostBtn}
+                      data-testid="2fa-totp-disable"
+                    >
+                      Desactiver
+                    </button>
+                  </div>
+                )}
+
+                {/* Non active, pas encore en cours -> proposer la configuration */}
+                {!status.mfaEnabled && totpStage === "none" && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={startTotpSetup}
+                      disabled={busy}
+                      className={ghostBtn}
+                      data-testid="2fa-totp-setup"
+                    >
+                      Configurer l&apos;application
+                    </button>
+                  </div>
+                )}
+
+                {/* Etape de configuration : secret + confirmation du premier code */}
+                {totpStage === "setup" && (
+                  <form onSubmit={confirmTotp} className="mt-4 space-y-3">
+                    <p className="text-sm text-text-secondary">
+                      Ajoutez ce compte a votre application, puis saisissez le code a
+                      6 chiffres pour confirmer.
+                    </p>
+                    <div className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] p-3 text-sm">
+                      <p className="text-text-secondary">Cle (saisie manuelle) :</p>
+                      <code className="mt-1 block break-all font-mono text-text-primary">
+                        {secret}
+                      </code>
+                      <a
+                        href={otpauthUrl}
+                        className="mt-2 block break-all text-xs text-accent underline"
+                      >
+                        Ouvrir dans l&apos;application d&apos;authentification
+                      </a>
+                    </div>
+                    <input
+                      type="text"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      required
+                      autoFocus
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      placeholder="123456"
+                      className="w-full rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] px-3 py-2 text-sm text-[color:var(--text-primary)] outline-none focus:border-accent"
+                    />
+                    <button type="submit" disabled={busy} className={primaryBtn}>
+                      {busy ? "Verification..." : "Confirmer et activer"}
+                    </button>
+                  </form>
+                )}
+
+                {/* Codes de secours affiches une seule fois apres activation */}
+                {totpStage === "done" && (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-sm text-emerald-500">
+                      Application activee. Conservez ces codes de secours en lieu
+                      sur : ils ne seront affiches qu&apos;une seule fois et chacun ne
+                      sert qu&apos;une fois si vous perdez votre application.
+                    </p>
+                    <ul className="grid grid-cols-2 gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] p-3 font-mono text-sm text-text-primary">
+                      {recoveryCodes.map((rc) => (
+                        <li key={rc}>{rc}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <div className="flex items-center gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] p-3 text-xs text-text-secondary">
+            <ShieldCheck size={16} className="text-text-secondary" />
+            Vous pouvez activer une seule methode. La verification par email suffit
+            pour la plupart des usages.
           </div>
-        )}
-      </div>
+        </>
+      )}
     </main>
   );
 }

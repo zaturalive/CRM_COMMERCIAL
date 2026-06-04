@@ -19,10 +19,21 @@ export const PENDING_2FA_KEY = "crm-commercial:pending-2fa";
  */
 export const TOTP_REQUIRED_PREFIX = "TOTP_REQUIRED:";
 
+/**
+ * Variante 2FA par email (OTP) — meme mecanique de relais que TOTP. Le backend
+ * repond { step: "email_otp_required" }, authorize encode le pendingToken dans le
+ * message d'erreur avec ce prefixe, /login le detecte et bascule vers /login/2fa
+ * en mode email (code recu par email + bouton renvoyer), sans appli authenticator.
+ */
+export const EMAIL_OTP_REQUIRED_PREFIX = "EMAIL_OTP_REQUIRED:";
+
 export interface Pending2faContext {
   email: string;
   password: string;
   tenantSlug: string;
   pendingToken: string;
   callbackUrl: string;
+  // Methode du second facteur a saisir sur /login/2fa. Absent => "totp"
+  // (retro-compat : l'ancien flux TOTP ne posait pas ce champ).
+  method?: "totp" | "email";
 }

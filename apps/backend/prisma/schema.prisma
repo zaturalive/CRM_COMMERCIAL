@@ -197,6 +197,16 @@ model User {
   totpSecret    String?
   recoveryCodes String[] @default([])
   mfaEnabled    Boolean  @default(false)
+  // 2FA par email (alternative simple au TOTP, pour profils non-tech : aucune appli
+  // authenticator a installer). mfaEmailEnabled active l'envoi d'un code a 6 chiffres
+  // a chaque login. Le code n'est pas conserve en clair : loginOtpHash en porte le
+  // hash bcrypt, loginOtpExpiresAt borne sa validite (TTL court), loginOtpAttempts
+  // compte les essais rates pour invalider le code apres un seuil (anti-brute-force,
+  // en complement du rate-limit). Defauts non bloquants pour les comptes existants.
+  mfaEmailEnabled   Boolean   @default(false)
+  loginOtpHash      String?
+  loginOtpExpiresAt DateTime?
+  loginOtpAttempts  Int       @default(0)
   // EP15-S02 : un ADMIN de cabinet desactive un compte sans le supprimer
   // (depart d'un commercial). Un user inactif voit son login refuse (auth.ts),
   // ses donnees restent en base (pas de suppression). Defaut true pour ne pas

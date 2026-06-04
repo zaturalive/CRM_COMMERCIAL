@@ -1,6 +1,7 @@
 import type { NextAuthOptions, User } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { TOTP_REQUIRED_PREFIX } from "./twoFactorSession";
+import GoogleProvider from "next-auth/providers/google";
+import { TOTP_REQUIRED_PREFIX, EMAIL_OTP_REQUIRED_PREFIX } from "./twoFactorSession";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://backend:4000";
 
@@ -14,6 +15,15 @@ const BACKEND_URL = process.env.BACKEND_URL ?? "http://backend:4000";
  */
 const COOKIE_DOMAIN = process.env.AUTH_COOKIE_DOMAIN;
 const USE_SECURE_COOKIES = process.env.NODE_ENV === "production";
+
+/**
+ * Connexion Google (SSO) active uniquement si le client OAuth est configure
+ * (variables presentes cote serveur). Absent -> aucun provider Google enregistre,
+ * le bouton /login ne s'affiche pas, le login mot de passe reste inchange.
+ */
+const GOOGLE_ENABLED = Boolean(
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET,
+);
 
 /**
  * Forme commune de la charge utile de login renvoyee par le backend (/login
@@ -152,6 +162,46 @@ async function recoveryStep(
   return body.data as BackendLoginData;
 }
 
+/**
+ * Variante email — etape 2 : echange le pendingToken + code OTP recu par email
+ * contre la charge utile de login complete (JWT mfaVerified). Retourne null sur
+ * code invalide / expire / challenge expire (401 backend).
+ */
+async function verifyEmailOtpStep(
+  pendingToken: string,
+  code: string,
+): Promise<BackendLoginData | null> {
+  const res = await fetch(`${BACKEND_URL}/api/auth/2fa/verify-email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pendingToken, code }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  return body.data as BackendLoginData;
+}
+
+/**
+ * Connexion Google (SSO) — echange l'email Google verifie (cote serveur NextAuth)
+ * contre une charge utile de login backend. Le compte doit exister (pas de
+ * self-signup) ; transmet le secret partage (serveur-a-serveur). null si non
+ * configure ou compte introuvable -> le callback signIn refuse la connexion.
+ */
+async function googleExchange(email: string): Promise<BackendLoginData | null> {
+  const secret = process.env.GOOGLE_SSO_SHARED_SECRET;
+  if (!secret) return null;
+  const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, secret }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  return body.data as BackendLoginData;
+}
+
 export const authOptions: NextAuthOptions = {
   // EP14-S03 : cookie de session partage cross-sous-domaine (opt-in via
   // AUTH_COOKIE_DOMAIN). Nom prefixe __Secure- en prod (https), conforme a la
@@ -195,6 +245,8 @@ export const authOptions: NextAuthOptions = {
         // secours (AC6, authenticator perdu).
         totpCode: { label: "TOTP", type: "text" },
         recoveryCode: { label: "Recovery", type: "text" },
+        // Variante 2FA par email : code OTP a 6 chiffres recu par email (etape 2).
+        emailOtpCode: { label: "EmailOTP", type: "text" },
         pendingToken: { label: "Pending", type: "text" },
         // EP17 (completion) : login editeur plateforme. kind === "editor" route
         // vers POST /api/admin/login (pas de tenantSlug, l'editeur n'a pas de
@@ -212,6 +264,26 @@ export const authOptions: NextAuthOptions = {
           return buildEditorSessionUser(editor);
         }
 
+        // Etape 2 du second facteur : un pendingToken + un code sont deja fournis
+        // (rappel depuis /login/2fa). On verifie DIRECTEMENT contre le backend sans
+        // rejouer /api/auth/login : pour l'OTP email, un nouvel appel a /login
+        // regenererait le code et invaliderait celui que l'utilisateur vient de
+        // saisir. L'identite est portee par le pendingToken (emis a l'etape 1) ; le
+        // backend (/2fa/verify | /2fa/recovery | /2fa/verify-email) le valide.
+        if (
+          creds?.pendingToken &&
+          (creds.totpCode || creds.recoveryCode || creds.emailOtpCode)
+        ) {
+          const verified = creds.recoveryCode
+            ? await recoveryStep(creds.pendingToken, creds.recoveryCode)
+            : creds.emailOtpCode
+              ? await verifyEmailOtpStep(creds.pendingToken, creds.emailOtpCode)
+              : await verifyTotpStep(creds.pendingToken, creds.totpCode!);
+          if (!verified) return null;
+          return buildSessionUser(verified);
+        }
+
+        // Etape 1 : echange mot de passe contre la charge utile de login.
         if (!creds?.email || !creds?.password || !creds?.tenantSlug) return null;
         const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
           method: "POST",
@@ -227,30 +299,47 @@ export const authOptions: NextAuthOptions = {
         if (!body.success) return null;
         const d = body.data;
 
-        // EP14-S01 / AC4 : le backend a valide le mot de passe mais exige le
-        // second facteur. AUCUN JWT n'a ete emis a ce stade. Deux cas :
+        // EP14-S01 / AC4 : mot de passe valide mais second facteur requis. AUCUN
+        // JWT emis a ce stade. On transporte le pendingToken dans le message
+        // d'erreur (seul canal de retour d'authorize), avec un prefixe distinct
+        // selon la methode ; /login le detecte et redirige vers /login/2fa.
         if (d.step === "totp_required") {
-          // (a) Le second facteur est fourni (etape 2, depuis /login/2fa) :
-          //     code TOTP via /2fa/verify, ou code de secours via /2fa/recovery.
-          if (creds.pendingToken && (creds.totpCode || creds.recoveryCode)) {
-            const verified = creds.recoveryCode
-              ? await recoveryStep(creds.pendingToken, creds.recoveryCode)
-              : await verifyTotpStep(creds.pendingToken, creds.totpCode!);
-            if (!verified) return null;
-            return buildSessionUser(verified);
-          }
-          // (b) Pas encore de code : on signale a la page de login qu'un second
-          //     facteur est requis, en transportant le pendingToken dans le
-          //     message d'erreur (seul canal de retour d'authorize). La page
-          //     /login le detecte et redirige vers /login/2fa.
           throw new Error(`${TOTP_REQUIRED_PREFIX}${d.pendingToken}`);
+        }
+        if (d.step === "email_otp_required") {
+          throw new Error(`${EMAIL_OTP_REQUIRED_PREFIX}${d.pendingToken}`);
         }
 
         return buildSessionUser(d);
       },
     }),
+    ...(GOOGLE_ENABLED
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+          }),
+        ]
+      : []),
   ],
   callbacks: {
+    // Connexion Google (SSO) : a la premiere connexion via Google, on echange
+    // l'email verifie par Google contre un compte cabinet existant (pas de
+    // self-signup). Echec -> on refuse (NextAuth redirige vers /login). Le provider
+    // credentials passe tel quel (authorize a deja tout fait). La charge utile
+    // backend est attachee au user pour le callback jwt.
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "google") {
+        const email =
+          (profile as { email?: string } | undefined)?.email ?? user?.email ?? null;
+        if (!email) return false;
+        const data = await googleExchange(email);
+        if (!data) return false;
+        Object.assign(user, buildSessionUser(data));
+        return true;
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.userId = user.id;
