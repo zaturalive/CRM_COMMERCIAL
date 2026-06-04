@@ -136,14 +136,21 @@ authentification est **obligatoire et imposée côté serveur** :
 On teste d'abord **en local** (dev) pour valider l'UX 2FA, PUIS en prod. À chaque étape :
 tu exécutes, tu me dis le résultat (✅/❌ + ce que tu vois), j'ajuste si bug.
 
-### Pré-requis test local
-Les conteneurs `crm-commercial-*` tournent avec l'ANCIENNE image → lancer les apps en
-dev (hot-reload) pour tester mes changements. Emails capturés par **Mailpit**
-(http://localhost:8025).
+### Pré-requis test local (Docker — `docker/docker-compose.yml`)
+Le code est bind-monté dans les conteneurs `crm-commercial-*` (hot-reload tsx/next),
+mais le **client Prisma vient de l'image** → après le changement de schéma 2FA il faut
+**rebuild** (le Dockerfile dev relance `prisma generate`). La BDD du conteneur a déjà les
+colonnes 2FA (migration appliquée). Emails capturés par **Mailpit** (http://localhost:8025).
 ```bash
-cd apps/backend  && npm run dev      # tsx watch + prisma generate
-cd apps/frontend && npm run dev      # next dev
+# Depuis la racine du repo CRM_commercial :
+docker compose -f docker/docker-compose.yml up -d --build
+# ~1-2 min (npm ci + prisma generate au build du backend). Suivre le boot :
+docker compose -f docker/docker-compose.yml logs -f backend
 ```
+Front : http://localhost:3301. Comptes locaux non enrôlés (seront forcés en 2FA) :
+- **éditeur** : `editor@vencor.local` (login sur `/admin/login`)
+- **admin cabinet** : `admin@cabinet-demo.fr`, cabinet `demo`
+(mot de passe oublié → reset : `docker compose -f docker/docker-compose.yml exec backend node -e "const{hashSync}=require('bcryptjs');const{PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.platformAdmin.update({where:{email:'editor@vencor.local'},data:{passwordHash:hashSync('Test1234!',10)}}).then(()=>console.log('ok')).finally(()=>p.\$disconnect())"`)
 
 ### A. 2FA ADMIN cabinet (local)
 1. Login admin (seed demo : `admin@cabinet-demo.fr` / cabinet `demo` / `demo`).
