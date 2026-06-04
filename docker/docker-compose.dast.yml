@@ -1,0 +1,20 @@
+# ============================================================================
+# Override CI / DAST (OWASP ZAP) — A NE PAS UTILISER EN PROD.
+#
+# En prod, Traefik expose le frontend ; en CI il n'y a pas de Traefik, donc on
+# publie le port du frontend pour qu'OWASP ZAP puisse l'atteindre sur localhost.
+# Le reste (backend, postgres, hardening, env) vient du compose prod : le job
+# DAST valide donc AUSSI que la stack durcie boote correctement.
+#
+# Usage (CI) :
+#   docker compose -f docker/docker-compose.prod.yml \
+#                  -f docker/docker-compose.dast.yml \
+#                  --env-file .env.prod up -d --build
+# ============================================================================
+
+name: crm-commercial
+
+services:
+  frontend:
+    ports:
+      - "3000:3000"
