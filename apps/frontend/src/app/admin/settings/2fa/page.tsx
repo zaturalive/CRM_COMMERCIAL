@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSession, useSession, signOut } from "next-auth/react";
+import { getSession, useSession } from "next-auth/react";
 import Link from "next/link";
 import { ArrowLeft, Mail, Smartphone, ShieldCheck } from "lucide-react";
 
@@ -169,22 +169,9 @@ export default function EditorTwoFactorSetupPage() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-4 p-6 md:p-10 text-slate-100" data-testid="editor-twofactor-page">
-      <div className="flex items-center justify-between gap-2">
-        {session?.setup2fa === true ? (
-          <span />
-        ) : (
-          <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
-            <ArrowLeft size={16} /> Retour au Back Office
-          </Link>
-        )}
-        <button
-          type="button"
-          onClick={() => signOut({ callbackUrl: `${window.location.origin}/admin/login` })}
-          className="text-sm text-slate-400 underline hover:text-slate-200"
-        >
-          Se deconnecter
-        </button>
-      </div>
+      <Link href="/admin" className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-200">
+        <ArrowLeft size={16} /> Retour au Back Office
+      </Link>
 
       <h1 className="font-display text-2xl font-bold text-white">
         Double authentification (editeur)

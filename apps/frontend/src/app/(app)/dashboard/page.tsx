@@ -2,7 +2,6 @@
 
 import { useSession } from "next-auth/react";
 import { DashboardView } from "@/components/dashboard/DashboardView";
-import { NonHdsReminder } from "@/components/banners/NonHdsReminder";
 
 /**
  * EP08-S01 + S02 — Dashboard : 4 KPIs + chart CA + previsionnel + CA attente.
@@ -17,8 +16,6 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      {/* EP14-S02 AC7 : rappel non-HDS persistant 7 jours apres l'onboarding. */}
-      <NonHdsReminder />
       <div>
         <h1 className="font-display text-2xl font-bold text-text-primary">
           Bonjour {session.user.firstName}
