@@ -148,6 +148,15 @@ const PUBLIC_ROUTES = new Set<string>([
   "POST /api/auth/reset-password",
   "POST /api/auth/2fa/verify",
   "POST /api/auth/2fa/recovery",
+  // 2FA par email (etape 2 du login : pendingToken, pas de JWT a ce stade) +
+  // renvoi du code + SSO Google (echange serveur-a-serveur par secret partage) +
+  // check token reset (verification publique, ne consomme pas). Publics par
+  // conception, comme /2fa/verify : l'authz est portee par le pendingToken / le
+  // secret partage / le token, pas par un JWT de session.
+  "POST /api/auth/2fa/verify-email",
+  "POST /api/auth/2fa/email/resend",
+  "POST /api/auth/google",
+  "POST /api/auth/reset-password/check",
   "GET /api/tenant/by-slug/:slug",
   // Express expose une route router.all(...) avec la pseudo-methode "_all" :
   // c'est la garde 405 (Method Not Allowed) du lookup public, pas un point
