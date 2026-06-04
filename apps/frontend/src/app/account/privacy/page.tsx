@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { getSession } from "next-auth/react";
+import { ArrowLeft } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +13,6 @@ import {
   DialogFooter,
 } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { NonHdsBanner } from "@/components/banners/NonHdsBanner";
 
 /**
  * EP14-S06 (AC5) — page self-service RGPD du compte courant.
@@ -43,6 +44,7 @@ function resolveBase(): string {
 }
 
 export default function AccountPrivacyPage() {
+  const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -122,6 +124,13 @@ export default function AccountPrivacyPage() {
 
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-8">
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
+      >
+        <ArrowLeft size={16} /> Retour
+      </button>
       <div>
         <h1 className="font-display text-2xl font-bold text-text-primary">
           Confidentialite et mes donnees
@@ -131,8 +140,6 @@ export default function AccountPrivacyPage() {
           d&apos;effacement (Art. 17) sur les donnees de votre compte.
         </p>
       </div>
-
-      <NonHdsBanner />
 
       <section className="space-y-3 rounded-md border border-[color:var(--border)] bg-[color:var(--surface)] p-5">
         <h2 className="font-display text-lg font-semibold text-text-primary">
