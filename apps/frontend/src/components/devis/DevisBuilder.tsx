@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Plus,
   Trash2,
@@ -538,7 +539,20 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
         <div className="space-y-3">
           {devis.devisInterventions.length === 0 && (
             <p className="text-sm text-[color:var(--text-secondary)]">
-              Aucune intervention. Ajoutez-en une pour commencer.
+              {interventions.length === 0 ? (
+                <>
+                  Aucune intervention dans votre catalogue.{" "}
+                  <Link
+                    href="/config/interventions"
+                    className="font-medium text-[color:var(--accent)] underline"
+                  >
+                    Creez-en une
+                  </Link>{" "}
+                  pour pouvoir l&apos;ajouter au devis.
+                </>
+              ) : (
+                "Aucune intervention. Ajoutez-en une pour commencer."
+              )}
             </p>
           )}
           {devis.devisInterventions.map((di) => (

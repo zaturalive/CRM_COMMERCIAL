@@ -290,7 +290,7 @@ function CaEnAttenteBanner({
         </div>
       </div>
       <Link
-        href="/followup"
+        href="/follow-up"
         className={cn(
           "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-semibold transition",
           hasSome
