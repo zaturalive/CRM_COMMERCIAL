@@ -25,6 +25,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:backfill-encrypt": "tsx scripts/backfill-encrypt-at-rest.ts",
+    "db:decrypt": "tsx scripts/crypto-cli.ts decrypt",
+    "db:encrypt": "tsx scripts/crypto-cli.ts encrypt",
+    "db:hash": "tsx scripts/crypto-cli.ts hash",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio"
   },
