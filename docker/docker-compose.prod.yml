@@ -123,6 +123,10 @@ services:
       - MAIL_FROM=${MAIL_FROM}
       - MAIL_USER=${MAIL_USER}
       - MAIL_PASS=${MAIL_PASS}
+      # API HTTP Brevo (MAIL_PROVIDER=brevo-api) : envoi via 443 car l'hebergeur
+      # (Scaleway) bloque le SMTP sortant (25/465/587). Cf BrevoApiEmailSender.
+      - BREVO_API_KEY=${BREVO_API_KEY:-}
+      - BREVO_API_BASE=${BREVO_API_BASE:-https://api.brevo.com/v3}
       # Chiffrement at-rest (ADR-0009) — OBLIGATOIRE : sans ces cles le backend
       # refuse de booter. AJOUTE ici (manquait dans ce compose alors que
       # .env.prod.example/guide les declarent requis). /!\ VERIFIER que la valeur

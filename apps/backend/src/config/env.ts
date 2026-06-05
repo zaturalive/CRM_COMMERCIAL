@@ -31,12 +31,17 @@ const envSchema = z.object({
   // Email (reset/set-password par lien). Provider changeable par env sans toucher
   // au code : "smtp" (Mailpit en dev, relais auto-heberge / Brevo en prod) ou "noop"
   // (aucun envoi). Cf lib/email/createEmailSender.
-  MAIL_PROVIDER: z.enum(["noop", "smtp"]).default("noop"),
+  MAIL_PROVIDER: z.enum(["noop", "smtp", "brevo-api"]).default("noop"),
   MAIL_HOST: z.string().default("localhost"),
   MAIL_PORT: z.string().default("1025").transform(Number),
   MAIL_FROM: z.string().default("no-reply@vencor-crm.localhost"),
   MAIL_USER: z.string().optional(),
   MAIL_PASS: z.string().optional(),
+  // API HTTP Brevo (provider "brevo-api"). POURQUOI : l'hebergeur bloque le SMTP
+  // sortant (25/465/587), donc on envoie via l'API HTTPS (443). BREVO_API_KEY = cle
+  // API Brevo avec droit d'envoi (cf vault_brevo_api_key cote infra vencor-infra).
+  BREVO_API_KEY: z.string().optional(),
+  BREVO_API_BASE: z.string().default("https://api.brevo.com/v3"),
   // Connexion Google (SSO) : secret partage serveur-a-serveur (serveur NextAuth
   // frontend -> POST /api/auth/google). Optionnel : absent -> l'endpoint Google
   // refuse (SSO non configure). N'est pas expose au navigateur.
