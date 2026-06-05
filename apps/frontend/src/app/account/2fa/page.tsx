@@ -186,10 +186,10 @@ export default function TwoFactorSetupPage() {
     // page reste affichee (codes de secours visibles) ; seule la prochaine
     // navigation cesse d'etre redirigee vers /account/2fa.
     await update({ setup2fa: false });
-    // Invalide le Router Cache Next : sans ca, update() leve le flag session mais la
-    // redirection "2FA requise" reste en cache -> navigation/Retour bloques jusqu'a un F5.
-    // router.refresh() preserve l'etat client (les codes de secours restent affiches).
-    router.refresh();
+    // NE PAS router.refresh() ici : les codes de secours (totpStage="done") doivent
+    // rester affiches jusqu'a ce que l'utilisateur clique "J'ai note mes codes". Sinon la
+    // re-evaluation des gates (ex: CGU non acceptee) le redirige AVANT qu'il copie ses
+    // codes. Le refresh est DIFFERE au bouton "Continuer" (cf section totpStage "done").
   }
 
   const cardClass =
@@ -393,6 +393,17 @@ export default function TwoFactorSetupPage() {
                         <li key={rc}>{rc}</li>
                       ))}
                     </ul>
+                    {/* Navigation DIFFEREE : tant que l'utilisateur n'a pas clique, les
+                        codes restent affiches. Le clic fait router.refresh() qui re-evalue
+                        les gates (2FA levee -> CGU si non acceptee, sinon nav debloquee). */}
+                    <button
+                      type="button"
+                      onClick={() => router.refresh()}
+                      className={primaryBtn}
+                      data-testid="2fa-recovery-continue"
+                    >
+                      J&apos;ai note mes codes de secours, continuer
+                    </button>
                   </div>
                 )}
               </div>
