@@ -84,8 +84,14 @@ services:
       # X-Forwarded-Proto (app) + chaine WAF infra (CrowdSec + headers + rate-limit)
       - "traefik.http.routers.crm-frontend-secure.middlewares=crm-frontend-headers,secure-public-waf-app@file"
       - "traefik.http.middlewares.crm-frontend-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      # /api/auth/* servi par Next (NextAuth), pas par Express. PathPrefix plus long -> priorite.
-      - "traefik.http.routers.crm-frontend-auth-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/auth`)"
+      # SEUL le sous-ensemble NextAuth de /api/auth/* est servi par Next. Le RESTE
+      # (/api/auth/login, /me, /2fa/*, /change-password, /reset-password, /google...)
+      # est servi par Express (backend). En single-domain les deux partagent /api/auth,
+      # donc on liste explicitement les routes NextAuth (liste fermee et stable) +
+      # priority 100 ici / 50 backend : un endpoint backend sous /api/auth tombe alors
+      # sur la regle /api (backend), pas sur Next (qui repondrait 400 a une "action" inconnue).
+      - "traefik.http.routers.crm-frontend-auth-secure.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api/auth/callback`) || PathPrefix(`/api/auth/signin`) || PathPrefix(`/api/auth/signout`) || PathPrefix(`/api/auth/session`) || PathPrefix(`/api/auth/csrf`) || PathPrefix(`/api/auth/providers`) || PathPrefix(`/api/auth/error`) || PathPrefix(`/api/auth/_log`) || PathPrefix(`/api/auth/verify-request`))"
+      - "traefik.http.routers.crm-frontend-auth-secure.priority=100"
       - "traefik.http.routers.crm-frontend-auth-secure.entrypoints=websecure"
       - "traefik.http.routers.crm-frontend-auth-secure.service=crm-frontend"
       - "traefik.http.routers.crm-frontend-auth-secure.middlewares=secure-public-waf-app@file"
@@ -150,6 +156,7 @@ services:
       - "traefik.docker.network=traefik-public"
       - "traefik.enable=true"
       - "traefik.http.routers.crm-backend-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.crm-backend-secure.priority=50"
       - "traefik.http.routers.crm-backend-secure.entrypoints=websecure"
       - "traefik.http.routers.crm-backend-secure.service=crm-backend"
       - "traefik.http.routers.crm-backend-secure.middlewares=secure-public-waf-app@file"
