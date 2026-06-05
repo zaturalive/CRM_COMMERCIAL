@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Smartphone, ShieldCheck } from "lucide-react";
 
@@ -39,6 +40,7 @@ type TotpStage = "none" | "setup" | "done";
 
 export default function EditorTwoFactorSetupPage() {
   const { data: session, update } = useSession();
+  const router = useRouter();
   const [status, setStatus] = useState<TwoFactorStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -91,6 +93,10 @@ export default function EditorTwoFactorSetupPage() {
       );
       await loadStatus();
       await update({ setup2fa: false });
+      // Invalide le Router Cache Next : sinon la redirection "2FA requise" decidee au
+      // chargement (setup2fa=true) reste en cache et bloque la navigation sidebar
+      // jusqu'a un F5, alors que la session est deja a jour.
+      router.refresh();
     } else {
       setError("Action impossible pour le moment. Reessayez.");
     }
@@ -159,6 +165,9 @@ export default function EditorTwoFactorSetupPage() {
     setTotpStage("done");
     await loadStatus();
     await update({ setup2fa: false });
+    // Invalide le Router Cache Next (cf enableEmail) : debloque la navigation sidebar
+    // sans F5. router.refresh() preserve l'etat client (les codes RECOV restent affiches).
+    router.refresh();
   }
 
   const cardClass = "rounded-lg border border-slate-700 bg-slate-900 p-5";

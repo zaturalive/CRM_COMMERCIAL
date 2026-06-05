@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getSession, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Smartphone, ShieldCheck } from "lucide-react";
 
@@ -51,6 +52,7 @@ export default function TwoFactorSetupPage() {
   // apres un enrolement reussi, sans re-login. session.setup2fa === true => l'ADMIN
   // est arrive ici force par le middleware (banniere d'activation obligatoire).
   const { data: session, update } = useSession();
+  const router = useRouter();
   const [status, setStatus] = useState<TwoFactorStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -106,6 +108,10 @@ export default function TwoFactorSetupPage() {
       // EP14-S01 / AC7 : le compte est desormais enrole -> on leve la gate 2FA
       // (un ADMIN force ici peut continuer sans re-login).
       await update({ setup2fa: false });
+      // Invalide le Router Cache Next : update() leve le flag session mais le cache de
+      // navigation garde la redirection "2FA requise" decidee au chargement -> sans ca,
+      // la sidebar / le bouton Retour restent bloques jusqu'a un F5.
+      router.refresh();
     } else {
       setError("Action impossible pour le moment. Reessayez.");
     }
@@ -180,6 +186,10 @@ export default function TwoFactorSetupPage() {
     // page reste affichee (codes de secours visibles) ; seule la prochaine
     // navigation cesse d'etre redirigee vers /account/2fa.
     await update({ setup2fa: false });
+    // Invalide le Router Cache Next : sans ca, update() leve le flag session mais la
+    // redirection "2FA requise" reste en cache -> navigation/Retour bloques jusqu'a un F5.
+    // router.refresh() preserve l'etat client (les codes de secours restent affiches).
+    router.refresh();
   }
 
   const cardClass =
