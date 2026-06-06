@@ -17,7 +17,12 @@ async function getBrowser(): Promise<Browser> {
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage",
+        // rootfs read_only (hardening) -> profil Chromium dans le tmpfs /tmp
+        "--user-data-dir=/tmp/chromium",
       ],
+      // $HOME doit etre ecrivable, sinon chrome_crashpad_handler echoue
+      // ("--database is required") sur le rootfs read_only -> 500 a la generation.
+      env: { ...process.env, HOME: "/tmp" },
     });
   }
   return browserPromise;
