@@ -2,30 +2,16 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { LogOut, Search } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 export function Header() {
   const { data: session } = useSession();
   const tCommon = useTranslations("Common");
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-[color:var(--border)] bg-[color:var(--surface-glass)] px-6 backdrop-blur">
-      <div className="flex flex-1 items-center gap-4">
-        <div className="relative flex max-w-sm flex-1 items-center">
-          <Search
-            size={14}
-            className="absolute left-3 text-text-secondary"
-            strokeWidth={1.75}
-          />
-          <input
-            type="search"
-            placeholder={`${tCommon("search")}...`}
-            disabled
-            className="w-full rounded-md border border-[color:var(--border)] bg-[color:var(--accent-lighter)] py-2 pl-8 pr-3 text-sm text-text-primary placeholder:text-text-secondary focus:outline-none disabled:cursor-not-allowed"
-            aria-label={tCommon("search")}
-          />
-        </div>
-      </div>
+    <header className="flex h-16 shrink-0 items-center justify-end border-b border-[color:var(--border)] bg-[color:var(--surface-glass)] px-6 backdrop-blur">
+      {/* Recherche globale retiree (MVP) — reviendra en V1 avec un vrai index
+          transverse clients/devis/process. */}
       <div className="flex items-center gap-3">
         <span className="text-sm text-text-secondary">
           {session?.user.firstName}
