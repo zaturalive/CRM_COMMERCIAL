@@ -30,7 +30,7 @@ function resolveBase(): string {
 export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInit = {}
-): Promise<{ success: true; data: T } | { success: false; error: string; details?: unknown }> {
+): Promise<{ success: true; data: T } | { success: false; error: string; code?: string; details?: unknown }> {
   const session = await getSession();
   const headers = new Headers(init.headers || {});
   if (!headers.has("Content-Type") && init.body) {

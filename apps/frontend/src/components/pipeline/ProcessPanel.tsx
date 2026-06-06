@@ -12,7 +12,8 @@ import { CopyButton } from "@/components/shared/CopyButton";
 import { ProcessStepper } from "./ProcessStepper";
 import { StageContextBanner } from "./StageContextBanner";
 import { ProcessTabs } from "./ProcessTabs";
-import { NonQualifieDialog, FollowupDialog, ForceTransitionDialog } from "./ReasonDialog";
+import { NonQualifieDialog, FollowupDialog, ForceTransitionDialog, tabForStage } from "./ReasonDialog";
+import { useProcessPanelStore } from "@/lib/stores/processPanelStore";
 import { DeleteProcessDialog } from "./DeleteProcessDialog";
 import type {
   ProcessDetail,
@@ -37,6 +38,7 @@ interface ProcessPanelProps {
 export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProps) {
   const { data: session } = useSession();
   const role = session?.role ?? "COMMERCIAL";
+  const openTab = useProcessPanelStore((s) => s.openTab);
 
   const [detail, setDetail] = useState<ProcessDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,7 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
     reason: string | null;
   }>({ open: false, target: null, reason: null });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [gotoTab, setGotoTab] = useState<{ key: string; nonce: number } | null>(null);
 
   // On distingue le 1er load (panel vide → spinner plein) du refresh (detail
   // deja present → update silencieux). Garder le contenu monte evite le reset
@@ -67,6 +70,11 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
   useEffect(() => {
     load();
   }, [load]);
+
+  // Ouverture ciblee sur un onglet (fleche "Renseigner" du Kanban -> openPanel(id, tab)).
+  useEffect(() => {
+    if (openTab) setGotoTab({ key: openTab, nonce: Date.now() });
+  }, [openTab]);
 
   async function handleStepChange(targetStage: PipelineStage, force = false) {
     const res = await apiFetch<ProcessDetail>(`/api/processes/${processId}/stage`, {
@@ -222,6 +230,7 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
                   role={role}
                   onReload={load}
                   onChanged={onChanged}
+                  gotoTab={gotoTab}
                 />
               </div>
 
@@ -282,6 +291,10 @@ export function ProcessPanel({ processId, onClose, onChanged }: ProcessPanelProp
         reason={forceDialog.reason}
         targetStage={forceDialog.target}
         onConfirm={handleForceConfirm}
+        onGoto={() => {
+          setGotoTab({ key: tabForStage(forceDialog.target), nonce: Date.now() });
+          setForceDialog((p) => ({ ...p, open: false }));
+        }}
       />
       <DeleteProcessDialog
         open={deleteOpen}
