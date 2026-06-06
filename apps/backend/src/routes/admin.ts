@@ -7,6 +7,7 @@ import { basePrisma } from "../lib/prisma";
 import { createTenantSchema, updateTenantSchema } from "../schemas/tenants";
 import { generateTempPassword } from "../lib/tempPassword";
 import adminTenantUsersRouter from "./adminTenantUsers";
+import adminCliniquesRouter from "./adminCliniques";
 import {
   parseAuditLogFilters,
   buildAuditLogWhere,
@@ -39,6 +40,14 @@ router.use(requireEditor);
  * pas etre masque par un match de segment dynamique.
  */
 router.use("/tenants/:tenantId/users", adminTenantUsersRouter);
+
+/**
+ * Copie de catalogue clinique entre cabinets (GET liste cliniques d'un tenant +
+ * POST copie clinique+tarifs+options vers un autre tenant). Monte a la racine du
+ * router admin (ses routes ont leurs propres prefixes /tenants/.../cliniques et
+ * /cliniques/...), avant les routes /tenants/:id pour la lisibilite.
+ */
+router.use(adminCliniquesRouter);
 
 /**
  * Forme publique d'un tenant en liste/detail. POURQUOI une projection explicite
