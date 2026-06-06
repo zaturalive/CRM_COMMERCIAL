@@ -200,13 +200,16 @@ router.get(
           include: { intervention: { select: { id: true, name: true } } },
         },
         devis: { select: { id: true, firstSignedAt: true, totalCached: true, status: true } },
-        _count: { select: { documents: true } },
+        documents: { select: { status: true } },
       },
     });
 
     const enriched = processes.map((p) => {
-      const receivedDocs = 0; // TODO EP06 — compter les documents "RECU" ou "VALIDE"
-      const totalDocs = p._count.documents;
+      // EP06 : documents "recus" = status RECU ou VALIDE (EN_ATTENTE exclu).
+      const totalDocs = p.documents.length;
+      const receivedDocs = p.documents.filter(
+        (d) => d.status === "RECU" || d.status === "VALIDE"
+      ).length;
       const lastDevis = p.devis[p.devis.length - 1];
       return {
         id: p.id,
