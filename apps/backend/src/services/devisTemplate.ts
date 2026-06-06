@@ -115,32 +115,39 @@ export function renderDevisHtml(input: DevisPdfInput): string {
 <meta charset="UTF-8" />
 <title>Devis ${esc(input.reference)}</title>
 <style>
+  /* Palette Vencor : onyx #0F1117, platine #B5BFC7, violet #6c63ff. Corps blanc
+     (devis imprime + signe a la main) ; onyx en bandeaux, accents platine/violet. */
   * { box-sizing: border-box; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    color: #1a1a1a;
+    font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    color: #1A1A2E;
     font-size: 12px;
     margin: 0;
     line-height: 1.45;
+    letter-spacing: -0.01em;
   }
   .mono { font-family: "SF Mono", Consolas, monospace; }
   .right { text-align: right; }
+  /* En-tete : bandeau onyx facon papier a en-tete Vencor. */
   header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 2px solid #2f3e7e;
-    padding-bottom: 16px;
-    margin-bottom: 22px;
+    background: #0F1117;
+    color: #ffffff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
   }
   header .cabinet h1 {
     font-size: 20px;
     margin: 0 0 6px;
-    color: #2f3e7e;
+    color: #ffffff;
+    font-weight: 600;
   }
   header .cabinet .legal {
     font-size: 10.5px;
-    color: #555;
+    color: rgba(255, 255, 255, 0.62);
   }
   header .doc {
     text-align: right;
@@ -148,23 +155,23 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   header .doc .title {
     font-size: 16px;
     font-weight: 700;
-    color: #2f3e7e;
-    letter-spacing: 0.5px;
+    color: #B5BFC7;
+    letter-spacing: 2px;
   }
   header .doc .ref {
     font-family: monospace;
     font-size: 13px;
-    color: #333;
+    color: rgba(255, 255, 255, 0.9);
     margin-top: 4px;
   }
   header .doc .meta {
     font-size: 10.5px;
-    color: #555;
+    color: rgba(255, 255, 255, 0.6);
     margin-top: 4px;
   }
   .client-box {
-    background: #f5f7ff;
-    border-left: 3px solid #2f3e7e;
+    background: rgba(108, 99, 255, 0.06);
+    border-left: 3px solid #6c63ff;
     padding: 10px 14px;
     margin-bottom: 20px;
     font-size: 12px;
@@ -172,10 +179,13 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   .client-box .who { font-weight: 600; }
   h2 {
     font-size: 13px;
-    margin: 0 0 8px;
-    color: #2f3e7e;
+    margin: 0 0 10px;
+    color: #0F1117;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    border-bottom: 2px solid #6c63ff;
+    display: inline-block;
+    padding-bottom: 3px;
   }
   table.lines {
     width: 100%;
@@ -183,18 +193,18 @@ export function renderDevisHtml(input: DevisPdfInput): string {
     margin-bottom: 14px;
   }
   table.lines thead th {
-    background: #2f3e7e;
+    background: #0F1117;
     color: #fff;
     font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    padding: 7px 8px;
+    padding: 8px;
     text-align: left;
   }
   table.lines thead th.right { text-align: right; }
   table.lines tbody td {
     padding: 7px 8px;
-    border-bottom: 1px solid #e3e6f0;
+    border-bottom: 1px solid #ececf1;
     vertical-align: top;
   }
   table.lines tbody td.lib { font-weight: 600; }
@@ -215,24 +225,24 @@ export function renderDevisHtml(input: DevisPdfInput): string {
     width: 280px;
     margin-left: auto;
     margin-top: 6px;
-    padding: 12px 14px;
-    background: #2f3e7e;
+    padding: 13px 16px;
+    background: #0F1117;
     color: #fff;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 3px;
+    border-radius: 6px;
   }
-  .total-net .label { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
-  .total-net .value { font-size: 18px; font-weight: 700; font-family: monospace; }
+  .total-net .label { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: #B5BFC7; }
+  .total-net .value { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
   .validity {
     margin-top: 22px;
     font-size: 11px;
     color: #333;
-    background: #fbfbe9;
-    border: 1px solid #e7e7c0;
+    background: rgba(108, 99, 255, 0.05);
+    border: 1px solid rgba(108, 99, 255, 0.20);
     padding: 8px 12px;
-    border-radius: 3px;
+    border-radius: 6px;
   }
   .signature {
     margin-top: 34px;
