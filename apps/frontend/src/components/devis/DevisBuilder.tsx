@@ -8,6 +8,7 @@ import {
   Download,
   Send,
   FileSignature,
+  RotateCcw,
   Eye,
   EyeOff,
 } from "lucide-react";
@@ -418,6 +419,18 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
     await refresh();
   };
 
+  const handleUnsign = async () => {
+    if (
+      !window.confirm(
+        "Annuler la signature de ce devis ? Il repassera en cours d'edition."
+      )
+    ) {
+      return;
+    }
+    await apiFetch(`/api/devis/${devisId}/unsign`, { method: "POST" });
+    await refresh();
+  };
+
   // ── Groupement (clinique, date) pour sections commerciale + options ──
   const groups = useMemo(() => {
     if (!devis) return [];
@@ -509,9 +522,13 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
               V1
             </span>
           </div>
-          {devis.status !== "SIGNE" && (
+          {devis.status !== "SIGNE" ? (
             <Button variant="primary" size="sm" onClick={handleSign}>
               <FileSignature size={14} /> Marquer signe
+            </Button>
+          ) : (
+            <Button variant="secondary" size="sm" onClick={handleUnsign}>
+              <RotateCcw size={14} /> Annuler la signature
             </Button>
           )}
         </div>

@@ -922,6 +922,31 @@ router.post(
   })
 );
 
+router.post(
+  "/:id/unsign",
+  asyncHandler(async (req, res) => {
+    const devis = await loadOwnedDevis(req, req.params.id);
+    if (devis.status !== "SIGNE") {
+      return res
+        .status(409)
+        .json({ success: false, error: "Ce devis n'est pas signe." });
+    }
+    // Annule la signature : on retire firstSignedAt puis on recalcule l'etat
+    // naturel du devis (REMPLI/BROUILLON selon le remplissage) via le helper.
+    // Le stage du process n'est PAS recule : l'auto-advance est one-way, le
+    // recul eventuel se fait a la main dans le Kanban.
+    await basePrisma.devis.update({
+      where: { id: devis.id },
+      data: { firstSignedAt: null, status: "BROUILLON" },
+    });
+    await refreshDevisStatus(devis.id);
+    const updated = await basePrisma.devis.findUnique({
+      where: { id: devis.id },
+    });
+    res.json({ success: true, data: updated });
+  })
+);
+
 // ─── Paiements : acompte + solde ─────────────────────────────────────────
 // Permet au commercial de marquer l'acompte paye (toggle) et d'ajouter
 // manuellement des versements sur le solde. Pas d'integration Stripe en MVP
