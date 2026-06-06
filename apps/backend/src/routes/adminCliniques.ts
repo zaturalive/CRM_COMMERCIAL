@@ -231,4 +231,36 @@ router.post(
   })
 );
 
+/**
+ * DELETE /api/admin/cliniques/:cliniqueId — supprime une clinique + son catalogue
+ * (tarifs + options, cascade). Refuse (409) si la clinique est referencee par des
+ * devis (DevisIntervention/DevisStay, onDelete: Restrict) -> message clair plutot
+ * qu'une 500 de contrainte FK.
+ */
+router.delete(
+  "/cliniques/:cliniqueId",
+  asyncHandler(async (req, res) => {
+    const { cliniqueId } = req.params;
+    const clinique = await basePrisma.clinique.findUnique({
+      where: { id: cliniqueId },
+      include: {
+        _count: { select: { devisInterventions: true, devisStays: true } },
+      },
+    });
+    if (!clinique) {
+      return res.status(404).json({ success: false, error: "Clinique introuvable" });
+    }
+    const refs = clinique._count.devisInterventions + clinique._count.devisStays;
+    if (refs > 0) {
+      return res.status(409).json({
+        success: false,
+        error: `Clinique referencee par ${refs} ligne(s) de devis — suppression impossible.`,
+        code: "CLINIQUE_IN_USE",
+      });
+    }
+    await basePrisma.clinique.delete({ where: { id: cliniqueId } });
+    res.status(204).send();
+  })
+);
+
 export default router;

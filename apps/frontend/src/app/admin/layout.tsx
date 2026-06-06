@@ -20,6 +20,7 @@ import { authOptions } from "@/lib/auth";
 
 const NAV_ITEMS = [
   { href: "/admin/tenants", label: "Tenants", story: "EP17-S02" },
+  { href: "/admin/cliniques", label: "Catalogues cliniques", story: "EP17" },
   { href: "/admin/users", label: "Utilisateurs", story: "EP17-S03" },
   { href: "/admin/logs", label: "Logs", story: "EP17-S05" },
   { href: "/admin/settings/2fa", label: "Securite 2FA", story: "EP14-S01" },
