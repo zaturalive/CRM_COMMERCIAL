@@ -1,9 +1,9 @@
 # EPIC — Tests de securite avances
 
 > **Objectif** : couvrir les angles morts de la suite de tests actuelle avant la mise en prod.
-> **Statut global** : 6 critiques planifies ce soir + 5 importants cette semaine + 5 reportes.
+> **Statut global** : 6 critiques + 5 importants traites (cf. journal), puis vagues OWASP (mai 2026) et EP14/EP17 (juin 2026) — voir aussi `docs/TESTS-AUDIT.md`.
 >
-> Base existante (119/119 Vitest green) couvre deja : tenant isolation, auth JWT absent/expire, RBAC notes, validation Zod.
+> Base initiale (119/119 Vitest green, avril 2026) couvrait deja : tenant isolation, auth JWT absent/expire, RBAC notes, validation Zod. La suite securite compte aujourd'hui ~935 tests sur 60 fichiers (cf. journal 2026-06-07).
 > Ce EPIC adresse les risques OWASP et les zones grises.
 
 ---
@@ -85,3 +85,45 @@ Bilan tests : 147 → 190 (+43, SEC-07/08/09 + couverture EP05).
 - `docs(security): full audit report 2026-04-23` — `docs/security-audit-23-04.md`. Recap 11 SEC + 3 angles avances + angles deferred + 15 recommandations prod Scaleway + scoring B+/C.
 
 Bilan tests : 190 → 198 (+8 Vitest security). E2E : 22 → 25 (+3). Tous green.
+
+### 2026-06-07 — vague EP14/EP17 : moulinette par-endpoint + BO editeur + SSRF reel
+
+Mise a jour de l'EPIC apres l'arrivee du Back Office editeur, du socle 2FA
+/ reset password / self-service RGPD, et de la batterie de conformite
+auto-decouverte. La suite securite est passee de ~36 a **60 fichiers
+`tests/security/*.test.ts`**, soit **~935 tests** (`npm run test:security`).
+Detail complet : `docs/TESTS-AUDIT.md` §10.
+
+- **SEC-17 — Moulinette de conformite par-endpoint (EP14-S08)** —
+  `tests/security/endpoint-conformance.test.ts`. Introspecte
+  `app._router.stack` pour enumerer **toutes** les routes montees et
+  asserte une baseline OWASP sur **chaque** endpoint : `401` sans JWT,
+  isolation cross-tenant (`404` sans oracle d'existence), `/api/admin/*`
+  editeur-only, helmet present, pas de fuite stack/secret. **Garde-fou** :
+  un nouvel endpoint non classifie fait passer la suite en RED. Le nombre
+  de cas est **DYNAMIQUE** (assertions `toBeGreaterThan` sur des planchers,
+  pas de total fige). Status : done.
+- **SEC-18 — Cloisonnement Back Office editeur (EP17)** —
+  `apps/backend/src/middleware/requireEditor.ts` +
+  `tests/security/backoffice-guard.test.ts`. `/api/admin/*` reserve au
+  jeton editeur (`kind: editor`, PlatformAdmin hors tenant). JWT de cabinet
+  (ADMIN ou COMMERCIAL) → `403` ; sans token → `401`. Status : done.
+- **SEC-14 (reactive) — SSRF outbound reel** —
+  `tests/security/ssrf.test.ts`. N'est plus un pur N/A static : le seul
+  `fetch()` sortant est `BrevoApiEmailSender.ts` (API HTTP Brevo, URL
+  **config-fixe**, jamais user-controllable — Scaleway bloque le SMTP
+  sortant). Allowliste explicitement
+  (`OUTBOUND_HTTP_ALLOWLIST = ["BrevoApiEmailSender.ts"]`) ; tout autre
+  outbound dans `src/` casse le static check. Status : done (audite).
+- Verifications LIVE (probe manuel 2026-06-07) : isolation cross-tenant et
+  auth `401` OK.
+
+**Dette de test-infra residuelle** (pre-existante, NON liee
+cross-tenant/auth, cf. TESTS-AUDIT §10.6) : npm-audit/integrity cherchaient
+le `package-lock.json` cote `apps/backend` alors qu'il est a la racine du
+monorepo ; 2 tests reset-password/user-management dependent d'un envoi
+d'email non mocke ; 1 test devis-pdf flaky sous charge (Puppeteer) mais
+passe seul.
+
+Bilan tests : ~425 → **~935** Vitest security (chiffre indicatif, la
+moulinette EP14-S08 genere ses cas dynamiquement).

@@ -383,8 +383,8 @@ backup DB, monitoring) est portee par le FD `vencor-hardening-zero-trust` + le r
 |---|---|---|
 | EP14 | S01 2FA, S02 CGU, S04 AuditLog (middleware global), S05 chiffrement at-rest, S06 RGPD self-service | Securite & conformite |
 | EP15 | S01 (-> EP17-S02), S02 gestion users intra-cabinet, S03 reset mdp, S04 change mdp + force 1er login, S05 demo off | Provisioning & comptes |
-| EP16 | S01 PDF devis utilisable, S02 remise | Devis commercial |
-| EP17 | S01 socle BO + guard admin, S02 CRUD tenants, S03 users cross-tenant, ~~S04 acces support~~ (RETIREE 2026-06-03), S05 viewer logs | Back Office editeur |
+| EP16 | S01 PDF devis utilisable (DONE 2026-06-05), S02 remise (DONE), S03 preview live (DONE) | Devis commercial |
+| EP17 | S01 socle BO + guard admin, S02 CRUD tenants, S03 users cross-tenant, ~~S04 acces support~~ (RETIREE 2026-06-03), S05 viewer logs, S06 cliniques cross-tenant copier/deplacer/supprimer (DONE 2026-06-05) | Back Office editeur |
 
 ### Priorisation
 
@@ -412,4 +412,30 @@ backup DB, monitoring) est portee par le FD `vencor-hardening-zero-trust` + le r
 Backup DB + monitoring (infra) ; toute la V1 features (Stripe, Yousign, WhatsApp/IA,
 sync Google Cal, refonte devis complete avec preview live + brouillon + wizard, date de
 naissance, lien visio, no-show, degraissage UI icones copier).
+
+### Livre en prod (post-deploiement vencor-crm) — 2026-06-05
+
+Features livrees et deployees en prod apres la mise en service de `vencor-crm.com` :
+
+- **Devis PDF — refonte commerciale + rebrand Vencor** (EP16-S01) : bandeaux colores
+  + corps blanc imprimable ; **couleur d'accent configurable par cabinet**
+  (`settings.legal.accentColor`, defaut onyx `#0F1117`) qui pilote les bandeaux,
+  texte recalcule par luminance pour rester lisible ; spinner sur "Telecharger PDF".
+  Fix PDF 500 (Puppeteer `HOME=/tmp` + `--user-data-dir=/tmp/chromium`, rootfs read_only).
+- **Template de devis** : mentions legales preremplies (raisonSociale, SIRET, adresse,
+  tel, email, validite, CGV, accentColor) dans Parametrage → Cabinet → `settings.legal`.
+- **Remise dediee** (EP16-S02) : `Devis.discount` + `discountType` AMOUNT|PERCENT
+  (plafonnee a 100 %), ligne remise conditionnelle dans le PDF.
+- **"Marquer signe" reversible** : `POST /api/devis/:id/unsign` + bouton "Annuler la signature".
+- **Pipeline — transitions** (EP04) : erreur de transition = message humain
+  ("La date de rendez-vous est requise pour passer en Consultation.") + bouton
+  "Renseigner →" (ouvre le bon onglet via `tabForStage`) ; detection front via code
+  `INVALID_TRANSITION`.
+- **Compteur receivedDocs reel** (EP06-S03) : documents RECU ou VALIDE (EN_ATTENTE exclu).
+- **Back Office — catalogues de cliniques cross-tenant** (EP17-S06) : COPIER / DEPLACER /
+  SUPPRIMER un catalogue de clinique entre cabinets (`/api/admin/cliniques/:id/copy|move`,
+  `DELETE /api/admin/cliniques/:id` avec garde `409 CLINIQUE_IN_USE`,
+  `GET /api/admin/tenants/:id/cliniques` ; page BO `/admin/cliniques`).
+- **Securite** (EP14-S08) : batterie de conformite par-endpoint (auto-decouverte des routes
+  + baseline OWASP) ; isolation cross-tenant + auth verifiees.
 

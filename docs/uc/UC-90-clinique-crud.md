@@ -23,7 +23,7 @@
 
 ## Regles metier
 
-- **RM1** : Soft-delete via `isActive=false` (preserve bindings devis existants)
+- **RM1** : Soft-delete via `isActive=false` (preserve bindings devis existants). NB : la suppression **dure** d'une clinique n'est possible que depuis le Back Office editeur, avec garde anti-orphelin (cf UC-103)
 - **RM2** : Prix tarif/option en centimes (Int)
 - **RM3** : Recompute des `Devis.totalCached` pour les devis lies si modification d'un tarif → batch endpoint V1
 - **RM4** : ADR-0006 : tous roles peuvent modifier
@@ -36,7 +36,8 @@
 
 - **Routes** : `/api/cliniques`, `/api/clinique-tarifs`, `/api/clinique-options` (GET / POST / PATCH / DELETE)
 - **Composant** : `CliniquesAdmin.tsx`
+- **Voir aussi** : UC-103 — copier / deplacer / supprimer un catalogue clinique **entre cabinets** depuis le Back Office (PlatformAdmin)
 
 ---
 
-*UC-90 stub.*
+*UC-90 cree le 2026-05-22. Maj 2026-06-07 : renvoi vers UC-103 (gestion cross-cabinet des catalogues clinique au Back Office).*

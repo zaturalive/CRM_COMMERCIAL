@@ -610,3 +610,136 @@ Delta vague 2 vs vague 1 :
 > Pattern vague 2 (OWASP) : 1 fichier par categorie, tests focused on
 > design smells + statics + integration. Honnetete : N/A documente
 > uniquement si le static check le confirme.
+
+## 10. Mise a jour 2026-06-07 — etat reel apres EP14/EP17 (BO editeur, 2FA, RGPD)
+
+Cette section reflete l'etat verifie le 2026-06-07. Les sections 1 a 9
+restent l'historique des vagues 1/2 (mai 2026) et ne sont pas reecrites.
+Depuis, la suite a beaucoup grossi avec l'arrivee du Back Office editeur
+(EP17), du socle 2FA / reset password / self-service RGPD, et de la
+moulinette de conformite par-endpoint (EP14-S08).
+
+### 10.1 Volumetrie actuelle
+
+- `apps/backend/tests/security/` : **60 fichiers `*.test.ts`** (~3x la
+  baseline de mai).
+- Suite securite : **~935 tests** au total (`npm run test:security`).
+- Le compte exact varie d'un run a l'autre car la moulinette
+  `endpoint-conformance.test.ts` genere ses cas **dynamiquement** par
+  introspection des routes montees (cf. §10.2) — on ne cite donc plus un
+  nombre fige comme aux vagues 1/2.
+
+Nouveaux domaines couverts depuis mai (fichiers presents) : `2fa*`,
+`audit-log*`, `at-rest-encryption`, `backoffice-guard`,
+`endpoint-conformance`, `tenant-crud`, `tenant-users-admin`,
+`subdomain-tenant`, `change-password`, `password-reset`, `email-otp`,
+`google-sso`, `editor-login`, `cgu-gate`, `demo-mode-off`,
+`profile-self-service`, `rgpd-self-service`, `devis-discount`,
+`devis-pdf-commercial`.
+
+### 10.2 Moulinette de conformite par-endpoint (EP14-S08)
+
+`tests/security/endpoint-conformance.test.ts` est une **batterie
+auto-decouverte** : elle introspecte `app._router.stack` (walk recursif
+des layers Express) pour enumerer **toutes les routes effectivement
+montees**, puis asserte une baseline OWASP sur **chaque** endpoint :
+
+- **Baseline A** — routes tenant : `401` sans JWT (`requireJWT`).
+- **Baseline A bis** — routes JWT-sans-tenant : `401` sans JWT.
+- **Baseline B** — surface `/api/admin/*` cloisonnee par `requireEditor`
+  (un JWT de cabinet, ADMIN ou COMMERCIAL, ne doit jamais y acceder).
+- **Baseline OWASP** — isolation cross-tenant (token tenant A sur ressource
+  tenant B → `404`, **pas d'oracle d'existence**), headers helmet presents,
+  et non-fuite (pas de stack ni de secret dans les reponses).
+
+Points-cles :
+
+- Le nombre de cas est **DYNAMIQUE**. Le test n'affirme pas un total fige :
+  il asserte des planchers (`ALL_ROUTES.length` > 100, `tenantRoutes` > 0,
+  `adminRoutes` > 0). Si l'introspection casse (changement de montage,
+  bump de version Express), le plancher tombe en RED.
+- Effet garde-fou : **un nouvel endpoint non classifie fait passer la
+  suite en RED**. Toute route ajoutee doit etre rangee dans une categorie
+  (tenant / jwt-sans-tenant / admin / publique) sinon la baseline echoue.
+  C'est la mecanique anti-regression qui evite d'oublier `requireJWT`,
+  l'isolation tenant ou le guard editeur sur une route fraiche.
+
+### 10.3 Verifications LIVE (probe manuel, 2026-06-07)
+
+En complement de la suite automatisee :
+
+- **Isolation cross-tenant** : OK (token tenant A → ressource tenant B =
+  `404`, sans distinguer "n'existe pas" de "existe mais autre tenant").
+- **Auth** : OK (`401` sans JWT sur les routes protegees).
+
+### 10.4 SSRF / outbound HTTP — etat reel
+
+`ssrf.test.ts` n'est plus un pur N/A static : il y a desormais **un seul
+outbound HTTP backend reel**, et il est audite + allowliste.
+
+- Le seul `fetch()` sortant du backend est
+  `apps/backend/src/lib/email/BrevoApiEmailSender.ts`, qui appelle l'API
+  HTTP Brevo. L'**URL provient de la config** (`apiBase` fixe), jamais d'un
+  input utilisateur ; seul le **destinataire** est dans le body. Ce n'est
+  donc pas un vecteur SSRF (pas d'URL user-controllable).
+- Contexte : Scaleway **bloque le SMTP sortant** (25/465/587). L'envoi
+  d'email officiel passe donc par l'API HTTP Brevo (443). Cf. memo infra
+  `email-prod-via-brevo-api`.
+- Le test allowliste explicitement ce fichier
+  (`OUTBOUND_HTTP_ALLOWLIST = ["BrevoApiEmailSender.ts"]`) : **tout autre**
+  `fetch`/`axios`/`got`/`node-fetch`/`http.request` introduit dans `src/`
+  fait echouer le static check (SSRF potentiel a auditer).
+- Le reste tient : `doctolibUrl` stocke verbatim sans fetch,
+  `/api/track/redirect/*` toujours en `501`, aucune route
+  `/api/proxy|fetch|import-url`.
+
+### 10.5 Back Office editeur — cloisonnement `/api/admin/*`
+
+Nouvelle surface (EP17) couverte par `backoffice-guard.test.ts` +
+`endpoint-conformance` (Baseline B) :
+
+- `/api/admin/*` est protege par `requireEditor`
+  (`apps/backend/src/middleware/requireEditor.ts`). Le jeton editeur
+  (PlatformAdmin, `kind: editor`, hors modele Tenant) est le seul a passer.
+- Un JWT de cabinet (ADMIN **ou** COMMERCIAL) sur `/api/admin/*` → `403`.
+- Un JWT user sans flag editeur → `403`.
+- Aucun token → `401` (`requireJWT` en amont).
+- Routes admin verifiees cote source (`src/routes/adminCliniques.ts`) :
+  `POST /api/admin/cliniques/:id/copy`, `POST /api/admin/cliniques/:id/move`,
+  `DELETE /api/admin/cliniques/:id` (refus `409 CLINIQUE_IN_USE` si
+  referencee par des lignes de devis).
+
+### 10.6 Dette de test-infra residuelle (pre-existante, NON liee secu)
+
+Quelques echecs/flakys subsistent dans la suite globale. Ils ne touchent
+**ni l'isolation cross-tenant ni l'auth** (qui sont vertes) et sont a
+traiter comme dette de tooling :
+
+- **integrity / npm-audit** : ces tests cherchaient historiquement
+  `package-lock.json` dans `apps/backend`. Le lock est en realite a la
+  **racine du monorepo** (`/package-lock.json`). Les chemins ont ete
+  reorientes vers la racine (`backendRoot/../../package-lock.json`,
+  `npm audit --workspace=apps/backend` lance depuis la racine) — a
+  reverifier en CI selon le runner.
+- **reset-password / user-management** : 2 tests dependent d'un **envoi
+  d'email non mocke** en test (pas de stub du sender) → flaky/echec selon
+  l'environnement. A mocker `createEmailSender` en setup.
+- **devis-pdf** (`tests/integration`) : 1 test **flaky sous charge**
+  (Puppeteer, rendu PDF) mais **passe en isolation**. Concurrence /
+  ressources, pas une regression fonctionnelle.
+
+### 10.7 Synthese
+
+| Axe | Etat 2026-06-07 |
+|-----|-----------------|
+| Isolation cross-tenant | OK (auto + probe live), pas d'oracle d'existence |
+| Auth (401 sans JWT) | OK (auto + probe live) |
+| Moulinette par-endpoint | EP14-S08 active, cas dynamiques, RED si endpoint non classifie |
+| BO editeur `/api/admin/*` | Cloisonne (`requireEditor`, 403 pour JWT cabinet) |
+| JWT hardening | HS256 pinne, `alg=none` rejete |
+| SSRF | 1 outbound (Brevo API, URL config-fixe) allowliste, reste static N/A |
+| Dette test-infra | npm-audit/lock path, 2 tests email non mockes, 1 PDF flaky |
+
+> Mise a jour du 2026-06-07. Le total "~935 tests" est indicatif : la
+> moulinette EP14-S08 genere ses cas dynamiquement (assertions
+> `toBeGreaterThan`), donc le chiffre exact bouge a chaque run.

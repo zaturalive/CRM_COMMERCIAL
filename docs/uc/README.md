@@ -143,6 +143,7 @@ Chaque UC suit le template `template.md` du dossier.
 | [UC-91](UC-91-intervention-crud.md) | CRUD prestations catalogue | Tous | Implemente |
 | [UC-92](UC-92-document-label-crud.md) | CRUD document labels | Tous | Implemente |
 | [UC-93](UC-93-cabinet-config.md) | Configurer le cabinet (acompte, slug, etc.) | ADMIN | Implemente |
+| [UC-94](UC-94-devis-template-legal-color.md) | Configurer le template de devis (mentions legales + couleur) | Tous | Implemente |
 
 ### Integrations & Externes
 
@@ -151,6 +152,7 @@ Chaque UC suit le template `template.md` du dossier.
 | [UC-100](UC-100-stats-endpoint-internal.md) | Endpoint stats interne (outil Florian) | Outil externe | **D8 deadline** |
 | [UC-101](UC-101-migration-external-csv.md) | Migration import CSV externe | ADMIN, Editeur | **D9 deadline** |
 | [UC-102](UC-102-deploy-production.md) | Deploiement production (CI/CD + smoke) | Editeur | **D11 deadline** |
+| [UC-103](UC-103-bo-clinique-catalog-move.md) | Back Office — copier / deplacer / supprimer un catalogue clinique | Editeur | Implemente |
 
 ---
 
