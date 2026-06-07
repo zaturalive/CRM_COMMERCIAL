@@ -166,6 +166,16 @@ export default function ChangePasswordPage() {
             {loading ? "Enregistrement..." : "Changer le mot de passe"}
           </button>
         </form>
+
+        <div className="mt-6 text-center">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="text-xs text-text-secondary underline hover:text-text-primary"
+          >
+            Retour
+          </button>
+        </div>
       </div>
     </main>
   );

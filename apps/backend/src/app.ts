@@ -8,12 +8,15 @@ import { requireJWT } from "./middleware/requireJWT";
 import { requireTenant } from "./middleware/requireTenant";
 import { requireEditor } from "./middleware/requireEditor";
 import { requireCguAccepted } from "./middleware/requireCguAccepted";
+import { require2faEnrolled } from "./middleware/require2faEnrolled";
+import { requireEditor2faEnrolled } from "./middleware/requireEditor2faEnrolled";
 import { auditLog } from "./middleware/auditLog";
 import { createAuthRouter } from "./routes/auth";
 import type { EmailSender } from "./lib/email/EmailSender";
 import { createEmailSender } from "./lib/email/createEmailSender";
 import adminRoutes from "./routes/admin";
-import adminLoginRoutes from "./routes/adminLogin";
+import { createAdminLoginRouter } from "./routes/adminLogin";
+import { createAdminTwoFactorRouter } from "./routes/adminTwoFactor";
 import { createUsersRouter } from "./routes/users";
 import meRoutes from "./routes/me";
 import demoRoutes from "./routes/demo";
@@ -136,7 +139,15 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // pas encore de jeton a ce stade. POST /api/admin/login uniquement ; toutes les
   // autres routes /api/admin/* restent gardees. Le router login porte son propre
   // rate-limit (loginLimiter), miroir du login user.
-  app.use("/api/admin", adminLoginRoutes);
+  app.use("/api/admin", createAdminLoginRouter(emailSender));
+
+  // EP14-S01 (extension editeur) — 2FA editeur. PUBLIC pour les routes de login
+  // etape 2 (/api/admin/2fa/login/*, identite via pendingToken) ; les routes de
+  // SETUP (/setup, /confirm, /status, /disable, /email/*) portent requireJWT +
+  // requireEditor en interne. Monte AVANT la chaine gardee + le gate 2FA ci-dessous,
+  // pour que l'enrolement reste accessible a un editeur non encore enrole (anti
+  // chicken-and-egg) et que le challenge de login soit public.
+  app.use("/api/admin/2fa", createAdminTwoFactorRouter(emailSender));
 
   // EP17-S01 — Back Office editeur. Monte AVANT le guard tenant global :
   // ces routes utilisent requireJWT + requireEditor (pas requireTenant), car
@@ -145,7 +156,11 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // d'atteindre requireEditor.
   // EP14-S04 / ADR-0009 D3 : l'audit est monte sur la chaine admin apres
   // requireJWT + requireEditor (req.editor peuple), avant le router admin.
-  app.use("/api/admin", requireJWT, requireEditor, auditLog, adminRoutes);
+  // EP14-S01 (extension editeur) / AC7 : gate 2FA obligatoire editeur, insere
+  // APRES requireEditor (req.editor peuple) et AVANT le router admin. Un editeur
+  // sans second facteur est refuse (403 2FA_SETUP_REQUIRED) sur tout le Back
+  // Office. Les routes login + /api/admin/2fa/* sont montees avant cette chaine.
+  app.use("/api/admin", requireJWT, requireEditor, requireEditor2faEnrolled, auditLog, adminRoutes);
 
   // Routes protegees (JWT + tenant isolation)
   app.use("/api", requireJWT, requireTenant);
@@ -154,6 +169,15 @@ export function buildApp(options: BuildAppOptions = {}): Express {
   // + requireTenant (req.user / req.editor deja peuples) et avant la declaration
   // des routers tenant, de sorte qu'il couvre toutes les routes mutantes /api/*.
   app.use("/api", auditLog);
+
+  // EP14-S01 / AC7 — gate 2FA obligatoire pour l'ADMIN (couche post-login
+  // requirements, garde back). Montee APRES requireTenant (req.user.userId peuple)
+  // + audit, et AVANT le gate CGU : securite du compte d'abord, consentement legal
+  // ensuite (meme ordre que change-password -> CGU dans postLoginRequirements).
+  // Tant qu'un ADMIN n'a pas enrole TOTP ou email OTP, toute route metier est
+  // refusee en 403 (code 2FA_SETUP_REQUIRED) ; le front redirige vers /account/2fa.
+  // Les endpoints d'enrolement (/api/auth/2fa/*) sont montes avant cette chaine.
+  app.use("/api", require2faEnrolled);
 
   // EP14-S02 / ADR-0009 D5 — gate CGU (couche post-login requirements, garde
   // back). Montee APRES requireTenant (req.user.tenantId peuple) et APRES l'audit

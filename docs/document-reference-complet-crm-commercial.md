@@ -5,6 +5,8 @@
 **Objet :** Document auto-suffisant consolidant l'intégralité du contexte projet, des décisions prises, des analyses juridiques, du contrat de sous-traitance, et des spécifications techniques. Destiné à servir de source unique de vérité pour toute personne ou IA travaillant sur le projet.
 
 > **MAJ 2026-05-20** : ADR-0002 (18 mai) retire le role CHIRURGIEN et la colonne Process.noteMedecin du fork commercial. Les sections ci-dessous qui les mentionnent comme "conservés" sont obsolètes — cf. `docs/CHANGELOG-2026-05-19-20-ADR-0002-implementation.md` pour le détail des modifications appliquées.
+>
+> **MAJ 2026-06-07** : nouvelles features livrées depuis la v3.1 (template de devis personnalisable, dévis signé réversible, Back Office éditeur multi-tenant, etc.). Elles sont consignées en **Partie J** ci-dessous sans réécrire les parties A-I. Côté sécurité, la suite de tests backend compte désormais ~935 tests (60 fichiers) — voir `docs/TESTS-AUDIT.md` et `docs/product/epic-security-advanced.md`.
 
 ---
 
@@ -435,3 +437,43 @@ Annexe 4 — Document de split Phase 1 / Phase 2 (devoir de conseil)
 3. En Phase 2, l'éditeur qui administre l'appli sur un PaaS HDS doit-il être lui-même certifié HDS (activité 5) ?
 4. Une micro-entreprise suffit-elle comme structure juridique pour l'éditeur ?
 5. Le contrat de sous-traitance avec cession de droits (Art. 7) protège-t-il suffisamment Dimitry en cas de contrôle CNIL sur l'outil exploité par le client ?
+
+---
+
+# PARTIE J — JOURNAL DES FEATURES POST-V3.1 (au 2026-06-07)
+
+Cette partie consigne les fonctionnalités livrées depuis la v3.1 (20 mai). Elle complète les parties A-I sans les réécrire. Les chemins de code sont donnés à titre de référence.
+
+## J.1 Devis — template et personnalisation
+
+- **Couleur de devis configurable** : `settings.legal.accentColor` (format hex `#RRGGBB`, validé par Zod). La couleur d'accent pilote les bandeaux du PDF. Stocké dans `Tenant.settings.legal`, exposé via `GET/PATCH /api/settings`. Code : `apps/backend/src/schemas/settings.ts`, `src/services/devisTemplate.ts`.
+- **Template de mentions légales** : bloc `settings.legal` pré-rempli une fois et appliqué à chaque devis (raison sociale, SIRET, adresse, téléphone, email, durée de validité, référence CGV). Fallbacks fournis par `resolveLegalMentions`. Champs tous optionnels.
+- **Devis signé réversible** : `POST /api/devis/:id/unsign` annule une signature (`firstSignedAt = null`, statut recalculé via `refreshDevisStatus` → BROUILLON/REMPLI). Renvoie `409` si le devis n'est pas au statut `SIGNE`. Le stage du process n'est **pas** reculé automatiquement (l'auto-advance est one-way ; le recul se fait à la main dans le Kanban). Code : `apps/backend/src/routes/devis.ts`.
+
+## J.2 Pipeline — UX
+
+- **Transition humanisée + bouton « Renseigner → »** : les transitions de stage affichent un libellé humanisé et un bouton d'action « Renseigner → » pour compléter les champs requis avant d'avancer. Code frontend : `apps/frontend/src/components/pipeline/` (`ProcessPanel.tsx`, `ProcessTabs.tsx`, `ReasonDialog.tsx`).
+- **`receivedDocs` réel** : le suivi documentaire reflète l'état réel des documents reçus (plus de placeholder). Code : `apps/backend/src/routes/documents.ts`, `src/routes/clients.ts`.
+
+## J.3 Back Office éditeur — catalogue clinique multi-tenant
+
+Nouvelle surface `/api/admin/*` réservée à l'éditeur (PlatformAdmin, hors modèle Tenant), protégée par le middleware `requireEditor` (`403` pour tout JWT de cabinet, `401` sans token). Opérations sur le catalogue clinique :
+
+- **Copier** : `POST /api/admin/cliniques/:cliniqueId/copy` — duplique une clinique et tout son catalogue (tarifs + options) vers un tenant cible.
+- **Déplacer** : `POST /api/admin/cliniques/:cliniqueId/move` — déplace une clinique et son catalogue vers un autre tenant (refus si la clinique est référencée par des lignes de devis / séjours côté source, pour ne pas orpheliner des devis).
+- **Supprimer** : `DELETE /api/admin/cliniques/:cliniqueId` — refus `409 CLINIQUE_IN_USE` si la clinique est référencée par des lignes de devis ou des séjours.
+
+Code : `apps/backend/src/routes/adminCliniques.ts`, `src/middleware/requireEditor.ts`.
+
+## J.4 Email transactionnel — canal officiel
+
+L'envoi d'email applicatif (reset password, OTP, invitations) passe par l'**API HTTP Brevo** (`BrevoApiEmailSender`), pas par SMTP : l'hébergeur Scaleway bloque le SMTP sortant (ports 25/465/587). L'URL de l'API est fixée par la configuration (jamais user-controllable), seul le destinataire vient de la requête — d'où l'absence de vecteur SSRF (allowlisté dans `tests/security/ssrf.test.ts`). Code : `apps/backend/src/lib/email/BrevoApiEmailSender.ts`, `src/lib/email/createEmailSender.ts`.
+
+## J.5 Sécurité — état au 2026-06-07
+
+Synthèse (détail dans `docs/TESTS-AUDIT.md` §10 et `docs/product/epic-security-advanced.md`) :
+
+- ~935 tests de sécurité backend sur 60 fichiers.
+- Moulinette de conformité par-endpoint (EP14-S08) : auto-découverte des routes montées + baseline OWASP (401 sans JWT, isolation cross-tenant sans oracle d'existence, `/api/admin/*` éditeur-only, helmet, non-fuite). RED si un endpoint n'est pas classifié.
+- Isolation cross-tenant et auth vérifiées en automatisé **et** en probe manuel live.
+- JWT durci (HS256 épinglé, `alg=none` rejeté).

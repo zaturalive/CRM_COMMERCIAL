@@ -7,6 +7,8 @@
 > **MAJ 2026-05-20 (fork commercial)** : ADR-0002 retire le role CHIRURGIEN. Les mentions "chirurgien" dans les valeurs metier sont a lire comme COMMERCIAL pour le fork commercial.
 >
 > **MAJ 2026-06-01 (vague pre-prod)** : ajout de EP14 (Securite & conformite — etait deja sur disque mais absent de cet index), EP15 (Provisioning & cycle de vie des comptes) et EP16 (Devis/PDF utilisable). Ces 3 epics constituent la "base avant prod" (app uniquement). Voir `docs/product/ETAT-PRE-PROD-2026-06-01.md`.
+>
+> **MAJ 2026-06-05 (prod vencor-crm)** : features livrees en prod refletees : EP16 DONE (refonte PDF commercial + rebrand Vencor + couleur d'accent configurable par cabinet + remise ; "Marquer signe" reversible), EP04 (messages de transition humains + bouton "Renseigner →"), EP06-S03 (compteur receivedDocs reel), EP14-S08 (batterie de conformite securite par-endpoint auto-decouverte), EP17-S06 (gestion cross-tenant des catalogues de cliniques : copier / deplacer / supprimer depuis le Back Office).
 
 ---
 
@@ -27,11 +29,11 @@
 | EP11 | Click tracking demo | — | — | 2 |
 | EP12 | UI performance optimistic | — | — | 3 |
 | EP13 | Polish suivi + auto-advance + tags blocages + bug fix devis | F65, F66, F67 | — | 9 |
-| EP14 | Securite & conformite (prod) | 2FA, CGU, AuditLog, at-rest, RGPD | — | 6 |
+| EP14 | Securite & conformite (prod) | 2FA, CGU, AuditLog, at-rest, RGPD, texte CGU, conformance auto-decouverte | — | 8 |
 | EP15 | Provisioning & cycle de vie des comptes | gestion users intra-cabinet, reset/change pwd, demo-off (creation cabinet -> EP17) | — | 5 |
-| EP16 | Devis/PDF commercial utilisable | PDF legal, remise | — | 2 |
-| EP17 | Back Office editeur (console plateforme) | CRUD tenants, users cross-tenant, ~~acces support~~ (retire 2026-06-03), logs | — | 5 |
-| **Total** | | | | **77** |
+| EP16 | Devis/PDF commercial utilisable | PDF legal (rebrand + accentColor), remise, preview live | — | 3 |
+| EP17 | Back Office editeur (console plateforme) | CRUD tenants, users cross-tenant, ~~acces support~~ (retire 2026-06-03), logs, cliniques cross-tenant | — | 6 |
+| **Total** | | | | **81** |
 
 ---
 
@@ -124,6 +126,8 @@
 - EP04-S05 : Notes commerciale + medicale avec droits role-based
 - EP04-S06 : Archivage automatique (stage EFFECTUEE + isArchived)
 
+**Ameliorations 2026-06-05 (UX transitions)** : sur transition refusee, le backend renvoie un code `INVALID_TRANSITION` + un message **humain** (ex. "La date de rendez-vous est requise pour passer en Consultation.") ; le front detecte ce code et affiche un bouton "Renseigner →" qui ouvre le bon onglet du dossier (`tabForStage` dans `ReasonDialog.tsx`), en plus du "Forcer" existant.
+
 ---
 
 ## EP05 — Devis
@@ -172,7 +176,7 @@
 **Stories** :
 - EP06-S01 : Checklist documents + statuts EN_ATTENTE/RECU/VALIDE — done
 - EP06-S02 : Upload + preview + telechargement (routes securisees) — done
-- EP06-S03 : Badge X/Y + integration dans vue d'ensemble — done
+- EP06-S03 : Badge X/Y + integration dans vue d'ensemble — done (compteur `receivedDocs` reel : documents en statut RECU ou VALIDE, EN_ATTENTE exclu — `routes/clients.ts`)
 - EP06-S04 : Preview Agent IA mock WhatsApp interactif — done
 
 **Livraison** : commits `a202985` (backend : service sync + routes + tests)
@@ -348,6 +352,8 @@ regression (208 security + 18 unit).
 - EP14-S04 : Audit log append-only (middleware global toutes routes) — P1 fast-follow
 - EP14-S05 : Chiffrement at-rest (pgcrypto / app-level) — P1 fast-follow
 - EP14-S06 : RGPD self-service (export + suppression) — P0/P1
+- EP14-S07 : Redaction texte CGU non-HDS (par Claude) — P0 (voir stories/EP14-S07.md)
+- EP14-S08 : Batterie de conformite securite par-endpoint (auto-decouverte + baseline OWASP) — done. `apps/backend/tests/security/endpoint-conformance.test.ts` decouvre automatiquement les routes montees et applique a chacune la baseline (401 sans JWT, isolation cross-tenant, headers Helmet, pas de fuite d'erreur) ; RED par defaut si un endpoint apparait sans couverture. Isolation cross-tenant + auth verifiees.
 
 ---
 
@@ -371,7 +377,7 @@ regression (208 security + 18 unit).
 
 ---
 
-## EP16 — Devis/PDF commercial utilisable
+## EP16 — Devis/PDF commercial utilisable — DONE 2026-06-05
 
 **Valeur metier** : le devis est l'outil de vente ; son PDF est juge "nul" (mentions legales manquantes, mise en page, pas de remise). Le rendre presentable a un client. **Versant commercial uniquement.**
 
@@ -383,8 +389,17 @@ regression (208 security + 18 unit).
 > **Garde-fou HDS** : les elements medicaux du PDF historique (consentement libre et eclaire, frais anesthesiste, separation frais cliniques medicaux, 2 signatures legales) restent **BLOCKED / hors-scope non-HDS** (ADR-0002/0003).
 
 **Stories** :
-- EP16-S01 : Refonte rendu PDF devis (mentions legales commerciales + mise en page) — **P0**
-- EP16-S02 : Champ remise dedie (sur honoraires/total) — P0/P1
+- EP16-S01 : Refonte rendu PDF devis (mentions legales commerciales + mise en page) — **P0** — done 2026-06-05
+- EP16-S02 : Champ remise dedie (sur honoraires/total) — P0/P1 — done (`Devis.discount` + `discountType` AMOUNT|PERCENT plafonnee a 100 %, ligne remise conditionnelle dans le PDF)
+- EP16-S03 : Previsualisation devis (panneau live a droite du devis maker) — P1 — done (`DevisPreview`, split-pane controle par `previewOpen`/"Apercu", rendu HTML/React leger sans appel Puppeteer, total via `/total` ; versant commercial non-HDS)
+
+**Livraison S01 (refonte commerciale + rebrand Vencor, 2026-06-05)** :
+- Rendu PDF **commercial** rebrande Vencor : bandeaux (en-tete/pied) colores + corps blanc imprimable (devis imprime + signe a la main).
+- **Mentions legales preremplies** dans Parametrage → Cabinet (raisonSociale, SIRET, adresse, tel, email, validite, CGV), stockees dans `Tenant.settings.legal` ; appliquees a chaque devis (`devisLoader.resolveLegalMentions` + `devisTemplate`).
+- **Couleur d'accent configurable par cabinet** (`settings.legal.accentColor`, defaut onyx `#0F1117`) : pilote les bandeaux ; le texte pose dessus est recalcule par luminance pour rester lisible quelle que soit la couleur. UI : color picker + presets dans `config/cabinet`.
+- Bouton "Telecharger PDF" avec spinner (`Loader2`, etat `downloadingPdf`).
+- Fix PDF 500 sous rootfs read_only : Puppeteer lance avec `HOME=/tmp` + `--user-data-dir=/tmp/chromium` (`services/pdfGenerator.ts`).
+- "Marquer signe" desormais **reversible** : route `POST /api/devis/:id/unsign` + bouton "Annuler la signature" (le devis repasse en edition).
 
 ---
 
@@ -405,6 +420,13 @@ regression (208 security + 18 unit).
 - EP17-S03 : CRUD users des tenants (cross-tenant) — P0/P1
 - EP17-S04 : Compte temporaire de support chez un tenant — **RETIREE (2026-06-03)** (voir stories/EP17-S04.md)
 - EP17-S05 : Visualisation/analyse des logs d'audit — P1
+- EP17-S06 : Gestion cross-tenant des catalogues de cliniques (copier / deplacer / supprimer) — done 2026-06-05
+
+**Livraison S06 (2026-06-05)** : depuis le Back Office, l'editeur peut **copier**, **deplacer** ou **supprimer** un catalogue de clinique (clinique + son catalogue d'options) entre cabinets.
+- `GET /api/admin/tenants/:tenantId/cliniques` : liste des cliniques d'un cabinet.
+- `POST /api/admin/cliniques/:cliniqueId/copy` (duplique vers `targetTenantId`) ; `POST /api/admin/cliniques/:cliniqueId/move` (deplace).
+- `DELETE /api/admin/cliniques/:cliniqueId` avec garde **409 `CLINIQUE_IN_USE`** si la clinique est referencee.
+- Page BO `/admin/cliniques` (`routes/adminCliniques.ts` + `app/admin/cliniques/page.tsx`).
 
 > **Distinction a garder** : EP14-S04 *produit* les logs (middleware sur toutes les routes) ; EP17-S05 les *lit/analyse*. EP15-S02 = l'admin d'un cabinet gere SES users ; EP17-S03 = l'editeur gere les users de TOUT tenant depuis le BO.
 

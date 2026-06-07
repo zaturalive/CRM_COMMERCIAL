@@ -4,7 +4,10 @@ import { create } from "zustand";
 
 interface ProcessPanelState {
   openProcessId: string | null;
-  open: (id: string) => void;
+  // Onglet a ouvrir a l'ouverture du panel (ex: la fleche "Renseigner" de la
+  // modale de transition vise l'onglet du champ manquant). null = onglet par defaut.
+  openTab: string | null;
+  open: (id: string, tab?: string) => void;
   close: () => void;
 }
 
@@ -14,6 +17,7 @@ interface ProcessPanelState {
  */
 export const useProcessPanelStore = create<ProcessPanelState>((set) => ({
   openProcessId: null,
-  open: (id: string) => set({ openProcessId: id }),
-  close: () => set({ openProcessId: null }),
+  openTab: null,
+  open: (id: string, tab?: string) => set({ openProcessId: id, openTab: tab ?? null }),
+  close: () => set({ openProcessId: null, openTab: null }),
 }));

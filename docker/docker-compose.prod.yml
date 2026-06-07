@@ -1,24 +1,33 @@
 # ============================================================================
-# docker-compose.prod.yml — PROD Scaleway + Traefik (single-domain MVP)
+# docker-compose.prod.yml — PROD Scaleway + Traefik (vencor-crm.com)
 #
-# Prerequis sur le serveur :
-#   - Traefik tourne avec un entrypoint `websecure` (443) + certresolver
-#     Let's Encrypt (`letsencrypt`). Voir docker/traefik/ de ton infra.
-#   - Reseau Docker externe `admin_proxy` existe :
-#       docker network create admin_proxy
+# Prerequis serveur (portes par la session vencor-infra) :
+#   - Traefik avec entrypoint websecure (443) + certresolver Let's Encrypt.
+#   - Reseau Docker externe PARTAGE avec Traefik : traefik-public
+#       (deja cree par l'infra ; sinon : docker network create traefik-public)
+#   - Middlewares Traefik file-provider : secure-public-waf-app@file
+#       (CrowdSec bouncer + security-headers + rate-limit).
 #
-# DNS attendu (1 seul record) :
-#   - crm-commercial.example.com → IP Scaleway (CNAME stark.a3n.fr suffit)
-#
-# Le tenant courant est determine par la session NextAuth (slug saisi au
-# login), pas par le hostname. Multi-tenant physique (sous-domaines par
-# cabinet) est dans le backlog v1+.
+# Securite :
+#   - Images non-root (Dockerfile USER nodejs/nextjs 1001).
+#   - no-new-privileges + cap_drop ALL (cap_add minimal pour Postgres).
+#   - read_only rootfs + tmpfs (frontend/backend) ; Postgres ecrit dans son volume.
+#   - Limits CPU/RAM/PIDs + logs bornes.
+#   - VALIDER AU REDEPLOIEMENT : generation PDF (Puppeteer/Chromium, backend) et
+#     boot Postgres (cap_add) — cf checklist guide. read_only/caps faciles a
+#     retirer service par service si un write legitime casse.
 #
 # Lancement :
 #   docker compose -f docker/docker-compose.prod.yml --env-file .env.prod up -d
 # ============================================================================
 
 name: crm-commercial
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   frontend:
@@ -30,7 +39,6 @@ services:
       args:
         NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
         NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-false}
-        # Sous-domaines (si actives en prod) : domaine racine inline au build.
         NEXT_PUBLIC_BASE_DOMAIN: ${NEXT_PUBLIC_BASE_DOMAIN:-}
     container_name: crm-commercial-frontend
     hostname: crm-commercial-frontend
@@ -42,17 +50,28 @@ services:
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - BACKEND_URL=http://backend:4000
       - NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-false}
-      # Sous-domaines : cookie de session partage apex <-> sous-domaines (si actives).
       - AUTH_COOKIE_DOMAIN=${AUTH_COOKIE_DOMAIN:-}
     networks:
       - internal
-      - admin_proxy
+      - traefik-public
     depends_on:
       - backend
-    # Pattern Acqua : Host exact + cert resolveur global de l'entrypoint
-    # websecure du Traefik (pas de tls.certresolver dans les labels).
+    # ── Hardening ────────────────────────────────────────────────────────────
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      # Next standalone ecrit son cache runtime ici (ISR/revalidate).
+      - /app/apps/frontend/.next/cache
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 256
+    logging: *default-logging
     labels:
-      - "traefik.docker.network=admin_proxy"
+      - "traefik.docker.network=traefik-public"
       - "traefik.enable=true"
       # HTTP (port 80) -> redirige vers HTTPS via la conf statique Traefik.
       - "traefik.http.routers.crm-frontend.rule=Host(`${DOMAIN}`)"
@@ -62,13 +81,20 @@ services:
       - "traefik.http.routers.crm-frontend-secure.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.crm-frontend-secure.entrypoints=websecure"
       - "traefik.http.routers.crm-frontend-secure.service=crm-frontend"
-      - "traefik.http.routers.crm-frontend-secure.middlewares=crm-frontend-headers"
+      # X-Forwarded-Proto (app) + chaine WAF infra (CrowdSec + headers + rate-limit)
+      - "traefik.http.routers.crm-frontend-secure.middlewares=crm-frontend-headers,secure-public-waf-app@file"
       - "traefik.http.middlewares.crm-frontend-headers.headers.customrequestheaders.X-Forwarded-Proto=https"
-      # /api/auth/* doit etre servi par Next (NextAuth), pas par Express.
-      # PathPrefix(/api/auth) plus long que PathPrefix(/api) -> priorite auto.
-      - "traefik.http.routers.crm-frontend-auth-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/auth`)"
+      # SEUL le sous-ensemble NextAuth de /api/auth/* est servi par Next. Le RESTE
+      # (/api/auth/login, /me, /2fa/*, /change-password, /reset-password, /google...)
+      # est servi par Express (backend). En single-domain les deux partagent /api/auth,
+      # donc on liste explicitement les routes NextAuth (liste fermee et stable) +
+      # priority 100 ici / 50 backend : un endpoint backend sous /api/auth tombe alors
+      # sur la regle /api (backend), pas sur Next (qui repondrait 400 a une "action" inconnue).
+      - "traefik.http.routers.crm-frontend-auth-secure.rule=Host(`${DOMAIN}`) && (PathPrefix(`/api/auth/callback`) || PathPrefix(`/api/auth/signin`) || PathPrefix(`/api/auth/signout`) || PathPrefix(`/api/auth/session`) || PathPrefix(`/api/auth/csrf`) || PathPrefix(`/api/auth/providers`) || PathPrefix(`/api/auth/error`) || PathPrefix(`/api/auth/_log`) || PathPrefix(`/api/auth/verify-request`))"
+      - "traefik.http.routers.crm-frontend-auth-secure.priority=100"
       - "traefik.http.routers.crm-frontend-auth-secure.entrypoints=websecure"
       - "traefik.http.routers.crm-frontend-auth-secure.service=crm-frontend"
+      - "traefik.http.routers.crm-frontend-auth-secure.middlewares=secure-public-waf-app@file"
 
   backend:
     build:
@@ -86,38 +112,58 @@ services:
       - PORT=4000
       - FRONTEND_URL=${FRONTEND_URL}
       - DOMAIN=${DOMAIN}
-      # DEMO_MODE : active /api/demo (role switcher, reset seed) en prod
-      # tant que l'instance reste en phase vitrine.
+      # DEMO_MODE : active /api/demo (role switcher) tant que vitrine.
       - DEMO_MODE=${DEMO_MODE:-false}
       - UPLOADS_DIR=/app/uploads
       - LOG_LEVEL=warn
-      # Email prod via Brevo (SMTP). Sans ces variables, MAIL_PROVIDER tombe sur
-      # "noop" -> AUCUN email envoye. Defauts Brevo (host/port) ; identifiants dans
-      # .env.prod : MAIL_USER = login Brevo, MAIL_PASS = cle SMTP, MAIL_FROM =
-      # expediteur verifie dans Brevo.
+      # Email prod via Brevo (SMTP).
       - MAIL_PROVIDER=${MAIL_PROVIDER:-smtp}
       - MAIL_HOST=${MAIL_HOST:-smtp-relay.brevo.com}
       - MAIL_PORT=${MAIL_PORT:-587}
       - MAIL_FROM=${MAIL_FROM}
       - MAIL_USER=${MAIL_USER}
       - MAIL_PASS=${MAIL_PASS}
+      # API HTTP Brevo (MAIL_PROVIDER=brevo-api) : envoi via 443 car l'hebergeur
+      # (Scaleway) bloque le SMTP sortant (25/465/587). Cf BrevoApiEmailSender.
+      - BREVO_API_KEY=${BREVO_API_KEY:-}
+      - BREVO_API_BASE=${BREVO_API_BASE:-https://api.brevo.com/v3}
+      # Chiffrement at-rest (ADR-0009) — OBLIGATOIRE : sans ces cles le backend
+      # refuse de booter. AJOUTE ici (manquait dans ce compose alors que
+      # .env.prod.example/guide les declarent requis). /!\ VERIFIER que la valeur
+      # dans .env.prod == la cle de l'instance deja deployee, sinon les donnees
+      # chiffrees existantes deviennent illisibles.
+      - AT_REST_KEY=${AT_REST_KEY}
+      - EMAIL_SEARCH_KEY=${EMAIL_SEARCH_KEY}
     volumes:
       - backend_uploads:/app/uploads
     networks:
       - internal
-      - admin_proxy
+      - traefik-public
     depends_on:
       postgres:
         condition: service_healthy
-    # Backend expose sous /api/*. PathPrefix(/api) plus long que rien -> match
-    # avant le frontend pour ces routes. /api/auth/* est exclu par le router
-    # frontend-auth-secure plus haut (PathPrefix plus specifique).
+    # ── Hardening ────────────────────────────────────────────────────────────
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    # Chromium/Puppeteer (generation PDF) a besoin de /dev/shm dimensionne.
+    shm_size: 256m
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 512
+    logging: *default-logging
     labels:
-      - "traefik.docker.network=admin_proxy"
+      - "traefik.docker.network=traefik-public"
       - "traefik.enable=true"
       - "traefik.http.routers.crm-backend-secure.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.crm-backend-secure.priority=50"
       - "traefik.http.routers.crm-backend-secure.entrypoints=websecure"
       - "traefik.http.routers.crm-backend-secure.service=crm-backend"
+      - "traefik.http.routers.crm-backend-secure.middlewares=secure-public-waf-app@file"
       - "traefik.http.services.crm-backend.loadbalancer.server.port=4000"
 
   postgres:
@@ -134,6 +180,23 @@ services:
     networks:
       - internal
     # Pas de port expose — accessible uniquement depuis le network internal.
+    # ── Hardening ────────────────────────────────────────────────────────────
+    # Pas de read_only : Postgres ecrit dans des chemins runtime hors volume.
+    # cap_add minimal : l'entrypoint chown les data + drop root -> postgres.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    mem_limit: 1g
+    cpus: 1.0
+    pids_limit: 256
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 10s
@@ -151,7 +214,7 @@ services:
 networks:
   internal:
     driver: bridge
-  admin_proxy:
+  traefik-public:
     external: true
 
 volumes:

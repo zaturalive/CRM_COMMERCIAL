@@ -54,6 +54,40 @@ export function isCguSatisfied(tenant: {
 }
 
 /**
+ * EP14-S01 / AC7 — un compte est "enrole" 2FA des qu'au moins une methode de
+ * second facteur est active : TOTP confirme (mfaEnabled) OU email OTP active
+ * (mfaEmailEnabled). Source unique pour le gate backend et la redirection front.
+ */
+export function isMfaEnrolled(user: {
+  mfaEnabled: boolean;
+  mfaEmailEnabled: boolean;
+}): boolean {
+  return user.mfaEnabled || user.mfaEmailEnabled;
+}
+
+/**
+ * EP14-S01 / AC7 — la 2FA est OBLIGATOIRE pour l'ADMIN, optionnelle pour le
+ * COMMERCIAL. Vrai si le compte doit configurer la 2FA avant d'acceder aux routes
+ * metier : role ADMIN ET pas encore enrole. Naturellement vrai "a la premiere
+ * connexion" (un ADMIN fraichement provisionne n'a aucune methode active) et
+ * auto-cicatrisant (un ADMIN qui desactiverait sa 2FA est re-force).
+ *
+ * POURQUOI derive de l'etat plutot qu'un flag DB "must2fa" : pas de migration, pas
+ * d'etat a maintenir/desynchroniser, et la regle est evaluable cote backend (gate)
+ * comme cote front (redirection) a partir des memes 3 champs deja charges au login.
+ *
+ * `role` est type large (string) pour garder ce module pur (sans import Prisma) ;
+ * les appelants passent user.role (enum UserRole, assignable a string).
+ */
+export function requires2faSetup(user: {
+  role: string;
+  mfaEnabled: boolean;
+  mfaEmailEnabled: boolean;
+}): boolean {
+  return user.role === "ADMIN" && !isMfaEnrolled(user);
+}
+
+/**
  * Couche unique : derive les gates a poser apres le login a partir de l'etat du
  * compte (mustChangePassword) et de l'etat CGU du tenant. Expose la prochaine
  * redirection a poser (nextGate) pour que le front ait une source unique.

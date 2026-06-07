@@ -61,10 +61,10 @@ export function canTransitionTo(
 
     case "CONSULTATION":
       if (!ctx.process.dateRendezVous) {
-        return { ok: false, reason: "dateRendezVous requise pour passer en CONSULTATION" };
+        return { ok: false, reason: "La date de rendez-vous est requise pour passer en Consultation." };
       }
       if (ctx.process.isQualified === false) {
-        return { ok: false, reason: "Process marque non qualifie, requalifier avant de poursuivre" };
+        return { ok: false, reason: "Le dossier est marqué non qualifié : requalifiez-le avant de continuer." };
       }
       return { ok: true };
 
@@ -72,28 +72,28 @@ export function canTransitionTo(
       if (!ctx.hasDevisIntervention) {
         return {
           ok: false,
-          reason: "Au moins une intervention doit etre ajoutee au devis avant de passer en POST_CONSULT",
+          reason: "Ajoutez au moins une intervention au devis pour passer en Post-consultation.",
         };
       }
       return { ok: true };
 
     case "CONFIRMEE":
       if (!ctx.hasSignedDevis) {
-        return { ok: false, reason: "Devis signe requis avant de passer en CONFIRMEE" };
+        return { ok: false, reason: "Un devis signé est requis pour passer en Confirmée." };
       }
       if (!ctx.hasAcompte) {
-        return { ok: false, reason: "Acompte paye requis avant de passer en CONFIRMEE" };
+        return { ok: false, reason: "Le paiement de l'acompte est requis pour passer en Confirmée." };
       }
       return { ok: true };
 
     case "OP_PROGRAMMEE":
       if (!ctx.allDocumentsNonEnAttente) {
-        return { ok: false, reason: "Tous les documents doivent etre recus avant de passer en OP_PROGRAMMEE" };
+        return { ok: false, reason: "Tous les documents doivent être reçus pour passer en Opération programmée." };
       }
       return { ok: true };
 
     default:
-      return { ok: false, reason: `Stage ${targetStage} non supporte par cette route` };
+      return { ok: false, reason: `Stage ${targetStage} non supporté par cette route.` };
   }
 }
 

@@ -78,6 +78,7 @@ L'utilisateur clique sur le bouton "Nouveau devis" dans l'onglet "Devis" du `Pro
 - **RM4** : Le `status` initial depend de la presence de prestations (TECHNIQUE_REMPLI vs BROUILLON)
 - **RM5** : L'auto-advance du stage est silencieux (pas d'erreur si pas applicable)
 - **RM6** : ADR-0002 : plus de role-gating CHIRURGIEN. Tous les roles authentifies peuvent creer un devis
+- **RM7** : A la creation aucune mention legale n'est figee sur le `Devis` : le template de devis du cabinet (mentions legales pre-remplies + couleur d'accent) est resolu **a la volee** au rendu PDF depuis `Tenant.settings.legal` (cf UC-94). Modifier ce template impacte donc tous les devis (contrairement aux prix, qui sont snapshot)
 
 ## Tests E2E
 
@@ -105,4 +106,4 @@ L'utilisateur clique sur le bouton "Nouveau devis" dans l'onglet "Devis" du `Pro
 
 ---
 
-*UC-30 cree le 2026-05-22. Maintenance : a maj si on ajoute le push automatique du PDF sur Google Drive (V1.1, UC-46).*
+*UC-30 cree le 2026-05-22. Maj 2026-06-07 : RM7 (template de devis resolu a la volee au PDF, cf UC-94). Maintenance : a maj si on ajoute le push automatique du PDF sur Google Drive (V1.1, UC-46).*

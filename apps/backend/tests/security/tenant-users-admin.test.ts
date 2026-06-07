@@ -110,8 +110,11 @@ describe("Security — CRUD users cross-tenant Back Office editeur (EP17-S03)", 
     // pour que actorId d'audit reference une ligne existante (D3).
     const editor = await prisma.platformAdmin.upsert({
       where: { email: EDITOR_EMAIL },
-      update: {},
+      // EP14-S01 (editeur) / AC7 : enrole en 2FA email par defaut pour passer le gate
+      // requireEditor2faEnrolled (le JWT editeur est forge, le gate relit la base).
+      update: { mfaEmailEnabled: true },
       create: {
+        mfaEmailEnabled: true,
         email: EDITOR_EMAIL,
         passwordHash: hashSync("editor-temp-password-123!", 10),
         firstName: "Edith",

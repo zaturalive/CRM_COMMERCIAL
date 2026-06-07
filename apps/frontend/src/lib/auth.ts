@@ -41,6 +41,7 @@ interface BackendLoginData {
   jwt: string;
   mustChangePassword?: boolean;
   cguAccepted?: boolean;
+  setup2fa?: boolean;
 }
 
 function buildSessionUser(d: BackendLoginData): User {
@@ -57,6 +58,8 @@ function buildSessionUser(d: BackendLoginData): User {
     mustChangePassword: d.mustChangePassword === true,
     // EP14-S02 / ADR-0009 D5 : etat CGU expose par le backend au login.
     cguAccepted: d.cguAccepted === true,
+    // EP14-S01 / AC7 : gate 2FA obligatoire (true pour un ADMIN non enrole).
+    setup2fa: d.setup2fa === true,
   };
 }
 
@@ -71,6 +74,8 @@ interface EditorLoginData {
   lastName: string;
   jwt: string;
   mustChangePassword?: boolean;
+  // EP14-S01 (editeur) / AC7 : true si l'editeur doit configurer sa 2FA (non enrole).
+  setup2fa?: boolean;
 }
 
 /**
@@ -98,6 +103,11 @@ function buildEditorSessionUser(d: EditorLoginData): User {
     isEditor: true,
     mustChangePassword: d.mustChangePassword === true,
     cguAccepted: true,
+    // EP14-S01 (editeur) / AC7 : la 2FA est OBLIGATOIRE pour l'editeur. setup2fa
+    // vient du backend (login nominal : true si non enrole ; post-2FA : false). Le
+    // middleware redirige vers /admin/settings/2fa (et non /account/2fa, propre au
+    // cabinet) tant que setup2fa est true.
+    setup2fa: d.setup2fa === true,
   };
 }
 
@@ -115,6 +125,68 @@ async function editorLoginStep(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  // EP14-S01 (editeur) / AC4 : mot de passe valide mais second facteur requis.
+  // AUCUN JWT a ce stade : on transporte le pendingToken dans le message d'erreur
+  // (meme mecanique que le login user), /admin/login le detecte et redirige vers
+  // /admin/login/2fa.
+  if (body.data?.step === "totp_required") {
+    throw new Error(
+      `${TOTP_REQUIRED_PREFIX}${body.data.pendingToken}${body.data.emailEnabled ? "~email" : ""}`,
+    );
+  }
+  if (body.data?.step === "email_otp_required") {
+    throw new Error(`${EMAIL_OTP_REQUIRED_PREFIX}${body.data.pendingToken}`);
+  }
+  return body.data as EditorLoginData;
+}
+
+/**
+ * EP14-S01 (editeur) — etape 2 du second facteur editeur. Echange pendingToken +
+ * code contre la charge utile de login editeur (JWT mfaVerified). null sur code
+ * invalide / challenge expire (401 backend). Endpoints /api/admin/2fa/login/*.
+ */
+async function verifyEditorTotpStep(
+  pendingToken: string,
+  totpCode: string,
+): Promise<EditorLoginData | null> {
+  const res = await fetch(`${BACKEND_URL_EDITOR}/api/admin/2fa/login/totp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pendingToken, token: totpCode }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  return body.data as EditorLoginData;
+}
+
+async function verifyEditorEmailOtpStep(
+  pendingToken: string,
+  code: string,
+): Promise<EditorLoginData | null> {
+  const res = await fetch(`${BACKEND_URL_EDITOR}/api/admin/2fa/login/email`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pendingToken, code }),
+  });
+  if (!res.ok) return null;
+  const body = await res.json();
+  if (!body.success) return null;
+  return body.data as EditorLoginData;
+}
+
+async function recoveryEditorStep(
+  pendingToken: string,
+  recoveryCode: string,
+): Promise<EditorLoginData | null> {
+  const res = await fetch(`${BACKEND_URL_EDITOR}/api/admin/2fa/login/recovery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pendingToken, recoveryCode }),
   });
   if (!res.ok) return null;
   const body = await res.json();
@@ -257,6 +329,29 @@ export const authOptions: NextAuthOptions = {
         // EP17 (completion) : chemin editeur. Discrimine par kind === "editor",
         // AVANT le check tenantSlug (un editeur n'en fournit pas). Le login
         // cabinet reste strictement inchange en dessous.
+        // EP14-S01 (editeur) : etape 2 du second facteur editeur. kind "editor" +
+        // pendingToken + code -> verification directe contre /api/admin/2fa/login/*
+        // (l'identite vient du pendingToken). AVANT la branche editeur nominale pour
+        // ne pas rejouer /api/admin/login (qui regenererait l'OTP email).
+        if (
+          creds?.kind === "editor" &&
+          creds?.pendingToken &&
+          (creds.totpCode || creds.recoveryCode || creds.emailOtpCode)
+        ) {
+          let verified = creds.recoveryCode
+            ? await recoveryEditorStep(creds.pendingToken, creds.recoveryCode)
+            : creds.emailOtpCode
+              ? await verifyEditorEmailOtpStep(creds.pendingToken, creds.emailOtpCode)
+              : await verifyEditorTotpStep(creds.pendingToken, creds.totpCode!);
+          // Methodes NON exclusives + champ unifie : si le code "totp" ne valide pas,
+          // on retente comme OTP email (l'editeur a pu saisir l'un ou l'autre).
+          if (!verified && creds.totpCode) {
+            verified = await verifyEditorEmailOtpStep(creds.pendingToken, creds.totpCode);
+          }
+          if (!verified) return null;
+          return buildEditorSessionUser(verified);
+        }
+
         if (creds?.kind === "editor") {
           if (!creds.email || !creds.password) return null;
           const editor = await editorLoginStep(creds.email, creds.password);
@@ -274,11 +369,16 @@ export const authOptions: NextAuthOptions = {
           creds?.pendingToken &&
           (creds.totpCode || creds.recoveryCode || creds.emailOtpCode)
         ) {
-          const verified = creds.recoveryCode
+          let verified = creds.recoveryCode
             ? await recoveryStep(creds.pendingToken, creds.recoveryCode)
             : creds.emailOtpCode
               ? await verifyEmailOtpStep(creds.pendingToken, creds.emailOtpCode)
               : await verifyTotpStep(creds.pendingToken, creds.totpCode!);
+          // Methodes NON exclusives + champ unifie : si le code "totp" ne valide pas
+          // le TOTP, on retente comme OTP email (saisie indifferente dans un champ).
+          if (!verified && creds.totpCode) {
+            verified = await verifyEmailOtpStep(creds.pendingToken, creds.totpCode);
+          }
           if (!verified) return null;
           return buildSessionUser(verified);
         }
@@ -304,7 +404,11 @@ export const authOptions: NextAuthOptions = {
         // d'erreur (seul canal de retour d'authorize), avec un prefixe distinct
         // selon la methode ; /login le detecte et redirige vers /login/2fa.
         if (d.step === "totp_required") {
-          throw new Error(`${TOTP_REQUIRED_PREFIX}${d.pendingToken}`);
+          // Suffixe ~email : l'OTP email est AUSSI actif (methodes non exclusives) ->
+          // le front affiche un champ unifie + le bouton "renvoyer par email".
+          throw new Error(
+            `${TOTP_REQUIRED_PREFIX}${d.pendingToken}${d.emailEnabled ? "~email" : ""}`,
+          );
         }
         if (d.step === "email_otp_required") {
           throw new Error(`${EMAIL_OTP_REQUIRED_PREFIX}${d.pendingToken}`);
@@ -351,6 +455,8 @@ export const authOptions: NextAuthOptions = {
         token.jwt = user.jwt;
         token.mustChangePassword = user.mustChangePassword === true;
         token.cguAccepted = user.cguAccepted === true;
+        // EP14-S01 / AC7 : gate 2FA obligatoire ADMIN propagee dans le token.
+        token.setup2fa = user.setup2fa === true;
         // EP17 (completion) : flag editeur plateforme propage dans le token de
         // session. Seul vecteur d'autorisation de la garde /admin (middleware +
         // layout). Absent / false pour une session de cabinet.
@@ -365,6 +471,9 @@ export const authOptions: NextAuthOptions = {
         if (session.jwt) token.jwt = session.jwt;
         if (session.mustChangePassword === false) token.mustChangePassword = false;
         if (session.cguAccepted === true) token.cguAccepted = true;
+        // EP14-S01 / AC7 : leve la gate 2FA apres un enrolement reussi (TOTP/email)
+        // sans imposer de re-login (la page /account/2fa appelle update({setup2fa:false})).
+        if (session.setup2fa === false) token.setup2fa = false;
       }
       return token;
     },
@@ -378,6 +487,8 @@ export const authOptions: NextAuthOptions = {
       session.jwt = token.jwt;
       session.mustChangePassword = token.mustChangePassword === true;
       session.cguAccepted = token.cguAccepted === true;
+      // EP14-S01 / AC7 : expose la gate 2FA dans la session (lue par middleware.ts).
+      session.setup2fa = token.setup2fa === true;
       // EP17 (completion) : expose le flag editeur dans la session (lu par
       // admin/layout.tsx getServerSession et la garde middleware).
       session.isEditor = token.isEditor === true;

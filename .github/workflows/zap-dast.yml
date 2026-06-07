@@ -1,0 +1,85 @@
+# Z6 — OWASP ZAP baseline DAST (reporting, non-bloquant)
+#
+# Pourquoi : completer le SAST/SCA (security.yml, audit-prod-cve.yml) par un
+# scan DYNAMIQUE. Build + lance la stack prod durcie (override DAST qui publie
+# le frontend), passe OWASP ZAP baseline (en-tetes, XSS, cookies, etc.), puis
+# tear-down. Mode reporting : fail_action=false -> ne casse pas la CI.
+#
+# NB : sans Traefik en CI, le scan cible le frontend (localhost:3000). Les
+# routes /api/* (hors /api/auth) ne sont pas proxyfiees -> couverture surtout
+# front. Pour un scan authentifie/API complet : iteration ulterieure (ZAP full
+# + contexte d'auth).
+
+name: zap-dast
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zap-baseline:
+    name: OWASP ZAP baseline (reporting)
+    runs-on: ubuntu-latest
+    # Reporting : ne bloque jamais la PR. Si la stack durcie ne boote pas en CI,
+    # le job reste vert mais le step "Attendre le frontend" le signale en logs.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reseau proxy partage (external attendu par le compose)
+        run: docker network create traefik-public || true
+
+      - name: .env.prod jetable (secrets factices, pas d'email reel)
+        run: |
+          cp .env.prod.example .env.prod
+          gen() { openssl rand -hex 32; }
+          sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(gen)|"                              .env.prod
+          sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=$(gen)|"                    .env.prod
+          sed -i "s|^AT_REST_KEY=.*|AT_REST_KEY=$(openssl rand -base64 32)|"        .env.prod
+          sed -i "s|^EMAIL_SEARCH_KEY=.*|EMAIL_SEARCH_KEY=$(gen)|"                  .env.prod
+          sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 16)|" .env.prod
+          sed -i "s|^GOOGLE_SSO_SHARED_SECRET=.*|GOOGLE_SSO_SHARED_SECRET=$(openssl rand -base64 32)|" .env.prod
+          # CI : domaine local + provider mail noop (aucun envoi)
+          sed -i "s|^DOMAIN=.*|DOMAIN=localhost|"                                   .env.prod
+          sed -i "s|^NEXT_PUBLIC_BACKEND_URL=.*|NEXT_PUBLIC_BACKEND_URL=http://localhost:3000|" .env.prod
+          sed -i "s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:3000|"           .env.prod
+          sed -i "s|^FRONTEND_URL=.*|FRONTEND_URL=http://localhost:3000|"           .env.prod
+          sed -i "s|^MAIL_PROVIDER=.*|MAIL_PROVIDER=noop|"                          .env.prod
+
+      - name: Build + up de la stack durcie
+        run: |
+          docker compose \
+            -f docker/docker-compose.prod.yml \
+            -f docker/docker-compose.dast.yml \
+            --env-file .env.prod up -d --build
+
+      - name: Attendre le frontend (et valider que la stack durcie boote)
+        run: |
+          for i in $(seq 1 40); do
+            if curl -sf -o /dev/null http://localhost:3000; then echo "frontend up"; exit 0; fi
+            sleep 5
+          done
+          echo "::error::frontend pas pret apres 200s — la stack durcie ne boote pas ?"
+          docker compose -f docker/docker-compose.prod.yml -f docker/docker-compose.dast.yml logs --tail=80
+          exit 1
+
+      - name: OWASP ZAP Baseline (reporting)
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: "http://localhost:3000"
+          fail_action: false
+          allow_issue_writing: false
+          cmd_options: "-a -I"
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker compose -f docker/docker-compose.prod.yml -f docker/docker-compose.dast.yml \
+            --env-file .env.prod down -v || true

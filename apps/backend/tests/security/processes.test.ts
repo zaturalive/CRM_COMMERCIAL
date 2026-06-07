@@ -284,7 +284,9 @@ describe("Security — /api/pipeline & /api/processes", () => {
         .set("Authorization", `Bearer ${commA.jwt}`)
         .send({ targetStage: "CONSULTATION" });
       expect(res.status).toBe(422);
-      expect(res.body.error).toContain("dateRendezVous");
+      // Message humanise (EP — fleche transition) : on verifie le sens, pas le
+      // nom de champ technique. Le contrat stable est le code machine.
+      expect(res.body.error).toContain("date de rendez-vous");
       expect(res.body.code).toBe("INVALID_TRANSITION");
     });
 

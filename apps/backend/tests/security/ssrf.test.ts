@@ -49,6 +49,14 @@ function recursiveFind(dir: string, exts = [".ts"]): string[] {
 }
 const allSrcFiles = recursiveFind(srcDir);
 
+// Allowlist outbound HTTP audite + non-SSRF : BrevoApiEmailSender fait un fetch()
+// vers l'API Brevo dont l'URL provient de la CONFIG (apiBase fixe), jamais d'un
+// input utilisateur (le destinataire est dans le body, pas dans l'URL). Scaleway
+// bloquant le SMTP sortant, c'est le canal email officiel (ADR-0009 D7).
+const OUTBOUND_HTTP_ALLOWLIST = ["BrevoApiEmailSender.ts"];
+const isAllowlisted = (f: string) =>
+  OUTBOUND_HTTP_ALLOWLIST.some((a) => f.endsWith(a));
+
 describe("Security — A10 SSRF", () => {
   let ctx: Awaited<ReturnType<typeof setupTestTenant>>;
 
@@ -71,8 +79,9 @@ describe("Security — A10 SSRF", () => {
         if (/\baxios\b|node-fetch|\bgot\(/.test(content)) {
           offenders.push(f);
         }
-        // fetch( ) global : pas utilise en V1.
-        if (/\bfetch\s*\(/.test(content) && !f.includes("test")) {
+        // fetch() global : seul l'outbound allowliste (Brevo, URL config-fixe)
+        // est tolere ; tout autre fetch = offender (SSRF potentiel a auditer).
+        if (/\bfetch\s*\(/.test(content) && !f.includes("test") && !isAllowlisted(f)) {
           offenders.push(f);
         }
         // http.request / https.request directs : risque SSRF si input user.

@@ -150,7 +150,9 @@ export default function LoginPage() {
       const isEmailOtp = res.error.startsWith(EMAIL_OTP_REQUIRED_PREFIX);
       if (isTotp || isEmailOtp) {
         const prefix = isTotp ? TOTP_REQUIRED_PREFIX : EMAIL_OTP_REQUIRED_PREFIX;
-        const pendingToken = res.error.slice(prefix.length);
+        // Suffixe ~email (methodes non exclusives) : l'OTP email est aussi actif en
+        // mode totp -> champ unifie + bouton renvoyer cote /login/2fa.
+        const [pendingToken, emailFlag] = res.error.slice(prefix.length).split("~");
         if (typeof window !== "undefined") {
           window.localStorage.setItem(TENANT_STORAGE_KEY, tenantSlug);
           // sessionStorage (pas l'URL) : le mot de passe et le pendingToken ne
@@ -165,6 +167,7 @@ export default function LoginPage() {
               pendingToken,
               callbackUrl,
               method: isTotp ? "totp" : "email",
+              emailAvailable: isTotp ? emailFlag === "email" : true,
             }),
           );
         }
@@ -180,7 +183,10 @@ export default function LoginPage() {
       // sous-domaine de son cabinet (cookie de session partage via
       // AUTH_COOKIE_DOMAIN, donc la session suit). Depuis un sous-domaine, on
       // reste sur place (navigation interne SPA).
-      if (subdomain.kind === "none") {
+      // Bascule sous-domaine UNIQUEMENT si le mode sous-domaines est configure
+      // (BASE_DOMAIN non vide). En mode apex (BASE_DOMAIN vide), on RESTE sur l'apex
+      // (sinon on construirait "demo." sans domaine -> "site introuvable").
+      if (subdomain.kind === "none" && BASE_DOMAIN) {
         const dest = `${window.location.protocol}//${tenantSlug}.${BASE_DOMAIN}${
           window.location.port ? `:${window.location.port}` : ""
         }${callbackUrl.startsWith("/") ? callbackUrl : "/dashboard"}`;

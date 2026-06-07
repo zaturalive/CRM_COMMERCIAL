@@ -103,3 +103,4 @@ crm_chirurgien_design.zip
 /logs/
 *.log
 !apps/frontend/src/app/admin/logs/
+docker/.env

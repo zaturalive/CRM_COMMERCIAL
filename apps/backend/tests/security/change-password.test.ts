@@ -389,7 +389,9 @@ describe("Gate force-change — exposition backend du flag (EP15-S04 AC3)", () =
   it("GET /api/auth/me expose mustChangePassword pour piloter la gate front", async () => {
     await gatePrisma.user.update({
       where: { tenantId_email: { tenantId: gateCtx.tenant.id, email: gateCtx.admin.email } },
-      data: { mustChangePassword: true },
+      // EP14-S01 / AC7 : on desactive la 2FA email (enrolee par defaut par le harness)
+      // pour que le login soit nominal — ce test porte sur le flag mustChangePassword.
+      data: { mustChangePassword: true, mfaEmailEnabled: false },
     });
     const fresh = await request(app)
       .post("/api/auth/login")
@@ -404,7 +406,8 @@ describe("Gate force-change — exposition backend du flag (EP15-S04 AC3)", () =
   it("un compte gate (mustChangePassword=true) peut appeler change-password (exemption AC3)", async () => {
     await gatePrisma.user.update({
       where: { tenantId_email: { tenantId: gateCtx.tenant.id, email: gateCtx.admin.email } },
-      data: { mustChangePassword: true, passwordHash: hashSync("test-password-123", 10) },
+      // EP14-S01 / AC7 : 2FA email desactivee pour login nominal (test mustChangePassword).
+      data: { mustChangePassword: true, mfaEmailEnabled: false, passwordHash: hashSync("test-password-123", 10) },
     });
     const fresh = await request(app)
       .post("/api/auth/login")

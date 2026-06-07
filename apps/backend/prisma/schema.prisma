@@ -240,6 +240,19 @@ model PlatformAdmin {
   isActive     Boolean @default(true)
   // EP15-S04 : meme politique de mot de passe que les User cabinet.
   mustChangePassword Boolean @default(false)
+  // EP14-S01 (extension editeur) / AC7 : second facteur OBLIGATOIRE pour l'editeur
+  // plateforme, miroir exact des champs MFA du modele User. totpSecret est stocke
+  // CHIFFRE at-rest (encryptField, ADR-0009 D4). recoveryCodes = 10 codes one-shot
+  // hashes bcrypt. mfaEnabled passe a true apres confirmation du 1er code TOTP.
+  // mfaEmailEnabled active l'envoi d'un OTP a 6 chiffres au login (loginOtpHash =
+  // hash bcrypt du code, loginOtpExpiresAt = TTL, loginOtpAttempts = anti-brute-force).
+  totpSecret        String?
+  recoveryCodes     String[]  @default([])
+  mfaEnabled        Boolean   @default(false)
+  mfaEmailEnabled   Boolean   @default(false)
+  loginOtpHash      String?
+  loginOtpExpiresAt DateTime?
+  loginOtpAttempts  Int       @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

@@ -12,7 +12,7 @@ import { formatCurrency } from "@/lib/utils";
 import { ClientFormDialog } from "@/components/clients/ClientFormDialog";
 import { KanbanColumn } from "./KanbanColumn";
 import { ParallelSections } from "./ParallelSections";
-import { ForceTransitionDialog } from "./ReasonDialog";
+import { ForceTransitionDialog, tabForStage } from "./ReasonDialog";
 import { ProcessPanel } from "./ProcessPanel";
 import { NewDossierButton } from "./NewDossierButton";
 import { useProcessPanelStore } from "@/lib/stores/processPanelStore";
@@ -162,14 +162,9 @@ export function PipelineView() {
     if (snapshot) setData(snapshot);
 
     if ("error" in res && res.error) {
-      const looksLikeTransitionError =
-        typeof res.error === "string" &&
-        (res.error.includes("dateRendezVous") ||
-          res.error.includes("intervention") ||
-          res.error.includes("signe") ||
-          res.error.includes("document") ||
-          res.error.includes("Acompte"));
-      if (!force && looksLikeTransitionError) {
+      // Le backend marque les transitions refusees avec code INVALID_TRANSITION
+      // (robuste au libelle du message, contrairement a un string-match fragile).
+      if (!force && res.code === "INVALID_TRANSITION") {
         setForceDialog({ open: true, processId, targetStage, reason: res.error });
         return;
       }
@@ -312,6 +307,12 @@ export function PipelineView() {
         reason={forceDialog.reason}
         targetStage={forceDialog.targetStage}
         onConfirm={handleForceConfirm}
+        onGoto={() => {
+          if (forceDialog.processId) {
+            openPanel(forceDialog.processId, tabForStage(forceDialog.targetStage));
+          }
+          setForceDialog((prev) => ({ ...prev, open: false }));
+        }}
       />
 
       <ClientFormDialog

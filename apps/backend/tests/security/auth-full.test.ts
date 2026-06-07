@@ -182,13 +182,16 @@ describe("Security — A07 Authentication Failures (completion)", () => {
 
   describe("Sessions paralleles", () => {
     it("2 logins consecutifs sur memes credentials → 2 JWT distincts, les 2 valides", async () => {
+      // EP14-S01 / AC7 : on utilise le COMMERCIAL (2FA optionnelle, login nominal)
+      // car l'ADMIN est enrole 2FA par defaut (le login renverrait un challenge, pas
+      // un JWT). Le test porte sur la generation de sessions paralleles, role-agnostique.
       const l1 = await request(app).post("/api/auth/login").send({
-        email: ctx.admin.email,
+        email: ctx.commercial.email,
         password: "test-password-123",
         tenantSlug: TENANT_SLUG,
       });
       const l2 = await request(app).post("/api/auth/login").send({
-        email: ctx.admin.email,
+        email: ctx.commercial.email,
         password: "test-password-123",
         tenantSlug: TENANT_SLUG,
       });
@@ -250,8 +253,10 @@ describe("Security — A07 Authentication Failures (completion)", () => {
 
   describe("JWT issue time sanity", () => {
     it("iat est dans le passe (pas futur clock-skew abusive)", async () => {
+      // EP14-S01 / AC7 : COMMERCIAL (login nominal) car l'ADMIN est enrole 2FA par
+      // defaut. Le test porte sur le iat du JWT, role-agnostique.
       const res = await request(app).post("/api/auth/login").send({
-        email: ctx.admin.email,
+        email: ctx.commercial.email,
         password: "test-password-123",
         tenantSlug: TENANT_SLUG,
       });

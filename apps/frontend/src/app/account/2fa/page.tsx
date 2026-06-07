@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getSession } from "next-auth/react";
+import { getSession, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Mail, Smartphone, ShieldCheck } from "lucide-react";
 
@@ -47,6 +48,11 @@ interface TwoFactorStatus {
 type TotpStage = "none" | "setup" | "done";
 
 export default function TwoFactorSetupPage() {
+  // EP14-S01 / AC7 : useSession().update leve la gate 2FA (token.setup2fa -> false)
+  // apres un enrolement reussi, sans re-login. session.setup2fa === true => l'ADMIN
+  // est arrive ici force par le middleware (banniere d'activation obligatoire).
+  const { data: session, update } = useSession();
+  const router = useRouter();
   const [status, setStatus] = useState<TwoFactorStatus | null>(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -99,6 +105,13 @@ export default function TwoFactorSetupPage() {
         "Verification par email activee (toute autre methode a ete desactivee). A votre prochaine connexion, un code vous sera envoye par email.",
       );
       await loadStatus();
+      // EP14-S01 / AC7 : le compte est desormais enrole -> on leve la gate 2FA
+      // (un ADMIN force ici peut continuer sans re-login).
+      await update({ setup2fa: false });
+      // Invalide le Router Cache Next : update() leve le flag session mais le cache de
+      // navigation garde la redirection "2FA requise" decidee au chargement -> sans ca,
+      // la sidebar / le bouton Retour restent bloques jusqu'a un F5.
+      router.refresh();
     } else {
       setError("Action impossible pour le moment. Reessayez.");
     }
@@ -169,6 +182,14 @@ export default function TwoFactorSetupPage() {
     setRecoveryCodes(body.data.recoveryCodes ?? []);
     setTotpStage("done");
     await loadStatus();
+    // EP14-S01 / AC7 : TOTP confirme -> compte enrole, on leve la gate 2FA. La
+    // page reste affichee (codes de secours visibles) ; seule la prochaine
+    // navigation cesse d'etre redirigee vers /account/2fa.
+    await update({ setup2fa: false });
+    // NE PAS router.refresh() ici : les codes de secours (totpStage="done") doivent
+    // rester affiches jusqu'a ce que l'utilisateur clique "J'ai note mes codes". Sinon la
+    // re-evaluation des gates (ex: CGU non acceptee) le redirige AVANT qu'il copie ses
+    // codes. Le refresh est DIFFERE au bouton "Continuer" (cf section totpStage "done").
   }
 
   const cardClass =
@@ -194,6 +215,19 @@ export default function TwoFactorSetupPage() {
         Une etape de verification supplementaire a la connexion, en plus de votre
         mot de passe. Choisissez la methode qui vous convient.
       </p>
+
+      {/* EP14-S01 / AC7 : banniere d'enrolement obligatoire (ADMIN arrive ici force
+          par le middleware). Disparait des qu'une methode est activee (gate levee). */}
+      {session?.setup2fa === true && (
+        <div
+          data-testid="2fa-mandatory-banner"
+          className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-300"
+        >
+          <strong>Activation obligatoire.</strong> Votre role administrateur exige
+          une double authentification. Activez une methode ci-dessous pour continuer
+          a utiliser l&apos;application.
+        </div>
+      )}
 
       {error && <p className="text-sm text-danger">{error}</p>}
       {notice && <p className="text-sm text-emerald-500">{notice}</p>}
@@ -359,6 +393,17 @@ export default function TwoFactorSetupPage() {
                         <li key={rc}>{rc}</li>
                       ))}
                     </ul>
+                    {/* Navigation DIFFEREE : tant que l'utilisateur n'a pas clique, les
+                        codes restent affiches. Le clic fait router.refresh() qui re-evalue
+                        les gates (2FA levee -> CGU si non acceptee, sinon nav debloquee). */}
+                    <button
+                      type="button"
+                      onClick={() => router.refresh()}
+                      className={primaryBtn}
+                      data-testid="2fa-recovery-continue"
+                    >
+                      J&apos;ai note mes codes de secours, continuer
+                    </button>
                   </div>
                 )}
               </div>

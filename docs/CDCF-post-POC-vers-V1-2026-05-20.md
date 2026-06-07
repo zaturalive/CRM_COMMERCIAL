@@ -443,8 +443,8 @@ Devis final livre apres benchmark effectif.
 | **Date de naissance** sur fiche client | HAUTE | 0.5 j | Beaucoup d'homonymes en pratique. Quick win. |
 | **Acompte paye / pas paye** dans UI | HAUTE | 0.5 j | Champ `acomptePaidAt` existe deja, exposer dans badges UI |
 | **Lien visio** dans agenda (Process / Event) | HAUTE | 0.5 j | Champ `meetingUrl` simple texte |
-| **Champ reduction sur devis** (au lieu de frais negatif) | HAUTE | 1 j | Refactor calcul total + UI DevisBuilder |
-| **Vue PDF live du devis** (preview iframe en edition) | HAUTE | 1 j | Render React PDF aside du DevisBuilder |
+| **Champ reduction sur devis** (au lieu de frais negatif) | HAUTE | 1 j | **LIVRE 2026-06-05** : `Devis.discount` + `discountType` AMOUNT/PERCENT (plafonnee 100 %), ligne remise dans le PDF (EP16-S02) |
+| **Vue PDF live du devis** (preview iframe en edition) | HAUTE | 1 j | **LIVRE** : `DevisPreview` (rendu HTML/React leger, sans Puppeteer) en split-pane du DevisBuilder, total via `/total` (EP16-S03) |
 | **Previsionnel PDF du devis** | HAUTE | 0.5 j | Snapshot PDF avant signature pour envoi prealable |
 | **Lien paiement acompte** (Stripe Checkout) | HAUTE | 3 j | Lien magique `/pay/<token>` + webhook update status |
 | **Templates auto par sub-stage** follow-up (J+1, J+3, J+7) | HAUTE | 1 j | Mapping sub-stage to template + envoi auto |
@@ -712,6 +712,7 @@ Voir `docs/context/glossary.md` pour le glossaire complet.
 | Version | Date | Auteur | Changements |
 |---------|------|--------|-------------|
 | 1.0 | 2026-05-20 | Dimitry | Version initiale post-meeting roadmap Florian |
+| 1.1 | 2026-06-05 | Dimitry | Note de livraison prod `vencor-crm.com` : refonte PDF devis commercial + rebrand Vencor + couleur d'accent configurable par cabinet (`settings.legal.accentColor`) + mentions legales preremplies (EP16-S01) ; champ remise (EP16-S02, §4.5) ; apercu live du devis (EP16-S03) ; "Marquer signe" reversible (`/api/devis/:id/unsign`) ; messages de transition pipeline humains + bouton "Renseigner →" ; compteur receivedDocs reel ; Back Office gestion cross-tenant des catalogues de cliniques (copier/deplacer/supprimer, garde `409 CLINIQUE_IN_USE`) ; batterie de conformite securite par-endpoint auto-decouverte (EP14-S08). |
 
 ---
 

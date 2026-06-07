@@ -217,8 +217,10 @@ describe("Security — Resolution tenant par sous-domaine (EP14-S03)", () => {
       // AC6 : l'apex garde le formulaire a 3 champs (email, password, tenantSlug).
       // On verifie que le login nominal par slug n'est pas regresse par l'ajout du
       // chemin sous-domaine.
+      // EP14-S01 / AC7 : COMMERCIAL (login nominal) car l'ADMIN est enrole 2FA par
+      // defaut. Le test porte sur la resolution du tenant par slug, role-agnostique.
       const res = await request(app).post("/api/auth/login").send({
-        email: `admin-${SLUG_B}@test.fr`,
+        email: `commercial-${SLUG_B}@test.fr`,
         password: "test-password-123",
         tenantSlug: SLUG_B,
       });

@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/Input";
 import { Label } from "@/components/ui/Label";
 import { Button } from "@/components/ui/Button";
+import { ArrowRight } from "lucide-react";
 import { FOLLOWUP_REASON_LABELS } from "@/types/processes";
 import type { FollowupReason } from "@/types/processes";
 
@@ -205,17 +206,37 @@ export function FollowupDialog({ open, onOpenChange, onSubmit }: FollowupDialogP
   );
 }
 
+/**
+ * Onglet du dossier ou renseigner l'info manquante, selon le stage vise par la
+ * transition refusee. Utilise par la fleche "Renseigner".
+ */
+export function tabForStage(stage: string | null): "overview" | "devis" | "documents" {
+  switch (stage) {
+    case "POST_CONSULT":
+    case "CONFIRMEE":
+      return "devis";
+    case "OP_PROGRAMMEE":
+      return "documents";
+    default:
+      // CONSULTATION (date RDV / qualification) + fallback
+      return "overview";
+  }
+}
+
 interface ForceTransitionDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   reason: string | null;
   targetStage: string | null;
   onConfirm: () => Promise<void>;
+  // Optionnel : amene l'utilisateur directement sur l'onglet du champ a remplir.
+  onGoto?: () => void;
 }
 
 /**
- * Dialog affiche quand le backend retourne 422 sur une transition. Propose
- * "Forcer" (force: true) ou "Annuler".
+ * Dialog affiche quand le backend retourne 422 sur une transition. Action
+ * principale : "Renseigner" (amene au champ manquant). "Forcer" reste possible
+ * mais secondaire (echappatoire "je sais ce que je fais").
  */
 export function ForceTransitionDialog({
   open,
@@ -223,6 +244,7 @@ export function ForceTransitionDialog({
   reason,
   targetStage,
   onConfirm,
+  onGoto,
 }: ForceTransitionDialogProps) {
   const [loading, setLoading] = useState(false);
 
@@ -240,26 +262,35 @@ export function ForceTransitionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Transition non autorisee</DialogTitle>
+          <DialogTitle>Il manque une information</DialogTitle>
           <DialogDescription>
-            Impossible de deplacer vers <strong>{targetStage}</strong> automatiquement.
+            Pour passer en <strong>{targetStage}</strong>, complétez d&apos;abord ceci :
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           {reason ?? "Transition invalide"}
         </div>
-        <p className="text-sm text-text-secondary">
-          Vous pouvez forcer la transition si vous savez ce que vous faites.
-        </p>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="secondary" type="button" disabled={loading}>
-              Annuler
-            </Button>
-          </DialogClose>
-          <Button variant="destructive" onClick={handleConfirm} disabled={loading}>
-            {loading ? "..." : "Forcer la transition"}
-          </Button>
+        <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={loading}
+            className="text-xs text-text-secondary underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            {loading ? "..." : "Forcer quand même"}
+          </button>
+          <div className="flex gap-2">
+            <DialogClose asChild>
+              <Button variant="secondary" type="button" disabled={loading}>
+                Annuler
+              </Button>
+            </DialogClose>
+            {onGoto && (
+              <Button type="button" onClick={onGoto} disabled={loading}>
+                Renseigner <ArrowRight size={14} />
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

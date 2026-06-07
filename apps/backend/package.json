@@ -25,6 +25,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:backfill-encrypt": "tsx scripts/backfill-encrypt-at-rest.ts",
+    "db:decrypt": "tsx scripts/crypto-cli.ts decrypt",
+    "db:encrypt": "tsx scripts/crypto-cli.ts encrypt",
+    "db:hash": "tsx scripts/crypto-cli.ts hash",
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio"
   },
@@ -42,7 +45,7 @@
     "express-rate-limit": "^7.2.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.1.1",
     "nodemailer": "^7.0.13",
     "otplib": "^12.0.1",
     "pino": "^8.19.0",

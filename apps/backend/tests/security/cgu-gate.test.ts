@@ -300,7 +300,10 @@ describe("Security — Gate CGU + POST /api/tenant/accept-cgu (EP14-S02)", () =>
       const res = await request(app)
         .post("/api/auth/login")
         .send({
-          email: ctxA.admin.email,
+          // EP14-S01 / AC7 : COMMERCIAL (login nominal) car l'ADMIN est enrole 2FA
+          // par defaut. Le flag cguAccepted est tenant-level (role-agnostique), donc
+          // ce test d'exposition du flag au login reste valide avec le commercial.
+          email: ctxA.commercial.email,
           password: "test-password-123",
           tenantSlug: TENANT_A,
         });
@@ -317,7 +320,10 @@ describe("Security — Gate CGU + POST /api/tenant/accept-cgu (EP14-S02)", () =>
       const res = await request(app)
         .post("/api/auth/login")
         .send({
-          email: ctxA.admin.email,
+          // EP14-S01 / AC7 : COMMERCIAL (login nominal) car l'ADMIN est enrole 2FA
+          // par defaut. Le flag cguAccepted est tenant-level (role-agnostique), donc
+          // ce test d'exposition du flag au login reste valide avec le commercial.
+          email: ctxA.commercial.email,
           password: "test-password-123",
           tenantSlug: TENANT_A,
         });
@@ -334,7 +340,10 @@ describe("Security — Gate CGU + POST /api/tenant/accept-cgu (EP14-S02)", () =>
       const res = await request(app)
         .post("/api/auth/login")
         .send({
-          email: ctxA.admin.email,
+          // EP14-S01 / AC7 : COMMERCIAL (login nominal) car l'ADMIN est enrole 2FA
+          // par defaut. Le flag cguAccepted est tenant-level (role-agnostique), donc
+          // ce test d'exposition du flag au login reste valide avec le commercial.
+          email: ctxA.commercial.email,
           password: "test-password-123",
           tenantSlug: TENANT_A,
         });

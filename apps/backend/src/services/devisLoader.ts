@@ -216,6 +216,7 @@ function resolveLegalMentions(
     email: str("email", "Email a renseigner"),
     validiteJours: num("validiteJours", 30),
     cgvReference: str("cgvReference", "Voir CGV disponibles sur demande"),
+    accentColor: str("accentColor", "#0F1117"),
   };
 }
 

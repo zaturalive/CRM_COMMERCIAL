@@ -1,6 +1,5 @@
 import { Router } from "express";
 import type { Request } from "express";
-import { hashSync } from "bcryptjs";
 import { asyncHandler } from "../middleware/errorHandler";
 import { requireRole } from "../middleware/requireRole";
 import { createUserSchema, updateUserSchema } from "../schemas/users";
@@ -8,7 +7,6 @@ import {
   buildCreatedUserAccount,
   assertCanChangeUser,
 } from "../lib/userManagement";
-import { generateTempPassword } from "../lib/tempPassword";
 import type { EmailSender } from "../lib/email/EmailSender";
 import { sendUserInvitation } from "../lib/userInvitation";
 
@@ -168,23 +166,17 @@ export function createUsersRouter(emailSender: EmailSender): Router {
 
   /**
    * POST /api/users/:id/reset-password — "renvoyer l'invitation / reinitialiser
-   * l'acces" (AC4, decision D1). Invalide l'acces courant (hash aleatoire NON
-   * communique) + force le changement, puis envoie un lien /set-password par email
-   * (token 7j). Aucun mot de passe en clair n'est renvoye : le user ne revient que
-   * par le lien. 404 hors tenant.
+   * l'acces" (AC4, decision D1). Envoie un lien /set-password par email (token 7j).
+   * NE TOUCHE PAS au mot de passe courant : l'acces actuel reste VALIDE jusqu'a ce que
+   * l'utilisateur definisse un nouveau mot de passe via le lien (set-password ->
+   * reset-password pose alors le nouveau hash + mustChangePassword:false). Revoquer le
+   * mdp ici couperait l'acces entre la demande et le clic du lien (perte d'acces). 404
+   * hors tenant.
    */
   router.post(
     "/:id/reset-password",
     asyncHandler(async (req, res) => {
       const target = await loadOwnedUser(req, req.params.id);
-
-      await req.prisma!.user.update({
-        where: { id: target.id },
-        data: {
-          passwordHash: hashSync(generateTempPassword(), 10),
-          mustChangePassword: true,
-        },
-      });
 
       const invitationSent = await sendUserInvitation(
         emailSender,

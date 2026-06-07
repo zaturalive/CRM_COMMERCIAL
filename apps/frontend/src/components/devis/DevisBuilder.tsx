@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Plus,
   Trash2,
   Download,
   Send,
   FileSignature,
+  RotateCcw,
   Eye,
   EyeOff,
+  Loader2,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
@@ -396,24 +399,42 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
       body: JSON.stringify({ discount, discountType }),
     });
 
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const handleDownloadPdf = async () => {
-    const { getSession } = await import("next-auth/react");
-    const s = await getSession();
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000"}/api/devis/${devisId}/pdf`,
-      { headers: { Authorization: `Bearer ${s?.jwt ?? ""}` } }
-    );
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${devis?.reference ?? "devis"}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setDownloadingPdf(true);
+    try {
+      const { getSession } = await import("next-auth/react");
+      const s = await getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000"}/api/devis/${devisId}/pdf`,
+        { headers: { Authorization: `Bearer ${s?.jwt ?? ""}` } }
+      );
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${devis?.reference ?? "devis"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const handleSign = async () => {
     await apiFetch(`/api/devis/${devisId}/sign`, { method: "POST" });
+    await refresh();
+  };
+
+  const handleUnsign = async () => {
+    if (
+      !window.confirm(
+        "Annuler la signature de ce devis ? Il repassera en cours d'edition."
+      )
+    ) {
+      return;
+    }
+    await apiFetch(`/api/devis/${devisId}/unsign`, { method: "POST" });
     await refresh();
   };
 
@@ -497,8 +518,18 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
             {previewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
             {previewOpen ? "Masquer l'apercu" : "Apercu"}
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleDownloadPdf}>
-            <Download size={14} /> Telecharger PDF
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+          >
+            {downloadingPdf ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Download size={14} />
+            )}
+            {downloadingPdf ? "Generation..." : "Telecharger PDF"}
           </Button>
           <div className="relative">
             <Button variant="outline" size="sm" disabled title="Disponible en V1">
@@ -508,9 +539,13 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
               V1
             </span>
           </div>
-          {devis.status !== "SIGNE" && (
+          {devis.status !== "SIGNE" ? (
             <Button variant="primary" size="sm" onClick={handleSign}>
               <FileSignature size={14} /> Marquer signe
+            </Button>
+          ) : (
+            <Button variant="secondary" size="sm" onClick={handleUnsign}>
+              <RotateCcw size={14} /> Annuler la signature
             </Button>
           )}
         </div>
@@ -538,7 +573,20 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
         <div className="space-y-3">
           {devis.devisInterventions.length === 0 && (
             <p className="text-sm text-[color:var(--text-secondary)]">
-              Aucune intervention. Ajoutez-en une pour commencer.
+              {interventions.length === 0 ? (
+                <>
+                  Aucune intervention dans votre catalogue.{" "}
+                  <Link
+                    href="/config/interventions"
+                    className="font-medium text-[color:var(--accent)] underline"
+                  >
+                    Creez-en une
+                  </Link>{" "}
+                  pour pouvoir l&apos;ajouter au devis.
+                </>
+              ) : (
+                "Aucune intervention. Ajoutez-en une pour commencer."
+              )}
             </p>
           )}
           {devis.devisInterventions.map((di) => (

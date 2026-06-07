@@ -31,6 +31,8 @@ export interface DevisLegalMentions {
   validiteJours: number;
   // Reference aux Conditions Generales de Vente.
   cgvReference: string;
+  // Couleur d'accent (#RRGGBB) des bandeaux du devis. Defaut onyx #0F1117.
+  accentColor?: string | null;
 }
 
 /** Ligne de prestation commerciale (libelle/quantite/PU/total). */
@@ -84,6 +86,19 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   const { legal, breakdown } = input;
   const emissionFr = formatDateFr(input.emissionDateIso);
 
+  // Couleur d'accent configurable (Cabinet) : pilote les bandeaux. Le texte
+  // pose dessus est calcule par luminance pour rester lisible quelle que soit
+  // la couleur choisie (clair -> texte sombre, fonce -> texte blanc).
+  const accent = /^#[0-9a-fA-F]{6}$/.test(legal.accentColor ?? "")
+    ? (legal.accentColor as string)
+    : "#0F1117";
+  const _r = parseInt(accent.slice(1, 3), 16);
+  const _g = parseInt(accent.slice(3, 5), 16);
+  const _b = parseInt(accent.slice(5, 7), 16);
+  const _lum = (0.299 * _r + 0.587 * _g + 0.114 * _b) / 255;
+  const onAccent = _lum > 0.6 ? "#1A1A2E" : "#ffffff";
+  const onAccentDim = _lum > 0.6 ? "rgba(26,26,46,0.62)" : "rgba(255,255,255,0.62)";
+
   const linesHtml = input.lines
     .map(
       (l) => `
@@ -115,32 +130,39 @@ export function renderDevisHtml(input: DevisPdfInput): string {
 <meta charset="UTF-8" />
 <title>Devis ${esc(input.reference)}</title>
 <style>
+  /* Couleur d'accent configurable (Cabinet) en bandeaux ; corps blanc (devis
+     imprime + signe a la main). Texte sur bandeau = contraste calcule. */
   * { box-sizing: border-box; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-    color: #1a1a1a;
+    font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    color: #1A1A2E;
     font-size: 12px;
     margin: 0;
     line-height: 1.45;
+    letter-spacing: -0.01em;
   }
   .mono { font-family: "SF Mono", Consolas, monospace; }
   .right { text-align: right; }
+  /* En-tete : bandeau couleur cabinet (papier a en-tete). */
   header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border-bottom: 2px solid #2f3e7e;
-    padding-bottom: 16px;
-    margin-bottom: 22px;
+    background: ${accent};
+    color: ${onAccent};
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
   }
   header .cabinet h1 {
     font-size: 20px;
     margin: 0 0 6px;
-    color: #2f3e7e;
+    color: ${onAccent};
+    font-weight: 600;
   }
   header .cabinet .legal {
     font-size: 10.5px;
-    color: #555;
+    color: ${onAccentDim};
   }
   header .doc {
     text-align: right;
@@ -148,23 +170,23 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   header .doc .title {
     font-size: 16px;
     font-weight: 700;
-    color: #2f3e7e;
-    letter-spacing: 0.5px;
+    color: ${onAccent};
+    letter-spacing: 2px;
   }
   header .doc .ref {
     font-family: monospace;
     font-size: 13px;
-    color: #333;
+    color: ${onAccent};
     margin-top: 4px;
   }
   header .doc .meta {
     font-size: 10.5px;
-    color: #555;
+    color: ${onAccentDim};
     margin-top: 4px;
   }
   .client-box {
-    background: #f5f7ff;
-    border-left: 3px solid #2f3e7e;
+    background: ${accent}14;
+    border-left: 3px solid ${accent};
     padding: 10px 14px;
     margin-bottom: 20px;
     font-size: 12px;
@@ -172,10 +194,13 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   .client-box .who { font-weight: 600; }
   h2 {
     font-size: 13px;
-    margin: 0 0 8px;
-    color: #2f3e7e;
+    margin: 0 0 10px;
+    color: #1A1A2E;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    border-bottom: 2px solid ${accent};
+    display: inline-block;
+    padding-bottom: 3px;
   }
   table.lines {
     width: 100%;
@@ -183,18 +208,18 @@ export function renderDevisHtml(input: DevisPdfInput): string {
     margin-bottom: 14px;
   }
   table.lines thead th {
-    background: #2f3e7e;
-    color: #fff;
+    background: ${accent};
+    color: ${onAccent};
     font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
-    padding: 7px 8px;
+    padding: 8px;
     text-align: left;
   }
   table.lines thead th.right { text-align: right; }
   table.lines tbody td {
     padding: 7px 8px;
-    border-bottom: 1px solid #e3e6f0;
+    border-bottom: 1px solid #ececf1;
     vertical-align: top;
   }
   table.lines tbody td.lib { font-weight: 600; }
@@ -215,24 +240,24 @@ export function renderDevisHtml(input: DevisPdfInput): string {
     width: 280px;
     margin-left: auto;
     margin-top: 6px;
-    padding: 12px 14px;
-    background: #2f3e7e;
-    color: #fff;
+    padding: 13px 16px;
+    background: ${accent};
+    color: ${onAccent};
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 3px;
+    border-radius: 6px;
   }
-  .total-net .label { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
-  .total-net .value { font-size: 18px; font-weight: 700; font-family: monospace; }
+  .total-net .label { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: ${onAccentDim}; }
+  .total-net .value { font-size: 18px; font-weight: 700; font-family: monospace; color: ${onAccent}; }
   .validity {
     margin-top: 22px;
     font-size: 11px;
     color: #333;
-    background: #fbfbe9;
-    border: 1px solid #e7e7c0;
+    background: ${accent}0d;
+    border: 1px solid ${accent}33;
     padding: 8px 12px;
-    border-radius: 3px;
+    border-radius: 6px;
   }
   .signature {
     margin-top: 34px;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Receipt,
@@ -38,6 +38,8 @@ interface ProcessTabsProps {
   role: "ADMIN" | "COMMERCIAL";
   onReload: () => Promise<void>;
   onChanged: () => void;
+  // Bascule programmatique d'onglet (fleche "Renseigner" de la modale transition).
+  gotoTab?: { key: string; nonce: number } | null;
 }
 
 /**
@@ -46,7 +48,7 @@ interface ProcessTabsProps {
  *   CONTACT → Vue, CONSULTATION → Vue, POST_CONSULT → Devis,
  *   CONFIRMEE → Documents, OP_PROGRAMMEE → Vue.
  */
-export function ProcessTabs({ process, role, onReload, onChanged }: ProcessTabsProps) {
+export function ProcessTabs({ process, role, onReload, onChanged, gotoTab }: ProcessTabsProps) {
   const [tab, setTab] = useState<TabKey>(() => {
     switch (process.stage) {
       case "CONTACT":
@@ -63,6 +65,16 @@ export function ProcessTabs({ process, role, onReload, onChanged }: ProcessTabsP
         return "overview";
     }
   });
+
+  // Bascule sur l'onglet demande quand gotoTab change (nonce) — utilise par la
+  // fleche "Renseigner" de la modale de transition / ouverture ciblee du panel.
+  useEffect(() => {
+    const k = gotoTab?.key;
+    if (k === "overview" || k === "notes" || k === "documents" || k === "devis" || k === "followup") {
+      setTab(k);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gotoTab?.nonce]);
 
   const priorityTab: TabKey =
     process.stage === "POST_CONSULT"
