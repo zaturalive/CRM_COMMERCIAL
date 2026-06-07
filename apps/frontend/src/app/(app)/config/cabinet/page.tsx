@@ -17,6 +17,7 @@ interface DevisLegal {
   email?: string;
   validiteJours?: number;
   cgvReference?: string;
+  accentColor?: string;
 }
 
 interface Settings {
@@ -83,6 +84,7 @@ export default function CabinetSettingsPage() {
           email: legal.email?.trim() || "",
           validiteJours: legal.validiteJours || undefined,
           cgvReference: legal.cgvReference?.trim() || "",
+          accentColor: legal.accentColor || "#0F1117",
         },
       }),
     });
@@ -261,6 +263,46 @@ export default function CabinetSettingsPage() {
                   }
                   placeholder="CGV disponibles sur demande"
                 />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="accentColor">Couleur du devis</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="accentColor"
+                    type="color"
+                    value={legal.accentColor ?? "#0F1117"}
+                    onChange={(e) =>
+                      setLegal((l) => ({ ...l, accentColor: e.target.value }))
+                    }
+                    className="h-9 w-12 shrink-0 cursor-pointer rounded-md border border-[color:var(--border)] bg-white/90 p-1"
+                  />
+                  <Input
+                    value={legal.accentColor ?? "#0F1117"}
+                    onChange={(e) =>
+                      setLegal((l) => ({ ...l, accentColor: e.target.value }))
+                    }
+                    placeholder="#0F1117"
+                    className="w-32 font-mono uppercase"
+                  />
+                  <div className="flex gap-1.5">
+                    {["#0F1117", "#6c63ff", "#1e3a8a", "#0f766e", "#831843"].map(
+                      (c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          aria-label={`Couleur ${c}`}
+                          onClick={() => setLegal((l) => ({ ...l, accentColor: c }))}
+                          style={{ backgroundColor: c }}
+                          className="h-6 w-6 rounded-full border border-[color:var(--border)] transition hover:scale-110"
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-text-secondary">
+                  Couleur des bandeaux du devis (en-tete, tableau, total). Le texte
+                  s&apos;adapte automatiquement pour rester lisible.
+                </p>
               </div>
             </div>
           </section>

@@ -14,6 +14,11 @@ export const devisLegalSchema = z
     email: z.string().max(255).optional(),
     validiteJours: z.number().int().min(1).max(365).optional(),
     cgvReference: z.string().max(500).optional(),
+    // Couleur d'accent du devis (bandeaux PDF). Format hex #RRGGBB.
+    accentColor: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, "Couleur invalide (#RRGGBB)")
+      .optional(),
   })
   .strict();
 

@@ -31,6 +31,8 @@ export interface DevisLegalMentions {
   validiteJours: number;
   // Reference aux Conditions Generales de Vente.
   cgvReference: string;
+  // Couleur d'accent (#RRGGBB) des bandeaux du devis. Defaut onyx #0F1117.
+  accentColor?: string | null;
 }
 
 /** Ligne de prestation commerciale (libelle/quantite/PU/total). */
@@ -84,6 +86,19 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   const { legal, breakdown } = input;
   const emissionFr = formatDateFr(input.emissionDateIso);
 
+  // Couleur d'accent configurable (Cabinet) : pilote les bandeaux. Le texte
+  // pose dessus est calcule par luminance pour rester lisible quelle que soit
+  // la couleur choisie (clair -> texte sombre, fonce -> texte blanc).
+  const accent = /^#[0-9a-fA-F]{6}$/.test(legal.accentColor ?? "")
+    ? (legal.accentColor as string)
+    : "#0F1117";
+  const _r = parseInt(accent.slice(1, 3), 16);
+  const _g = parseInt(accent.slice(3, 5), 16);
+  const _b = parseInt(accent.slice(5, 7), 16);
+  const _lum = (0.299 * _r + 0.587 * _g + 0.114 * _b) / 255;
+  const onAccent = _lum > 0.6 ? "#1A1A2E" : "#ffffff";
+  const onAccentDim = _lum > 0.6 ? "rgba(26,26,46,0.62)" : "rgba(255,255,255,0.62)";
+
   const linesHtml = input.lines
     .map(
       (l) => `
@@ -115,8 +130,8 @@ export function renderDevisHtml(input: DevisPdfInput): string {
 <meta charset="UTF-8" />
 <title>Devis ${esc(input.reference)}</title>
 <style>
-  /* Palette Vencor : onyx #0F1117, platine #B5BFC7, violet #6c63ff. Corps blanc
-     (devis imprime + signe a la main) ; onyx en bandeaux, accents platine/violet. */
+  /* Couleur d'accent configurable (Cabinet) en bandeaux ; corps blanc (devis
+     imprime + signe a la main). Texte sur bandeau = contraste calcule. */
   * { box-sizing: border-box; }
   body {
     font-family: "Inter Tight", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -128,13 +143,13 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   }
   .mono { font-family: "SF Mono", Consolas, monospace; }
   .right { text-align: right; }
-  /* En-tete : bandeau onyx facon papier a en-tete Vencor. */
+  /* En-tete : bandeau couleur cabinet (papier a en-tete). */
   header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    background: #0F1117;
-    color: #ffffff;
+    background: ${accent};
+    color: ${onAccent};
     border-radius: 8px;
     padding: 20px 24px;
     margin-bottom: 24px;
@@ -142,12 +157,12 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   header .cabinet h1 {
     font-size: 20px;
     margin: 0 0 6px;
-    color: #ffffff;
+    color: ${onAccent};
     font-weight: 600;
   }
   header .cabinet .legal {
     font-size: 10.5px;
-    color: rgba(255, 255, 255, 0.62);
+    color: ${onAccentDim};
   }
   header .doc {
     text-align: right;
@@ -155,23 +170,23 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   header .doc .title {
     font-size: 16px;
     font-weight: 700;
-    color: #B5BFC7;
+    color: ${onAccent};
     letter-spacing: 2px;
   }
   header .doc .ref {
     font-family: monospace;
     font-size: 13px;
-    color: rgba(255, 255, 255, 0.9);
+    color: ${onAccent};
     margin-top: 4px;
   }
   header .doc .meta {
     font-size: 10.5px;
-    color: rgba(255, 255, 255, 0.6);
+    color: ${onAccentDim};
     margin-top: 4px;
   }
   .client-box {
-    background: rgba(108, 99, 255, 0.06);
-    border-left: 3px solid #6c63ff;
+    background: ${accent}14;
+    border-left: 3px solid ${accent};
     padding: 10px 14px;
     margin-bottom: 20px;
     font-size: 12px;
@@ -180,10 +195,10 @@ export function renderDevisHtml(input: DevisPdfInput): string {
   h2 {
     font-size: 13px;
     margin: 0 0 10px;
-    color: #0F1117;
+    color: #1A1A2E;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 2px solid #6c63ff;
+    border-bottom: 2px solid ${accent};
     display: inline-block;
     padding-bottom: 3px;
   }
@@ -193,8 +208,8 @@ export function renderDevisHtml(input: DevisPdfInput): string {
     margin-bottom: 14px;
   }
   table.lines thead th {
-    background: #0F1117;
-    color: #fff;
+    background: ${accent};
+    color: ${onAccent};
     font-size: 10.5px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -226,21 +241,21 @@ export function renderDevisHtml(input: DevisPdfInput): string {
     margin-left: auto;
     margin-top: 6px;
     padding: 13px 16px;
-    background: #0F1117;
-    color: #fff;
+    background: ${accent};
+    color: ${onAccent};
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-radius: 6px;
   }
-  .total-net .label { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: #B5BFC7; }
-  .total-net .value { font-size: 18px; font-weight: 700; font-family: monospace; color: #fff; }
+  .total-net .label { font-size: 13px; font-weight: 700; letter-spacing: 0.5px; color: ${onAccentDim}; }
+  .total-net .value { font-size: 18px; font-weight: 700; font-family: monospace; color: ${onAccent}; }
   .validity {
     margin-top: 22px;
     font-size: 11px;
     color: #333;
-    background: rgba(108, 99, 255, 0.05);
-    border: 1px solid rgba(108, 99, 255, 0.20);
+    background: ${accent}0d;
+    border: 1px solid ${accent}33;
     padding: 8px 12px;
     border-radius: 6px;
   }

@@ -11,6 +11,7 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  Loader2,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { apiFetch } from "@/lib/api";
@@ -398,20 +399,26 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
       body: JSON.stringify({ discount, discountType }),
     });
 
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const handleDownloadPdf = async () => {
-    const { getSession } = await import("next-auth/react");
-    const s = await getSession();
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000"}/api/devis/${devisId}/pdf`,
-      { headers: { Authorization: `Bearer ${s?.jwt ?? ""}` } }
-    );
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${devis?.reference ?? "devis"}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setDownloadingPdf(true);
+    try {
+      const { getSession } = await import("next-auth/react");
+      const s = await getSession();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000"}/api/devis/${devisId}/pdf`,
+        { headers: { Authorization: `Bearer ${s?.jwt ?? ""}` } }
+      );
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${devis?.reference ?? "devis"}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const handleSign = async () => {
@@ -511,8 +518,18 @@ export function DevisBuilder({ devisId }: { devisId: string }) {
             {previewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
             {previewOpen ? "Masquer l'apercu" : "Apercu"}
           </Button>
-          <Button variant="secondary" size="sm" onClick={handleDownloadPdf}>
-            <Download size={14} /> Telecharger PDF
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+          >
+            {downloadingPdf ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Download size={14} />
+            )}
+            {downloadingPdf ? "Generation..." : "Telecharger PDF"}
           </Button>
           <div className="relative">
             <Button variant="outline" size="sm" disabled title="Disponible en V1">
